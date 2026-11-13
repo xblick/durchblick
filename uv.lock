@@ -1429,6 +1429,9 @@ dependencies = [
 record = [
     { name = "mcap" },
 ]
+relay = [
+    { name = "xblick-relay" },
+]
 rerun = [
     { name = "rerun-sdk" },
 ]
@@ -1455,8 +1458,9 @@ requires-dist = [
     { name = "pillow", specifier = ">=10" },
     { name = "rerun-sdk", marker = "extra == 'rerun'", specifier = ">=0.39,<0.40" },
     { name = "textual", specifier = ">=8.2,<9" },
+    { name = "xblick-relay", marker = "extra == 'relay'", specifier = ">=0.4.0,<0.5" },
 ]
-provides-extras = ["rerun", "record", "video"]
+provides-extras = ["rerun", "record", "video", "relay"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -1464,6 +1468,14 @@ dev = [
     { name = "pytest", specifier = ">=8" },
     { name = "pytest-timeout", specifier = ">=2.3" },
     { name = "rosbags", specifier = ">=0.10" },
+]
+
+[[package]]
+name = "xblick-relay"
+version = "0.4.0"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c1/48/b1000bec5909ac5dfdaaa50431cc3810b3f782a0c624b1ea4c13c09001d6/xblick_relay-0.4.0-py3-none-manylinux_2_28_x86_64.whl", hash = "sha256:299d14a52fda603e9cb675110be7a80fdaab146c38c66034742cda3735079356", size = 7552163, upload-time = "2026-11-13T11:56:37.198Z" },
 ]
 
 [[package]]
