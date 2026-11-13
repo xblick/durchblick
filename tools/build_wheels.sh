@@ -41,6 +41,12 @@ done
 /opt/python/cp312-cp312/bin/python -m venv "$WORK/tools"
 "$WORK/tools/bin/pip" install --quiet build
 "$WORK/tools/bin/python" -m build --sdist --outdir "$OUT" "$ROOT" > /dev/null
+# the sdist carries sources only: an output directory inside the checkout must not get into it
+if tar tzf "$OUT"/blick-*.tar.gz | grep -q "\.whl$"; then
+  echo "the sdist contains wheels (an output directory inside the checkout that pyproject.toml does not exclude)" >&2
+  exit 1
+fi
+
 
 for tag in $PYTHONS; do
   env="$WORK/check-${tag}"

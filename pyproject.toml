@@ -97,7 +97,8 @@ build-dir = "build/{wheel_tag}"
 # the sdist: the sources, tests and the text of the documentation; not its screenshots, the CI, the agent skills and
 # uv.lock (development only; relocking then leaves the built sdist valid)
 # (.claude/skills links to .agents/skills, which the sdist would carry twice)
-sdist.exclude = ["docs/media", ".agents", ".claude", ".github", "uv.lock"]
+# dist, wheelhouse: output directories of a build inside the checkout (the workflows write to dist/)
+sdist.exclude = ["docs/media", ".agents", ".claude", ".github", "uv.lock", "dist", "wheelhouse"]
 
 [tool.scikit-build.cmake.define]
 # cuda.h of the pip package nvidia-cuda-runtime in the build environment
