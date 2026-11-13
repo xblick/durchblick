@@ -161,8 +161,14 @@ Two examples:
 - The relay stops. The node moves back to `compressed`.
 
 While a subscriber moves, it reads the old and the new transport side by side until the first frame arrives on the
-new one, for at most 2 s. It hands out each frame once, so the node loses no frame and sees no frame twice. The
-frames of one stream have the same header on every transport, and the subscriber compares their stamps.
+new one, for at most 2 s. The frames of one stream have the same header on every transport, and the subscriber
+compares their stamps. The stamps that it hands out during a move only grow, except after a restart of the stream.
+The node therefore sees no frame twice and none out of order. A relay's ring lags the network, so the first frames
+of the new transport can be ones that the old transport handed out already. The subscriber leaves them out until a
+newer frame comes, for at most 2 s. A stamp on the new transport more than 2 s behind the newest one counts as a
+restart of the stream, for example of a simulation. The subscriber hands such a frame out at once. A frame can be
+lost when the new transport is ahead of the old one. The subscriber stops reading the old transport at the
+first frame of the new one, so the frames that the old transport still had to bring do not arrive.
 
 A node can therefore receive a NumPy array from one frame and a device array from the next. The helpers in
 `blick.tensors` accept both.
@@ -234,3 +240,11 @@ its own host. A relay never relays a stream that is already relayed.
   Every publisher of this library has the token. A camera program
   outside this library may have none.
 - We tested the change of transport with publishers on one machine, not between two PCs.
+- After a move, the subscriber leaves out every frame whose stamp equals the newest one it handed out, or lies at
+  most 2 s behind it, for up to 2 s. A stream whose frames carry one stamp on purpose therefore pauses for up to
+  2 s. So does a stream that restarts less than 2 s of stamp time back.
+- Copies on the new transport more than 2 s behind the newest frame count as a restart, and the subscriber hands
+  them out again. A relay that queued frames while it started would cause this. The stamps alone cannot tell such
+  copies from a restart.
+- A new transport that delivers one frame behind the old one and then pauses for more than 2 s hands out older
+  frames again when it resumes. The node then sees a frame twice, or out of order.

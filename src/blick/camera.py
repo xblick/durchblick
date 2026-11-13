@@ -431,9 +431,24 @@ class _Latest:
     ``keep``: also the last so many samples, not decoded (``recent``), for a partner stream read at a stamp
     (Subscription.keep_recent); ``on_put``: called after each sample (a partner's arrival wakes the node).
 
-    While a subscription changes its transport, the samples of the old and of the new route arrive side by side
-    (``overlap``): a sample that is not newer by its header stamp than the newest one kept is the same frame by the
-    other route and is left out (``duplicates``)."""
+    The samples come by routes (a subscription's subscribers, numbered); those of ``route`` are kept. When a
+    subscription changes its transport (``move``), it reads the old and the new route side by side until the new one
+    delivers its first sample (or ``leave_old``). From then on it reads only the new one: a sample of the old route is
+    left out, also one that Zenoh hands over while the old subscriber is undeclared. While both routes are read, and
+    after that for HANDOVER_S or until the new route passes the newest frame kept (a relay's ring lags the network by
+    a frame or more), a sample whose header stamp is not newer than the newest one kept is the same frame by the other
+    route and is left out (``duplicates``). Only on the new route, a stamp more than HANDOVER_NS behind the newest one
+    is a restart of the stream (a camera or a simulation): it is kept and ends the window. The old route's frames of a
+    restart come again by the new route. So the stamps handed out during a move only grow, except after a restart of
+    the stream. What remains:
+
+    * copies on the new route more than HANDOVER_NS behind (a relay that queued frames while it started) are taken for
+      a restart and handed out again: stamps alone do not tell the two apart;
+    * a new route that stops for longer than HANDOVER_S after a first sample behind the newest one hands out older
+      frames again;
+    * frames that carry one stamp on purpose, or a restart less than HANDOVER_NS back, are not handed out during the
+      window;
+    * frames are lost when the new route is ahead of the old one (those the old one had still to bring)."""
 
     def __init__(self, keep: int = 0, on_put=None):
         self._cond = threading.Condition()
@@ -444,33 +459,68 @@ class _Latest:
         self.overwritten = 0
         self.recent = collections.deque(maxlen=keep) if keep else None
         self._on_put = on_put
-        self.overlap = False
         self.duplicates = 0
         self._newest_stamp: int | None = None
-        self._routes: set[int] = set()  # the routes (a subscription's subscribers, numbered) that delivered a sample
+        self._route = 0  # the route whose samples are kept
+        self._old: int | None = None  # the route moved from, read until the new one delivers
+        self._compare_until: float | None = None  # after the move: the new route's samples are compared until then
 
     def keep(self, n: int, on_put):
         with self._cond:
             self.recent = collections.deque(self.recent or (), maxlen=n) if n else None
             self._on_put = on_put
 
-    def wait_route(self, route: int, timeout: float) -> bool:
-        """True once a sample of ``route`` came (waits at most ``timeout`` seconds)."""
+    def move(self, to: int):
+        """The samples of route ``to`` are kept from now on; with a route before it, that one's too until ``to``
+        delivers its first sample. Before its subscriber is declared."""
         with self._cond:
-            return self._cond.wait_for(lambda: route in self._routes, timeout=timeout)
+            if self._route:
+                self._old = self._route
+            self._route = to
+
+    def wait_moved(self, timeout: float) -> bool:
+        """True once the new route delivered its first sample (waits at most ``timeout`` seconds)."""
+        with self._cond:
+            return self._cond.wait_for(lambda: self._old is None, timeout=timeout)
+
+    def leave_old(self):
+        """Leaves the old route out from now on, also before the new one delivered: before its subscriber is
+        undeclared."""
+        with self._cond:
+            self._leave_old_locked()
+
+    def _leave_old_locked(self):
+        if self._old is not None:
+            self._old = None
+            self._compare_until = time.monotonic() + HANDOVER_S
+            self._cond.notify_all()
 
     def put(self, sample: zenoh.Sample, transport: str | None = None, route: int = 0):
         payload = sample.payload.to_bytes()
-        item = (payload, sample.attachment.to_bytes() if sample.attachment is not None else None,
-                str(sample.key_expr), time.time_ns(), str(sample.encoding), transport)
+        self.offer((payload, sample.attachment.to_bytes() if sample.attachment is not None else None,
+                    str(sample.key_expr), time.time_ns(), str(sample.encoding), transport), route)
+
+    def offer(self, item: tuple, route: int = 0):
+        """Keeps ``item`` (payload, attachment, key, receive_ns, encoding, transport), a sample of route ``route``,
+        unless it is left out."""
+        payload = item[0]
         stamp = _stamp_of(payload) if len(payload) >= 12 else None  # a sample without a header: refused when read
         with self._cond:
-            self._routes.add(route)
-            if (self.overlap and stamp is not None and self._newest_stamp is not None
-                    and stamp <= self._newest_stamp):
+            if route != self._route and route != self._old:
+                return  # of a route left already: its frames come by the new route
+            if route == self._route:
+                self._leave_old_locked()
+            compare = self._old is not None or (self._compare_until is not None
+                                                and time.monotonic() < self._compare_until)
+            newest = self._newest_stamp
+            # a restart (far back) only by the route that is kept: the old one's frames come again by the new one
+            if (compare and stamp is not None and newest is not None and stamp <= newest
+                    and (route != self._route or newest - HANDOVER_NS <= stamp)):
                 self.duplicates += 1
-                self._cond.notify_all()
                 return
+            if route == self._route:
+                # newer than the frames of the old route, or a restart: none of its later samples is one of them
+                self._compare_until = None
             self._newest_stamp = stamp
             if self._new and self.recent is None:
                 self.overwritten += 1
@@ -496,7 +546,11 @@ class _Latest:
 TRANSPORTS = {"compressed": topics.compressed, "raw": topics.image_raw, "shm": topics.shm, "cuda": topics.cuda}
 _TYPES = {"compressed": CompressedImage, "raw": Image, "shm": ShmImage, "cuda": CudaImageMsg}
 AUTO = "auto"
-HANDOVER_S = 2.0  # how long a subscription that changes its transport keeps the old one for the new one's first frame
+# how long a subscription that changes its transport keeps the old one for the new one's first frame; after that, as
+# long again the new route's samples are compared with the newest frame kept (_Latest), and a stamp at most as far
+# behind it is the same frame
+HANDOVER_S = 2.0
+HANDOVER_NS = int(HANDOVER_S * 1_000_000_000)  # the window in stamp time, an integer as C++'s
 SETTLE_ROUNDS = 3  # info queries after a publisher came or went (its queryable can be known later than its token)
 LOCAL = ("auto", "shm", "cuda")
 REMOTE = ("compressed", "raw")
@@ -712,10 +766,11 @@ class Subscription:
     ``"cuda"``: the CUDA ring where the publisher offers one, else shm), ``remote`` elsewhere. The thread chooses again
     whenever a publisher of the stream comes or goes (their liveliness tokens), so that the order in which programs
     start does not matter: a subscription that reads a remote stream over the network moves to the ring of a relay
-    that starts later on its host, and back when the relay stops. While it moves it reads both routes and hands out
-    each frame once (``_Latest``): no frame is lost or repeated. Subclasses say what their transports are and decode the samples. ``max_hz``: at most so
-    many frames a second (MaxRate), the others skipped before they are decoded or read from their ring and counted in
-    ``skipped_max_hz``; None: every frame."""
+    that starts later on its host, and back when the relay stops. While it moves it reads both routes, and the stamps
+    it hands out only grow, except after a restart of the stream: no frame twice, none out of order (``_Latest`` names
+    the other exceptions, and where frames are lost). Subclasses say what their transports are and decode the
+    samples. ``max_hz``: at most so many frames a second (MaxRate), the others skipped before they are decoded or read
+    from their ring and counted in ``skipped_max_hz``; None: every frame."""
 
     KIND = ""
     TRANSPORTS: dict = {}  # transport -> topic function
@@ -823,8 +878,7 @@ class Subscription:
             self._route += 1
             route = self._route
             old = self._subscriber
-            if old is not None:
-                latest.overlap = True
+            latest.move(route)
             self._subscriber = self._session.declare_subscriber(
                 self._key(transport, gpu), lambda sample: latest.put(sample, transport, route))
             self.transport, self._using = transport, (transport, gpu)
@@ -832,10 +886,11 @@ class Subscription:
         if old is None:
             return
         end = time.monotonic() + HANDOVER_S
-        while not self._closed.is_set() and time.monotonic() < end and not latest.wait_route(route, 0.05):
+        while not self._closed.is_set() and time.monotonic() < end and not latest.wait_moved(0.05):
             pass
+        # before the undeclare: Zenoh can still hand over a sample of the old subscriber while it is undeclared
+        latest.leave_old()
         old.undeclare()
-        latest.overlap = False
 
     def _choice(self, records: list[dict]) -> tuple[str, str, str, bool]:
         """(transport, gpu, why, local) for the publishers that answered ``<base>/info``."""

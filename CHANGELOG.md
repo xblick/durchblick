@@ -4,8 +4,24 @@
 
 Readers and publishers of one setup run the same minor version (0.3.x): the info record's version changed with 0.3.0.
 Within 0.3.x, 0.3.59 changed the rings' keys and the info record's version (3): every program of a setup runs 0.3.59
-or newer. 0.4.0 speaks the protocol of 0.3.59 to 0.3.68: its programs and those of 0.3.68 work together.
+or newer. 0.4.0 and 0.4.1 speak the protocol of 0.3.59 to 0.3.68: their programs and those of 0.3.68 work together.
 
+* **0.4.1** Fix: a subscriber with `transport="auto"` that moved to another transport could hand out a frame
+  twice, or an older one after a newer. Such a move happens from the network to a relay's ring and back. The
+  subscriber compared the stamps of the two routes only until the new one delivered its first sample. It also
+  accepted the old route's samples until that route's subscriber was undeclared. A relay's ring lags the network, so
+  its first frames are ones that the network handed out already. Now the subscriber leaves out the old route's
+  samples from the new route's first sample on, also those that Zenoh delivers while the old subscriber is
+  undeclared. It compares the new route's samples with the newest frame handed out until one is newer, for at most
+  2 s, and leaves out those that are not newer. On the new route, a stamp more than 2 s behind the newest one is a
+  restart of the stream, and the subscriber hands it out at once. The old route's restarted frames come again by
+  the new route. During a move the stamps handed out only grow, except after a restart of the stream. What remains
+  is listed under "Status and limits" in `docs/concepts/transports.md`: copies more than 2 s behind count as a
+  restart, a new route that pauses for more than 2 s hands out older frames again, frames with one stamp pause for up
+  to 2 s, and a frame can be lost when the new transport is ahead. Python and C++ behave alike, with the window as an
+  integer of nanoseconds in both. The C++ rule has a test of its own (`cpp/tests/test_latest.cpp`).
+  `test_auto_moves_to_a_ring_that_appears_and_back` failed this way once on a 2-core CI runner. With the ring one or
+  two frames behind the network it failed every time. Compatible with 0.4.0 and 0.3.68.
 * **0.4.0** The Python package and its command are `blick`: the distribution `blick` (`pip install blick`), `import
   blick` (was `import durchblick`), the extension `blick._core`, the command `blick` (the command `durchblick` is
   gone). **Breaking for Python code and scripts:** replace `durchblick` by `blick` in imports, dependencies and

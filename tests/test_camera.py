@@ -1,6 +1,7 @@
 """Publisher and subscriber over real Zenoh sessions (two peers on localhost)."""
 
 import socket
+import struct
 import threading
 import time
 
@@ -435,10 +436,14 @@ def test_ring_keys_name_their_host(sessions, monkeypatch):  # noqa: F811
         p.close()
 
 
-def test_auto_moves_to_a_ring_that_appears_and_back(sessions, monkeypatch):  # noqa: F811
+@pytest.mark.parametrize("lag", [0, 1, 2])
+def test_auto_moves_to_a_ring_that_appears_and_back(sessions, monkeypatch, lag):  # noqa: F811
     """The order of starting does not matter: a subscriber that reads a stream of another host over the network moves
     to the ring of a publisher that starts later on its own host (a relay), and back when that one stops. While it
-    moves, it hands out every frame once: none twice, and none lost on the way to the ring."""
+    moves, it hands out every frame once: none twice, and none lost on the way to the ring. ``lag``: the relay
+    republishes a frame when the source sends the one so many frames later (a relay receives a frame, then writes it
+    into its ring): the ring's first frames are frames the network handed out already. Before 0.3.69 the subscriber
+    handed them out again (with lag 0 only when its handover ended between the two copies of a frame)."""
     a, b = sessions
     sub = ImageSubscriber(b, BASE, transport="auto")  # before any publisher
     source = _publisher_on_another_host(a, monkeypatch, codec="png")
@@ -450,7 +455,8 @@ def test_auto_moves_to_a_ring_that_appears_and_back(sessions, monkeypatch):  # n
         stamp += 1
         source.publish(pattern(stamp), stamp_ns=stamp)
         if relay is not None:
-            relay.publish(pattern(stamp), stamp_ns=stamp)  # the same frame, as a relay republishes it
+            if stamp - lag > relay_since:  # the same frame, as a relay republishes it
+                relay.publish(pattern(stamp - lag), stamp_ns=stamp - lag)
         frame = sub.latest(timeout=0.5)  # one frame published, one read: the store keeps only the newest
         if frame is not None:
             got.append((frame.stamp_ns, "ring" if frame.key.endswith("/shm/" + _core.host_id()) else "network"))
@@ -473,6 +479,165 @@ def test_auto_moves_to_a_ring_that_appears_and_back(sessions, monkeypatch):  # n
     assert to_ring == list(range(stamps[0], first_ring + 11)), "a frame lost while moving to the ring"
     assert sub.transport == "compressed" and sub.transport_reason == "compressed (publisher on another host)"
     sub.close()
+    source.close()
+
+
+# _Latest while a subscription changes its transport, driven by hand (no Zenoh); the same cases in
+# cpp/tests/test_latest.cpp
+
+T0 = 1_000_000_000_000  # 1000 s
+PERIOD = 33_333_333  # 30 Hz
+
+
+def frame(n):
+    return T0 + n * PERIOD
+
+
+def offer(latest, route, stamp):
+    """Offers a sample of ``stamp`` by ``route``; the stamp handed out then (None: none)."""
+    payload = struct.pack("<iiI", 0, stamp // 1_000_000_000, stamp % 1_000_000_000) + bytes(4)
+    latest.offer((payload, None, "k", 0, "e", "shm"), route)
+    item = latest.take(consume=True, timeout=None)
+    return None if item is None else camera_module._stamp_of(item[0])
+
+
+def offer_all(latest, route, stamps, out):
+    out.extend(s for s in (offer(latest, route, s) for s in stamps) if s is not None)
+
+
+def test_handover_leaves_out_a_lagging_new_routes_copies_and_the_old_route():
+    """The network hands out 1..10; the ring lags by two frames: its 8, 9, 10 are frames handed out already, and the
+    network's 11, still delivered while its subscriber is undeclared, comes after the ring's first sample."""
+    latest, out = camera_module._Latest(), []
+    latest.move(1)
+    offer_all(latest, 1, [frame(n) for n in range(1, 11)], out)
+    latest.move(2)
+    offer_all(latest, 2, [frame(8)], out)
+    offer_all(latest, 1, [frame(11)], out)  # the old route, left at the new route's first sample
+    offer_all(latest, 2, [frame(9), frame(10), frame(11), frame(12)], out)
+    assert out == [frame(n) for n in range(1, 13)]
+    assert latest.duplicates == 3
+
+
+def test_handover_keeps_a_restart_far_back_at_once():
+    """A restart (a simulation's stamps start again) more than HANDOVER_NS behind the newest frame is kept at once on
+    the new route after the old one was left. A first version of 0.3.69 left it out for 2 s (60 frames at 30 Hz)."""
+    latest, out = camera_module._Latest(), []
+    latest.move(1)
+    offer_all(latest, 1, [frame(n) for n in range(1, 101)], out)
+    latest.move(2)
+    assert offer(latest, 2, frame(100)) is None  # the ring's copy: the old route is left
+    assert offer(latest, 2, 1 * PERIOD) == 1 * PERIOD
+    assert offer(latest, 2, 2 * PERIOD) == 2 * PERIOD
+
+
+def test_handover_restart_by_the_old_route_while_both_are_read():
+    """The source restarts while both routes are read, the network first: the network's restarted frame is left out
+    (its frames come again by the ring), the ring's lagging copies of 99 and 100 too, and the ring's restarted frames
+    are kept. Taken as a restart on the old route, the ring's 99, 100 and 1 came twice."""
+    latest, out = camera_module._Latest(), []
+    latest.move(1)
+    offer_all(latest, 1, [frame(n) for n in range(1, 101)], out)
+    latest.move(2)
+    offer_all(latest, 1, [1 * PERIOD], out)  # the network's restart, before the ring's first sample
+    offer_all(latest, 2, [frame(99), frame(100), 1 * PERIOD, 2 * PERIOD], out)
+    assert out == [frame(n) for n in range(1, 101)] + [1 * PERIOD, 2 * PERIOD]
+
+
+def test_handover_restart_by_the_new_route_first():
+    """The mirror case: the ring brings the restart as its first sample while the network still delivers frames of
+    before: the restart is kept and ends the handover, and the network's later frames are left out with its route."""
+    latest, out = camera_module._Latest(), []
+    latest.move(1)
+    offer_all(latest, 1, [frame(n) for n in range(1, 101)], out)
+    latest.move(2)
+    offer_all(latest, 2, [1 * PERIOD], out)
+    offer_all(latest, 1, [frame(101), 1 * PERIOD], out)  # the old route, left
+    offer_all(latest, 2, [2 * PERIOD], out)
+    assert out == [frame(n) for n in range(1, 101)] + [1 * PERIOD, 2 * PERIOD]
+
+
+@pytest.mark.parametrize("behind,kept", [(-1, False), (0, False), (1, True)])
+def test_handover_restart_boundary(behind, kept):
+    """On the new route a stamp up to HANDOVER_NS behind the newest one is the same frame, one ns further a restart."""
+    latest = camera_module._Latest()
+    latest.move(1)
+    assert offer(latest, 1, frame(100)) == frame(100)
+    latest.move(2)
+    stamp = frame(100) - camera_module.HANDOVER_NS - behind
+    assert offer(latest, 2, stamp) == (stamp if kept else None)
+
+
+def test_handover_leaves_out_equal_stamps_during_the_window():
+    """Frames that carry one stamp on purpose, or a stamp less than HANDOVER_S behind the newest: left out during the
+    window after a move (a remaining case, named in _Latest's docstring)."""
+    latest = camera_module._Latest()
+    latest.move(1)
+    assert offer(latest, 1, frame(5)) == frame(5)
+    latest.move(2)
+    assert offer(latest, 2, frame(5)) is None
+    assert offer(latest, 2, frame(5)) is None
+    assert offer(latest, 2, frame(5) - 1_000_000_000) is None
+
+
+def test_handover_window_ends_by_time(monkeypatch):
+    """The window ends after HANDOVER_S: a new route that stops longer after a first sample behind the newest one hands
+    out older frames again (a remaining case, named in _Latest's docstring)."""
+    monkeypatch.setattr(camera_module, "HANDOVER_S", 0.3)  # also the window in stamp time: 9 frames at 30 Hz
+    latest = camera_module._Latest()
+    latest.move(1)
+    offer_all(latest, 1, [frame(n) for n in range(1, 11)], [])
+    latest.move(2)
+    assert offer(latest, 2, frame(5)) is None
+    time.sleep(0.4)
+    assert offer(latest, 2, frame(6)) == frame(6)
+
+
+def test_handover_leaves_a_new_route_that_never_delivers():
+    """leave_old (the end of HANDOVER_S, or close) leaves the old route although the new one delivered nothing."""
+    latest, out = camera_module._Latest(), []
+    latest.move(1)
+    offer_all(latest, 1, [frame(n) for n in range(1, 6)], out)
+    latest.move(2)
+    assert not latest.wait_moved(0.01)
+    latest.leave_old()
+    assert latest.wait_moved(0.0)
+    offer_all(latest, 1, [frame(6)], out)  # the old route, left
+    offer_all(latest, 2, [frame(5), frame(6), frame(7)], out)
+    assert out == [frame(n) for n in range(1, 8)]
+
+
+def test_handover_two_moves_in_a_row():
+    """The second move before the route of the first delivered: the route before is read until the newest one
+    delivers, an older one not at all."""
+    latest, out = camera_module._Latest(), []
+    latest.move(1)
+    offer_all(latest, 1, [frame(n) for n in range(1, 6)], out)
+    latest.move(2)
+    latest.leave_old()
+    latest.move(3)
+    offer_all(latest, 1, [frame(6)], out)  # left with the first move
+    offer_all(latest, 2, [frame(6)], out)  # read until route 3 delivers
+    offer_all(latest, 3, [frame(6)], out)  # the same frame: left out, route 2 left
+    offer_all(latest, 2, [frame(7)], out)
+    offer_all(latest, 3, [frame(7)], out)
+    assert out == [frame(n) for n in range(1, 8)]
+
+
+def test_auto_closes_during_a_move(sessions, monkeypatch):  # noqa: F811
+    """close() while a subscriber waits for the first frame of the ring it moves to (a relay that sends nothing) ends
+    the handover at once instead of after HANDOVER_S."""
+    a, b = sessions
+    sub = ImageSubscriber(b, BASE, transport="auto")
+    source = _publisher_on_another_host(a, monkeypatch, codec="png")
+    wait_until(lambda: sub.transport == "compressed")
+    relay = CameraPublisher(a, BASE, encoding="rgb8", frame_id="cam", source="relay", codec=None)
+    wait_until(lambda: sub._latest._old is not None)  # moving: the ring's subscriber declared, no frame of it yet
+    start = time.monotonic()
+    sub.close()
+    assert time.monotonic() - start < camera_module.HANDOVER_S / 2
+    assert not sub._chooser.is_alive()
+    relay.close()
     source.close()
 
 

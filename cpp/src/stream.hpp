@@ -73,9 +73,30 @@ namespace durchblick::detail
         Transport transport = Transport::Auto;  // the transport it came by
     };
 
-    // The newest sample of a stream, kept as received; take() hands it out once. While a subscription changes its
-    // transport, the samples of the old and of the new route arrive side by side (overlap): a sample that is not
-    // newer by its header stamp than the newest one kept is the same frame by the other route and is left out.
+    // How long a subscription that changes its transport keeps the old one for the new one's first frame; after
+    // that, as long again the new route's samples are compared with the newest frame kept, and a stamp at most as
+    // far behind it is the same frame.
+    inline constexpr std::chrono::milliseconds kHandover{2000};
+
+    // The newest sample of a stream, kept as received; take() hands it out once. The samples come by routes (a
+    // subscription's subscribers, numbered); those of `route` are kept. When a subscription changes its transport
+    // (move), it reads the old and the new route side by side until the new one delivers its first sample (or
+    // leave_old). From then on it reads only the new one: a sample of the old route is left out, also one that Zenoh
+    // hands over while the old subscriber is undeclared. While both routes are read, and after that for kHandover or
+    // until the new route passes the newest frame kept (a relay's ring lags the network by a frame or more), a sample
+    // whose header stamp is not newer than the newest one kept is the same frame by the other route and is left out
+    // (duplicates). Only on the new route, a stamp more than kHandover of stamp time behind the newest one is a
+    // restart of the stream (a camera or a simulation): it is kept and ends the window. The old route's frames of a
+    // restart come again by the new route. So the stamps handed out during a move only grow, except after a restart
+    // of the stream. What remains:
+    // - copies on the new route more than kHandover behind (a relay that queued frames while it started) are taken
+    //   for a restart and handed out again: stamps alone do not tell the two apart;
+    // - a new route that stops for longer than kHandover after a first sample behind the newest one hands out older
+    //   frames again;
+    // - frames that carry one stamp on purpose, or a restart less than kHandover back, are not handed out during the
+    //   window;
+    // - frames are lost when the new route is ahead of the old one (those the old one had still to bring).
+    // As Python's _Latest.
     struct Latest
     {
         std::mutex mutex;
@@ -86,15 +107,27 @@ namespace durchblick::detail
         std::uint64_t overwritten = 0;
         std::size_t keep = 0;  // also the last so many samples, not decoded (Subscription::keep_recent)
         std::deque<std::shared_ptr<const Item>> recent;
-        bool overlap = false;
         std::uint64_t duplicates = 0;
         std::optional<std::int64_t> newest_stamp;
-        std::vector<int> routes;  // the routes (a subscription's subscribers, numbered) that delivered a sample
+        int route = 0;           // the route whose samples are kept
+        std::optional<int> old;  // the route moved from, read until the new one delivers
+        // after the move: the new route's samples are compared with newest_stamp until then
+        std::optional<std::chrono::steady_clock::time_point> compare_until;
 
-        void put(const zenoh::Sample& sample, Transport transport, int route);
-        // True once a sample of the route came (waits at most timeout).
-        bool wait_route(int route, std::chrono::milliseconds timeout);
+        void put(const zenoh::Sample& sample, Transport transport, int from);
+        // Keeps `made`, a sample of route `from`, unless it is left out.
+        void offer(std::shared_ptr<Item> made, int from);
+        // The samples of `to` are kept from now on; with a route before it, that one's too until `to` delivers its
+        // first sample. Before its subscriber is declared.
+        void move(int to);
+        // True once the new route delivered its first sample (waits at most timeout).
+        bool wait_moved(std::chrono::milliseconds timeout);
+        // Leaves the old route out from now on, also before the new one delivered: before its subscriber goes.
+        void leave_old();
         std::shared_ptr<const Item> take(bool consume, std::optional<std::chrono::milliseconds> timeout);
+
+    private:
+        void leave_old_locked();  // with `mutex` held
     };
 
     // The header stamp of a stream's sample, not decoded (every representation starts with std_msgs/Header).

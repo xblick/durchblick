@@ -134,14 +134,39 @@ namespace durchblick::detail
 
     // ----------------------------------------------------------------------------------------------- Latest
 
-    bool Latest::wait_route(int route, std::chrono::milliseconds timeout)
+    void Latest::move(int to)
     {
-        std::unique_lock lock(mutex);
-        return cv.wait_for(lock, timeout,
-                           [&] { return std::find(routes.begin(), routes.end(), route) != routes.end(); });
+        std::lock_guard lock(mutex);
+        if (route != 0)
+        {
+            old = route;
+        }
+        route = to;
     }
 
-    void Latest::put(const zenoh::Sample& sample, Transport transport, int route)
+    bool Latest::wait_moved(std::chrono::milliseconds timeout)
+    {
+        std::unique_lock lock(mutex);
+        return cv.wait_for(lock, timeout, [&] { return not old.has_value(); });
+    }
+
+    void Latest::leave_old()
+    {
+        std::lock_guard lock(mutex);
+        leave_old_locked();
+    }
+
+    void Latest::leave_old_locked()
+    {
+        if (old)
+        {
+            old.reset();
+            compare_until = std::chrono::steady_clock::now() + kHandover;
+            cv.notify_all();
+        }
+    }
+
+    void Latest::put(const zenoh::Sample& sample, Transport transport, int from)
     {
         auto made = std::make_shared<Item>();
         Item& i = *made;
@@ -154,19 +179,36 @@ namespace durchblick::detail
         i.key = std::string(sample.get_keyexpr().as_string_view());
         i.encoding = sample.get_encoding().as_string();
         i.receive_ns = now_ns();
+        offer(std::move(made), from);
+    }
+
+    void Latest::offer(std::shared_ptr<Item> made, int from)
+    {
         // a sample without a header is refused when it is read
         const std::optional<std::int64_t> stamp =
-            i.payload.size() >= 12 ? std::optional<std::int64_t>(stamp_of(i)) : std::nullopt;
+            made->payload.size() >= 12 ? std::optional<std::int64_t>(stamp_of(*made)) : std::nullopt;
         std::lock_guard lock(mutex);
-        if (std::find(routes.begin(), routes.end(), route) == routes.end())
+        if (from != route and from != old)
         {
-            routes.push_back(route);
+            return;  // of a route left already: its frames come by the new route
         }
-        if (overlap and stamp and newest_stamp and *stamp <= *newest_stamp)
+        if (from == route)
+        {
+            leave_old_locked();
+        }
+        const bool compare = old or (compare_until and std::chrono::steady_clock::now() < *compare_until);
+        constexpr std::int64_t window = std::chrono::duration_cast<std::chrono::nanoseconds>(kHandover).count();
+        // a restart (far back) only by the route that is kept: the old one's frames come again by the new one
+        if (compare and stamp and newest_stamp and *stamp <= *newest_stamp and
+            (from != route or *newest_stamp - window <= *stamp))
         {
             ++duplicates;  // the same frame by the other route
-            cv.notify_all();
             return;
+        }
+        if (from == route)
+        {
+            // newer than the frames of the old route, or a restart: none of its later samples is one of them
+            compare_until.reset();
         }
         newest_stamp = stamp;
         if (fresh and keep == 0)  // with keep a replaced sample stays in recent, available to at(): not lost
@@ -252,7 +294,6 @@ namespace durchblick::detail
 
     namespace
     {
-        constexpr std::chrono::milliseconds kHandover{2000};  // the old transport kept for the new one's first frame
         constexpr int kSettleRounds = 3;  // info queries after a publisher came or went (its queryable can lag)
     }
 
@@ -334,9 +375,8 @@ namespace durchblick::detail
             {
                 old.emplace(std::move(*subscriber_));
                 subscriber_.reset();
-                std::lock_guard inner(latest_->mutex);
-                latest_->overlap = true;
             }
+            latest_->move(route);
             auto target = latest_;
             subscriber_.emplace(session_.declare_subscriber(
                 zenoh::KeyExpr(key_of(t, gpu)), [target, t, route](const zenoh::Sample& s) { target->put(s, t, route); },
@@ -351,12 +391,12 @@ namespace durchblick::detail
         }
         const auto end = std::chrono::steady_clock::now() + kHandover;
         while (not closed_.load() and std::chrono::steady_clock::now() < end and
-               not latest_->wait_route(route, std::chrono::milliseconds(50)))
+               not latest_->wait_moved(std::chrono::milliseconds(50)))
         {
         }
+        // before the subscriber goes: Zenoh can still hand over a sample of the old one while it is undeclared
+        latest_->leave_old();
         old.reset();
-        std::lock_guard inner(latest_->mutex);
-        latest_->overlap = false;
     }
 
     // The chooser's thread: chooses when a publisher is found and again whenever one comes or goes (recheck()).

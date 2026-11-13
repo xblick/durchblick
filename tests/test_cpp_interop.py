@@ -548,10 +548,11 @@ def test_cpp_auto_refuses_a_remote_source_without_its_form(cpp_camera):
     assert proc.returncode != 0 and "offers no compressed transport" in proc.stderr, (proc.returncode, proc.stderr)
 
 
-def test_cpp_auto_moves_to_a_ring_that_appears_and_back(monkeypatch):
+@pytest.mark.parametrize("lag", [0, 1, 2])
+def test_cpp_auto_moves_to_a_ring_that_appears_and_back(monkeypatch, lag):
     """The C++ subscriber keeps its transport up to date as the Python one does (test_camera.py): it reads a stream of
     another host as compressed, moves to the ring of a publisher that starts later on its own host (a relay), and back
-    when that one stops; every frame once."""
+    when that one stops; every frame once, also from a relay that republishes a frame ``lag`` frames late."""
     from blick import _core
 
     port = free_port()
@@ -567,8 +568,8 @@ def test_cpp_auto_moves_to_a_ring_that_appears_and_back(monkeypatch):
             if source.subscribed or relay is not None:
                 stamp += 1
                 source.publish(pattern("rgb8", stamp), stamp_ns=stamp * 1_000_000)
-                if relay is not None:
-                    relay.publish(pattern("rgb8", stamp), stamp_ns=stamp * 1_000_000)
+                if relay is not None and stamp - lag > 45:  # created at 45
+                    relay.publish(pattern("rgb8", stamp - lag), stamp_ns=(stamp - lag) * 1_000_000)
                 if stamp in (40, 100):  # the probe's want token: while no source has a ring on this host
                     wanted[stamp] = [r for r in replies(session, topics.wanted_on(_core.host_id()), 1.0,
                                                         liveliness=True) if r.ok is not None]
@@ -598,3 +599,47 @@ def test_cpp_auto_moves_to_a_ring_that_appears_and_back(monkeypatch):
     first_ring = next(i for i, r in enumerate(records) if r["transport"] == "shm")
     around = stamps[max(0, first_ring - 10):first_ring + 10]  # nothing lost on the way to the ring
     assert around == list(range(around[0], around[-1] + 1_000_000, 1_000_000)), around
+
+
+def test_cpp_auto_closes_during_a_move(monkeypatch):
+    """A C++ subscriber destroyed while it waits for the first frame of the ring it moves to (a relay that sends
+    nothing) ends the handover at once instead of after its 2 s: the probe stops right after its last frame. The
+    source holds back the probe's last frames until the probe has begun to move (it declared its ring subscriber)."""
+    frames, last_ones = 30, 3
+    port = free_port()
+    proc = probe(port, "auto", frames, timeout=30)
+    session = open_session(listen=[f"127.0.0.1:{port}"])
+    with monkeypatch.context() as patched:  # as a publisher on another PC is seen from here
+        patched.setattr(_core, "host_id", lambda: "0c9a1f6e-5b0d-4a52-9d3e-7f1b2c3d4e5f")
+        source = CameraPublisher(session, "t/py/color", encoding="rgb8", frame_id="PyCamera", source="py", codec="png")
+    relay, stamp, moving_since, last = None, 0, None, None
+    moving_deadline = time.monotonic() + 40  # set when the relay starts
+    end = time.monotonic() + 30
+    try:
+        while proc.poll() is None and time.monotonic() < end:
+            if relay is not None and moving_since is None and relay.subscribed:
+                moving_since = time.monotonic()  # the probe declared its ring subscriber: it is in the handover
+            if stamp == frames - last_ones and moving_since is None:
+                assert time.monotonic() < moving_deadline, "the probe did not begin to move to the relay's ring"
+            elif source.subscribed and stamp < frames:
+                stamp += 1
+                source.publish(pattern("rgb8", stamp), stamp_ns=stamp * 1_000_000)
+                if stamp == 20:
+                    relay = CameraPublisher(session, "t/py/color", encoding="rgb8", frame_id="PyCamera",
+                                            source="relay", codec=None)  # never publishes
+                    moving_deadline = time.monotonic() + 10
+                if stamp == frames:  # the probe's last frame
+                    last = time.monotonic()
+            time.sleep(1 / 30)
+        out, err = proc.communicate(timeout=10)
+        stopped = time.monotonic()
+    finally:
+        if relay is not None:
+            relay.close()
+        source.close()
+        session.close()
+    assert proc.returncode == 0, f"C++ probe failed ({proc.returncode}): {err}"
+    assert last - moving_since < 1.0, f"the probe's last frame came {last - moving_since:.2f} s into the handover"
+    assert stopped - last < 1.0, f"the probe stopped {stopped - last:.2f} s after its last frame"
+    stamps = [json.loads(line)["stamp_ns"] for line in out.splitlines()]
+    assert len(stamps) == frames and stamps == sorted(set(stamps)), stamps  # by the network, the ring sent nothing

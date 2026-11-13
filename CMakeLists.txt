@@ -15,7 +15,7 @@
 # The Python wheel builds only durchblick::core and the module (Python has its own Zenoh).
 cmake_minimum_required(VERSION 3.24)
 # the one place of the package version: pyproject.toml reads it from here, C++ gets it as durchblick/version.hpp
-project(durchblick VERSION 0.4.0 LANGUAGES CXX)
+project(durchblick VERSION 0.4.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -155,6 +155,10 @@ if(BUILD_TESTING)
     add_executable(test_lifetime cpp/tests/test_lifetime.cpp)
     target_link_libraries(test_lifetime PRIVATE durchblick_camera)
     add_test(NAME lifetime COMMAND test_lifetime)
+    add_executable(test_latest cpp/tests/test_latest.cpp)
+    target_link_libraries(test_latest PRIVATE durchblick_camera)
+    target_include_directories(test_latest PRIVATE cpp/src)  # detail::Latest, an internal of the library
+    add_test(NAME latest COMMAND test_latest)
   endif()
 endif()
 
