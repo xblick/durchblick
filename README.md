@@ -131,7 +131,7 @@ the method, the changes that helped in several nodes, and the changes that did n
 Coding agents read [AGENTS.md](https://github.com/xblick/durchblick/blob/main/AGENTS.md) and the project skills in
 [.agents/skills](https://github.com/xblick/durchblick/blob/main/.agents/skills/README.md).
 
-ArmarX integration: `durchblick_armarx` (TODO: link to its repository once it exists).
+ArmarX integration: `durchblick_armarx`.
 
 ## Status
 
