@@ -442,7 +442,7 @@ def test_auto_moves_to_a_ring_that_appears_and_back(sessions, monkeypatch, lag):
     to the ring of a publisher that starts later on its own host (a relay), and back when that one stops. While it
     moves, it hands out every frame once: none twice, and none lost on the way to the ring. ``lag``: the relay
     republishes a frame when the source sends the one so many frames later (a relay receives a frame, then writes it
-    into its ring): the ring's first frames are frames the network handed out already. Before 0.3.69 the subscriber
+    into its ring): the ring's first frames are frames the network handed out already. Before 0.4.1 the subscriber
     handed them out again (with lag 0 only when its handover ended between the two copies of a frame)."""
     a, b = sessions
     sub = ImageSubscriber(b, BASE, transport="auto")  # before any publisher
@@ -521,7 +521,7 @@ def test_handover_leaves_out_a_lagging_new_routes_copies_and_the_old_route():
 
 def test_handover_keeps_a_restart_far_back_at_once():
     """A restart (a simulation's stamps start again) more than HANDOVER_NS behind the newest frame is kept at once on
-    the new route after the old one was left. A first version of 0.3.69 left it out for 2 s (60 frames at 30 Hz)."""
+    the new route after the old one was left. A first version of the fix left it out for 2 s (60 frames at 30 Hz)."""
     latest, out = camera_module._Latest(), []
     latest.move(1)
     offer_all(latest, 1, [frame(n) for n in range(1, 101)], out)
