@@ -344,8 +344,10 @@ def _recorder(args) -> int:
 
 
 def _play(args) -> int:
-    files = [expand_path(f) for f in args.files]
-    directory = expand_path(args.dir) if args.dir else Path(files[0]).resolve().parent
+    # absolute: the files on the command line are relative to the working directory, while Recorder.play takes a
+    # relative file as relative to the node's directory (files given over Zenoh)
+    files = [expand_path(f).absolute() for f in args.files]
+    directory = expand_path(args.dir) if args.dir else files[0].resolve().parent
     with zsession.open_from_args(args) as z:
         recorder = recording.Recorder(z, directory, name=args.name)
         try:

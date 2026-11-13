@@ -9,7 +9,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from test_camera import sessions, wait_until  # noqa: F401 - sessions is a fixture
+from test_camera import free_port, sessions, wait_until  # noqa: F401 - sessions is a fixture
 
 from xblick import _core, recording
 from xblick.camera import ImageSubscriber
@@ -249,3 +249,19 @@ def test_videos_in_cuda_rings(videos, tmp_path):
     finally:
         child.kill()
         child.join()
+
+
+def test_play_takes_a_relative_path_with_a_directory(videos, tmp_path, monkeypatch, capsys):
+    """xblick play rec/color.mp4 from the directory above rec: the file relative to the working directory, not to the
+    node's directory (the file's own, rec/), which would make it rec/rec/color.mp4."""
+    from xblick import cli
+
+    color_mp4, _ = videos
+    (tmp_path / "rec").mkdir()
+    color_mp4.rename(tmp_path / "rec" / "color.mp4")
+    monkeypatch.chdir(tmp_path)
+    port = free_port()
+    assert cli.main(["play", "rec/color.mp4", "--camera", "t/rel", "--exit", "--report", "0.2", "--listen",
+                     f"tcp/127.0.0.1:{port}"]) == 0
+    out = capsys.readouterr().out
+    assert f"{tmp_path / 'rec' / 'color.mp4'} -> t/rel/color" in out, out
