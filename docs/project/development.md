@@ -96,7 +96,8 @@ To release a version:
    workflow `publish.yml` and the environment `pypi`.
 
 The extra `blick[relay]` names the package `blick-relay`. `uv lock` resolves every extra, so it fails while no
-index has that package. Publish `blick-relay` first, then run `uv lock` here and release `blick`.
+index has the version it asks for. A new minor version of `blick-relay`: publish it first, then run `uv lock` here
+and release `blick`.
 
 Node repositories pin a version of `blick`. After a release that a node needs, raise its pin and run `uv lock`.
 

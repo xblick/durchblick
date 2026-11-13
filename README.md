@@ -135,7 +135,7 @@ ArmarX integration: `durchblick_armarx`.
 
 ## Status
 
-Version 0.4.2. Durchblick is in active development, and a new minor version can change the protocol. All
+Version 0.4.3. Durchblick is in active development, and a new minor version can change the protocol. All
 programs of one setup speak the same protocol. We now released that version.
 The [changelog](https://github.com/xblick/durchblick/blob/main/CHANGELOG.md) states which versions do. The nodes
 are tested in simulation and on recordings. Tests on robots are in progress.

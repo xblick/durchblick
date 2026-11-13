@@ -4,8 +4,11 @@
 
 Readers and publishers of one setup run the same minor version (0.3.x): the info record's version changed with 0.3.0.
 Within 0.3.x, 0.3.59 changed the rings' keys and the info record's version (3): every program of a setup runs 0.3.59
-or newer. 0.4.0 to 0.4.2 speak the protocol of 0.3.59 to 0.3.68: their programs and those of 0.3.68 work together.
+or newer. 0.4.0 to 0.4.3 speak the protocol of 0.3.59 to 0.3.68: their programs and those of 0.3.68 work together.
 
+* **0.4.3** The extra `blick[relay]` installs the relay as the package `blick-relay` (PyPI, 0.3.1 or newer of its 0.3
+  line), which `blick relay` starts. The sdist no longer carries the wheels of a build that wrote to `dist/` in the
+  checkout, and `tools/build_wheels.sh` fails if it does. The first version on PyPI. The library is that of 0.4.2.
 * **0.4.2** `blick relay [arguments]` starts the relay program `durchblick-relay` with the arguments as they stand
   (it replaces the `blick` process). It looks for the program in the installed package `blick-relay` first, then on
   `PATH`, and fails with a message that names `pip install "blick[relay]"` and the CMake build when neither has it.
