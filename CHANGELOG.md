@@ -9,7 +9,8 @@ or newer. 0.4.0 to 0.4.3 speak the protocol of 0.3.59 to 0.3.68: their programs 
 
 * **0.5.1** New command `xblick cam` with the extra `xblick[cam]` (PyAV): a live camera that FFmpeg opens, as a
   V4L2 device, an RTSP or HTTP URL, or another FFmpeg input with `--format`, published as an ordinary camera stream
-  ([guide](docs/guides/cam.md)). A mode that the camera does not deliver, a missing device and a camera that stops
+  ([guide](docs/guides/cam.md)). Without a source it lists the V4L2 capture devices of the PC to choose from
+  with the arrow keys. A mode that the camera does not deliver, a missing device and a camera that stops
   end it with one line. The stamps are the arrival on the PC. Fixes from the release test of 0.5.0: `xblick param`
   as a peer behind a router timed out, because `find_nodes` and `ParameterClient` sent one query right after the
   session opened. They now ask again until their timeout, in Python and C++. `xblick play rec/file.mcap` (a

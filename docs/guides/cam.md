@@ -27,6 +27,31 @@ xblick cam "testsrc=size=640x480:rate=30,realtime" --format lavfi --stream robot
 FFmpeg's filter `realtime` makes the test pattern deliver at its rate, as a camera does. Without it, the filter
 graph delivers frames as fast as it can.
 
+## Choose a camera
+
+Leave out the source to choose one of the cameras of this PC:
+
+```bash
+xblick cam --stream robot/webcam/color
+```
+
+`xblick cam` lists the V4L2 devices that capture video, each with its path and name. Move with the arrow keys and
+press Enter to start the marked camera. Esc, `q` or Ctrl-C leave without starting anything, with exit code 1.
+
+```
+xblick cam: choose a camera (arrow keys, Enter; Esc or q: none)
+> /dev/video0  Integrated Camera: Integrated C
+  /dev/video2  USB Capture HDMI
+```
+
+A webcam usually has two device nodes, one for video and one for metadata. The list leaves out the metadata node.
+The kernel tells the two apart in the capabilities of each node (`VIDIOC_QUERYCAP`). A node that you may not open
+stays in the list with the note `capabilities unknown: Permission denied`. Add your user to the group `video` to
+open it.
+
+`xblick cam` checks `--stream` before it shows the list. Without a terminal, for example in a script or a service,
+it shows no list. It ends with an error that names the cameras, and you give the source.
+
 ## Sources
 
 | Source | How FFmpeg opens it |
@@ -124,6 +149,8 @@ xblick param --node robot/webcam
 
 - Tested on 2026-11-13 with FFmpeg's `lavfi` test pattern and with an HTTP URL that served a Matroska file with
   MJPEG frames. No V4L2 device, RTSP camera or other IP camera was tested.
+- The list of cameras was tested in a pseudo-terminal with fake devices. Reading the capabilities was tested with
+  sample data of a webcam. Neither was tested on a PC with a real camera.
 - The command decodes the JPEG frames of an MJPEG camera and encodes them again for the transport `compressed`.
   It does not pass the camera's JPEG frames on unchanged.
 - The command publishes the first video stream of a source. Further FFmpeg options, for example RTSP over TCP,

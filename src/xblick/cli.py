@@ -5,6 +5,7 @@
     xblick snapshot robot/camera/color out.png --connect …
     xblick test-camera                            # a moving test pattern as robot/test_camera/color
     xblick cam /dev/video0 --stream robot/webcam/color  # a live camera FFmpeg opens (cam.py, needs xblick[cam])
+    xblick cam --stream robot/webcam/color             # ... chosen from this PC's cameras with the arrow keys
     xblick rerun --connect …                      # every stream and node result in the Rerun viewer
     xblick diagnostics robot --connect …         # how the cameras' publishers are doing (<camera>/diagnostics)
     xblick mps --pipe-dir /tmp/xblick-mps         # NVIDIA MPS for the nodes on this PC's GPU (mps.py)
@@ -190,8 +191,10 @@ def _cam(args, parser) -> int:
 
     try:
         cam.import_av()  # at once, before the session
-        namespace, _, name = camera_of(args.stream).rpartition("/")
-    except (ImportError, VideoError) as error:
+        namespace, _, name = camera_of(args.stream).rpartition("/")  # checked before a camera is chosen
+        if args.source is None:
+            args.source = cam.select_source()
+    except (ImportError, VideoError, cam.CamError) as error:
         raise SystemExit(f"xblick cam: {error}") from None
     with zsession.open_from_args(args) as z:
         params = Parameters(z, name, namespace)

@@ -117,7 +117,7 @@ Node repositories pin a version of `xblick`. After a release that a node needs, 
 | `cpp/python/bindings.cpp` | `xblick._core` |
 | `src/xblick/` transport | `cdr.py`, `msg.py`, `encodings.py`, `codecs.py`, `topics.py`, `session.py`, `camera.py`, `points.py`, `detections.py`, `robot.py`, `sim.py`, `poses.py`, `gpu.py`, `mps.py` |
 | `src/xblick/` for nodes | `node.py`, `logs.py`, `diagnostics.py`, `history.py`, `tensors.py`, `rgbd.py`, `paths.py`, `parameters.py` |
-| `src/xblick/` tools | `cli.py`, `cam.py`, `rerun_bridge.py`, `recording.py` with `msgdefs.py` and `video.py`, the terminal interface `tui.py` with `survey.py`, `tui_graph.py` and `tui_parameters.py` |
+| `src/xblick/` tools | `cli.py`, `cam.py` with `v4l2.py`, `rerun_bridge.py`, `recording.py` with `msgdefs.py` and `video.py`, the terminal interface `tui.py` with `survey.py`, `tui_graph.py` and `tui_parameters.py` |
 | `tools/gen_msgdefs.py` | generates `msgdefs.py` |
 | `tests/`, `cpp/tests/` | Python tests with `test_cpp_interop.py`, C++ tests |
 | `.github/workflows/ci.yml` | the CI |

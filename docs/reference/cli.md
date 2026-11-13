@@ -77,14 +77,14 @@ extra `xblick[rerun]`. See the [viewer guide](../guides/viewer.md).
 
 ## Cameras
 
-### `xblick cam <source>`
+### `xblick cam [source]`
 
 Publishes a live camera that FFmpeg opens: a V4L2 device such as `/dev/video0`, or an RTSP or HTTP URL. Needs the
 extra `xblick[cam]`. See the [guide](../guides/cam.md).
 
 | Option | Meaning |
 | --- | --- |
-| `source` | `/dev/videoN`, a URL, or with `--format` another FFmpeg input |
+| `source` | `/dev/videoN`, a URL, or with `--format` another FFmpeg input. Without it, choose one of the V4L2 cameras of this PC in a list (arrow keys, Enter). |
 | `--stream BASE` | the stream, `<camera>/<stream>`. Required. |
 | `--format FORMAT` | FFmpeg's input format, for example `lavfi`. The default is `video4linux2` for `/dev/...` and the protocol for a URL. |
 | `--size WxH`, `--fps FPS`, `--pixel-format FORMAT` | the mode to ask the camera for. The camera must deliver it. `--pixel-format` is for V4L2 only. |

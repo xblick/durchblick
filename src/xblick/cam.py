@@ -19,14 +19,20 @@ closes the publisher at once (its ring goes with it), also while the thread is b
 from __future__ import annotations
 
 import argparse
+import os
+import select
+import sys
+import termios
 import threading
 import time
+import tty
 from dataclasses import dataclass
 from pathlib import Path
 
 import zenoh
 
 from .camera import CameraPublisher
+from . import v4l2
 from .codecs import JPEG, RVL
 from .node import Reporter, state
 from .video import VideoError, camera_info_for, camera_of, parse_size
@@ -259,6 +265,83 @@ class LiveCamera:
         self._thread.join(timeout=0.5)
 
 
+# --------------------------------------------------------------------------------- choosing a camera without a source
+
+UP, DOWN = (b"\x1b[A", b"\x1bOA", b"k"), (b"\x1b[B", b"\x1bOB", b"j")
+ENTER, LEAVE = (b"\r", b"\n"), (b"\x1b", b"q", b"Q", b"\x03")
+
+
+def _key(fd: int) -> bytes:
+    """One key from the terminal: an arrow's escape sequence comes in one piece; Esc alone is followed by nothing
+    within 50 ms."""
+    data = os.read(fd, 16)
+    if data == b"\x1b" and select.select([fd], [], [], 0.05)[0]:
+        data += os.read(fd, 16)
+    return data
+
+
+def choose(devices: list[v4l2.Device], fd: int, out, title: str) -> v4l2.Device | None:
+    """A list of ``devices`` on the terminal (input ``fd``, output ``out``) moved through with the arrow keys (or j,
+    k): Enter returns the marked one; Esc, q, Ctrl-C, SIGTERM (KeyboardInterrupt) or the end of the input return
+    None. The terminal's mode and cursor are restored, and the list erased, on every way out, an exception too."""
+    saved = termios.tcgetattr(fd)
+    index, drawn = 0, False
+    height = len(devices) + 1
+
+    def draw():
+        nonlocal drawn
+        out.write((f"\x1b[{height}A" if drawn else "") + f"\x1b[2K{title}\n")
+        for i, device in enumerate(devices):
+            out.write("\x1b[2K" + (f"\x1b[7m> {device.text()}\x1b[0m" if i == index else f"  {device.text()}") + "\n")
+        out.flush()
+        drawn = True
+
+    try:
+        tty.setcbreak(fd)  # keys one by one, no echo; Ctrl-C stays a signal
+        out.write("\x1b[?25l")  # no cursor while choosing
+        draw()
+        while True:
+            key = _key(fd)
+            if key in ENTER:
+                return devices[index]
+            if key in LEAVE or key == b"":
+                return None
+            if key in UP:
+                index = (index - 1) % len(devices)
+            elif key in DOWN:
+                index = (index + 1) % len(devices)
+            draw()
+    except KeyboardInterrupt:
+        return None
+    finally:
+        try:
+            out.write((f"\x1b[{height}A\x1b[J" if drawn else "") + "\x1b[?25h")
+            out.flush()
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, saved)
+
+
+def select_source(stdin=None, stdout=None, prog: str = "xblick cam") -> str:
+    """The source of ``xblick cam`` without one: a V4L2 capture device of this PC, chosen in a list on the terminal
+    (``choose``). CamError when there is none, when stdin or stdout is no terminal (never waits for keys in a pipe),
+    or when nothing was chosen."""
+    stdin, stdout = stdin or sys.stdin, stdout or sys.stdout
+    listed = v4l2.devices()
+    usable = v4l2.capture_devices(listed)
+    if not usable:
+        others = f" ({', '.join(d.path for d in listed)} capture no video)" if listed else ""
+        raise CamError(f"no source given and no V4L2 capture device on this PC{others}: give a source, a URL "
+                       "(rtsp://..., http://...) or another FFmpeg input with --format")
+    if not (stdin.isatty() and stdout.isatty()):
+        raise CamError("no source given, and no terminal to choose one in: give the source, one of "
+                       + "; ".join(d.text() for d in usable))
+    chosen = choose(usable, stdin.fileno(), stdout, f"{prog}: choose a camera (arrow keys, Enter; Esc or q: none)")
+    if chosen is None:
+        raise CamError("no camera chosen")
+    print(f"{prog}: {chosen.text()}", flush=True)
+    return chosen.path
+
+
 def add_arguments(parser: argparse.ArgumentParser):
     """``xblick cam``'s own options (cli.py adds the parameters' and the Zenoh session's)."""
     def size(text: str) -> tuple[int, int]:
@@ -267,8 +350,10 @@ def add_arguments(parser: argparse.ArgumentParser):
         except VideoError as error:
             raise argparse.ArgumentTypeError(str(error)) from None
 
-    parser.add_argument("source", help="a V4L2 device (/dev/video0), a URL (rtsp://..., http://...), or with --format "
-                                       "another FFmpeg input (e.g. --format lavfi testsrc=size=640x480:rate=30)")
+    parser.add_argument("source", nargs="?", default=None,
+                        help="a V4L2 device (/dev/video0), a URL (rtsp://..., http://...), or with --format another "
+                             "FFmpeg input (e.g. --format lavfi testsrc=size=640x480:rate=30); none: choose one of "
+                             "this PC's V4L2 cameras in a list")
     parser.add_argument("--stream", required=True, metavar="BASE",
                         help="the stream base, <camera>/<stream>, e.g. robot/webcam/color")
     parser.add_argument("--format", default=None, metavar="FORMAT",
