@@ -1,0 +1,81 @@
+# Install
+
+This page shows how to install Durchblick for Python, how to build it for C++, and how to start the router that
+every PC needs.
+
+## Requirements
+
+| What | Version | Needed for |
+| --- | --- | --- |
+| Linux, x86-64 | | everything. Wheels for aarch64 do not exist yet. |
+| Python | 3.10 to 3.13 | the Python package and the command line |
+| Zenoh router `zenohd` | 1.10 | programs on one PC that find each other without addresses |
+| NVIDIA GPU with its driver | | CUDA rings. The package loads without a GPU. |
+| CMake and a C++20 compiler | | C++ programs, or a build from source |
+| CUDA toolkit with `nvcc` | 12.8 tested | only the point cloud node `durchblick-points` |
+
+## Python
+
+Build and install the package from source. The build needs CMake and a C++20 compiler. It needs no CUDA toolkit.
+
+```bash
+git clone https://github.com/xblick/durchblick.git
+pip install "./durchblick[rerun,record]"
+```
+
+Optional features have extras:
+
+| Extra | Adds |
+| --- | --- |
+| `blick[rerun]` | the viewer `blick rerun` |
+| `blick[record]` | `blick record` and `blick play` for MCAP files |
+| `blick[video]` | videos as camera streams in `blick play` |
+
+In a uv project, depend on the repository at a release tag or a commit. uv then builds the package from source:
+
+```toml
+[tool.uv.sources]
+blick = { git = "https://github.com/xblick/durchblick.git", rev = "<tag or commit>" }
+```
+
+## C++
+
+1. Install zenoh-c and zenoh-cpp 1.10. The script `tools/install_zenoh.sh <prefix>` installs both.
+2. Build and install Durchblick with CMake.
+3. Use it in your project:
+
+```cmake
+find_package(durchblick 0.4 REQUIRED)
+target_link_libraries(my_program PRIVATE durchblick::durchblick)
+```
+
+`find_package` finds Zenoh, JPEG and PNG itself. The [C++ reference](../reference/cpp-api.md) has the details, and
+[development](../project/development.md) has the full build commands.
+
+## The router
+
+Every PC runs one Zenoh router. Start it once per PC and leave it running:
+
+```bash
+zenohd --no-multicast-scouting -l tcp/0.0.0.0:7447
+```
+
+[Sessions and routers](../concepts/sessions.md) explains what the router does and how several PCs connect.
+
+## Check the installation
+
+```bash
+blick test-camera &      # publishes a moving test pattern
+blick list               # shows the stream robot/test_camera/color
+```
+
+`blick list` prints one line per stream, with the encoding, the transports and the host. Continue with
+[your first stream](first-stream.md).
+
+## Other ways to install
+
+To work on Durchblick itself, see [development](../project/development.md).
+
+## Status and limits
+
+- Prebuilt wheels do not exist yet. They are planned for the GitHub releases.

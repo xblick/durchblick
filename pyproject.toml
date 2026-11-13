@@ -1,0 +1,75 @@
+[build-system]
+# the C++ core (CMakeLists.txt) becomes blick._core; nvidia-cuda-runtime only provides the header cuda.h
+# (libcuda.so.1 of the driver is opened at run time)
+requires = ["scikit-build-core>=0.11", "nanobind>=2.4", "nvidia-cuda-runtime>=13,<14"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "blick"
+dynamic = ["version"]  # from CMakeLists.txt, project(VERSION)
+description = "Camera streams and perception results over Zenoh, with ROS 2 message types (sensor_msgs) on the wire."
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+authors = [{ name = "David Schneider" }]
+# 3.10: some teleoperation environments still use it
+requires-python = ">=3.10"
+dependencies = [
+    "eclipse-zenoh>=1.10,<2",
+    "numpy>=1.24",
+    # JPEG and PNG for sensor_msgs/CompressedImage
+    "pillow>=10",
+    # the terminal interface, `blick` without a command (tui.py); its API changes between major versions
+    "textual>=8.2,<9",
+]
+
+[project.scripts]
+blick = "blick.cli:main"
+
+[project.optional-dependencies]
+rerun = [
+    # blick rerun (rerun_bridge.py); Rerun's API changes between minor versions
+    "rerun-sdk>=0.39,<0.40",
+]
+record = [
+    # blick record and play (recording.py): MCAP files, rosbag2's storage
+    "mcap>=1.6,<2",  # 1.6: iter_messages(starting_at=) for seeking
+]
+video = [
+    # blick video (video.py): video files decoded by FFmpeg inside PyAV's wheels
+    "av>=14",
+]
+
+[dependency-groups]
+# rosbags: an independent ROS 2 CDR implementation the tests compare our bytes with
+# nvidia-cuda-runtime: cuda.h for building the C++ library outside the wheel build (the C++ job of the CI)
+# pytest-timeout: a test that hangs ends the run with every thread's stack instead of blocking it (tool.pytest)
+dev = ["pytest>=8", "rosbags>=0.10", "nvidia-cuda-runtime>=13,<14", "pytest-timeout>=2.3"]
+
+[tool.uv]
+# uv keeps an installed local project: rebuild it (its C++ core, blick._core) when these change, so that
+# `uv sync` after a pull (tools/setup_python.sh, a workspace upgrade) does not keep an old core
+cache-keys = [{ file = "pyproject.toml" }, { file = "CMakeLists.txt" }, { file = "cpp/**/*.cpp" },
+              { file = "cpp/**/*.hpp" }, { file = "cpp/**/*.cu" }]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# a test that hangs (a node that never answers, a query Zenoh never ends, a close that never returns): after 90 s
+# faulthandler dumps every thread's Python stack, after 120 s pytest-timeout dumps them again and ends the run
+# ("thread": it works while the main thread is blocked in a C call, where a signal would wait for the call; the run
+# ends, the tests after it do not run). A test that needs longer: @pytest.mark.timeout(seconds)
+faulthandler_timeout = 90
+timeout = 120
+timeout_method = "thread"
+
+[tool.scikit-build]
+minimum-version = "build-system.requires"
+metadata.version.provider = "scikit_build_core.metadata.regex"
+metadata.version.input = "CMakeLists.txt"
+metadata.version.regex = 'project\(durchblick VERSION (?P<value>[0-9.]+)'
+wheel.packages = ["src/blick"]
+build-dir = "build/{wheel_tag}"
+
+[tool.scikit-build.cmake.define]
+# cuda.h of the pip package nvidia-cuda-runtime in the build environment
+DURCHBLICK_CUDA_INCLUDE_DIR = { env = "DURCHBLICK_CUDA_INCLUDE_DIR", default = "" }

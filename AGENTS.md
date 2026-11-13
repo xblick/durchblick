@@ -1,0 +1,121 @@
+# AGENTS.md
+
+Guidance for coding agents in this repository. Human documentation: `README.md` (entry) and `docs/` (concepts,
+guides, reference). Do not duplicate it here. Style rules for documentation: `docs/project/writing-docs.md`.
+
+## What this is
+
+Durchblick: camera streams and perception results between programs, over Zenoh, as ROS 2 message types (CDR),
+without ROS. C++20 core in `cpp/` (Python bindings `blick._core`), Python package `blick` in `src/blick/`
+(command `blick`). Each perception method is a node in its own repository (`durchblick-<name>`) that depends on this
+package. Robot integrations live in repositories of their own. The core never depends on a robot framework.
+
+Names: the Python package and the command are `blick`. Everything else stays `durchblick`: the C++ namespace, include
+directory, CMake package and targets, C++ tools, `DURCHBLICK_*` variables, Zenoh keys, ring names and message types
+(`durchblick_msgs`). Never rename a wire or on-disk name.
+
+## Skills
+
+Project skills live in `.agents/skills/` (open Agent Skills format); `.claude/skills` links to it. Rules for writing
+one: `.agents/skills/README.md`.
+
+| Skill | For |
+| --- | --- |
+| `durchblick-build-node` | a new vision node, or making a node faster or leaner |
+| `durchblick-run-nodes` | several nodes for an experiment or a demo, on one or more GPUs and PCs |
+| `durchblick-benchmark-nodes` | throughput, latency, GPU load and memory of nodes and setups |
+| `durchblick-develop-tui` | the terminal interface (`blick`): tabs, dialogs, layout, its tests and screenshots |
+
+- Before a task, look for a matching skill and follow it. Read its `SKILL.md` in full.
+- After a complex task that is likely to recur and can be abstracted (no batch names, dates or results of one
+  experiment), propose a new skill or a fix of an existing one in two or three lines. Write it only after the user's
+  yes. Prefer improving a skill over adding one.
+- Rules for every task stay in this file; a rule that must always hold belongs in a hook; a skill holds a procedure.
+- Node repositories have no skills of their own. An agent working in one uses the skills of this repository.
+
+## Commands
+
+```bash
+uv sync --all-extras                      # builds the C++ core (scikit-build-core, C++20); rebuilds when cpp/ changes
+uv sync --reinstall-package blick         # force the rebuild
+CUDA_VISIBLE_DEVICES=0 uv run pytest -q   # ~5 min, ~616 tests (2026-11-13); CUDA tests skip without a GPU
+uv run pytest -q tests/test_recording.py  # one file
+ruff check --line-length 120 src tests    # lint; ruff is not a project dependency
+```
+
+C++ library, tools, point cloud node, C++ against Python: `docs/project/development.md`.
+CI: `.github/workflows/ci.yml` (reference check, Python 3.10 and 3.12, C++ tests, interop, manylinux wheels).
+Reference check: `tools/check_references.sh` (no internal or robot-framework names outside its allowlist).
+
+## Rules
+
+- Fail fast. A wrong configuration, a missing input or a protocol mismatch raises with a message that says what to
+  do. Add no default that hides a misconfiguration.
+- Protocol: a change of a Durchblick message's fields raises its version in `cpp/include/durchblick/protocol.hpp`.
+  A ring layout change raises `kVersion` in `ring.hpp`. Either one also raises the package's minor version.
+- Version: only in `CMakeLists.txt` (`project(durchblick VERSION x.y.z)`). Every user-visible change: patch bump,
+  entry in `CHANGELOG.md`, status line in `README.md`. Release: tag `vx.y.z`, CI builds the wheels.
+- Python and C++ stay equivalent. A feature of the camera, points or detections API exists in both.
+  `tests/test_cpp_interop.py` checks it.
+- Documentation changes in the same commit as the code. New topic or option: update `docs/reference/`. History goes
+  to `CHANGELOG.md`, never into a page.
+- A node stamps a result with the capture stamp of its input, never with the processing time.
+- Code style: match the surrounding code. Docstrings say what, comments say why. 120 columns. No new dependency
+  without need.
+
+## Traps
+
+| Symptom | Cause and fix |
+| --- | --- |
+| Programs find nothing | A peer session with only `--connect` does not listen, and the router does not route between such sessions. Give no endpoints, or add `--listen tcp/127.0.0.1:0`, or use `--zenoh-mode client`. |
+| A query finds nothing right after start | A new session needs time to learn of queryables. Queries repeat every `FIND_PERIOD`. Do not query once. |
+| A loop over query replies hangs for minutes | Zenoh does not always finalize a query at its timeout. Never `for r in session.get(...)` or `liveliness().get`. Use `session.replies(session, selector, timeout, ...)` (C++ `durchblick::replies`). |
+| `Session.close()` never returns | Happens after a query Zenoh did not finalize. Open sessions with `open_session` or `open_from_args` (close waits at most 5 s). Wrap an own `zenoh.open` in `session.Session(...)`. |
+| A subscriber gets JPEG on the publisher's host | `ImageSubscriber` defaults to `transport="compressed"`. Pass `transport="auto"`. |
+| A test cannot open its own CUDA ring | The creating process cannot open a CUDA ring. Read it from a `spawn`ed child process. |
+| Device frames arrive wrong or late | `publish()` of a device array needs `stream=` (for PyTorch `torch.cuda.current_stream()`). Without it the publisher waits for all GPU work of the process. |
+| Nodes misbehave on a looped playback | `blick play --loop` moves all stamps forward on each pass. Nodes rely on stamps that only grow. |
+| A test or harness never ends | Zenoh threads keep a process alive. Close sessions. Run long checks in the background with `timeout`. Background processes ignore SIGINT: stop them by PID with SIGTERM. Never kill by name pattern. |
+| Large writes fail | NFS. Build and write large outputs on a local disk. |
+
+## Layout
+
+| Path | Content |
+| --- | --- |
+| `cpp/include/durchblick/protocol.hpp` | wire protocol: topics, message types, versions |
+| `cpp/include/durchblick/ring.hpp`, `cuda_ring.hpp` | host ring and CUDA ring |
+| `cpp/include/durchblick/camera.hpp`, `points.hpp`, `msg.hpp`, `parameters.hpp` | C++ API |
+| `cpp/include/durchblick/rectify.hpp`, `src/blick/rectify.py` | rectification map from a CameraInfo (R, P), CPU remap; same in C++ and Python |
+| `cpp/include/durchblick/pairing.hpp` | `partner_of`: partner sample of a primary frame by stamp; Python's `PartnerHistory` calls it via `_core` |
+| `cpp/points/` | point cloud node `durchblick-points` (CUDA) |
+| `cpp/python/bindings.cpp` | `blick._core` |
+| `src/blick/camera.py`, `points.py`, `detections.py`, `session.py` | Python API: streams, sessions |
+| `src/blick/node.py`, `history.py`, `tensors.py`, `rgbd.py`, `parameters.py` | helpers for nodes |
+| `src/blick/cli.py`, `tui.py`, `tui_graph.py`, `rerun_bridge.py`, `recording.py`, `video.py` | tools |
+| `src/blick/robot.py`, `sim.py`, `controller.py`, `poses.py`, `mps.py` | robot state, simulation, controller link, poses, MPS |
+| `tests/`, `cpp/tests/` | Python and C++ tests |
+| `tools/` | `check_references.sh` (+ `reference_allowlist.txt`), `install_zenoh.sh`, `gen_msgdefs.py`, `setup_python.sh`, `tui_screenshots.py` |
+| `.github/workflows/ci.yml` | CI |
+| `docs/` | `getting-started/`, `concepts/`, `guides/`, `reference/`, `integrations/`, `project/` |
+| `.agents/skills/` | agent skills; `.claude/skills` links here |
+
+## Defaults
+
+- Router: `zenohd` 1.10 on `127.0.0.1:7447`, one per PC. Start: `zenohd --no-multicast-scouting -l tcp/0.0.0.0:7447`.
+- Stream name: `<namespace>/<camera>/<stream>`. Node results: `<camera>/<node>/<name>`. Diagnostics:
+  `<camera>/diagnostics`.
+- Transports: `auto`, `compressed`, `raw`, `shm`, `cuda`. Nodes and the CLI use `auto`.
+- Image ring: 32 slots. Point cloud ring: 4 slots.
+- Test without a camera: `blick test-camera` publishes `robot/test_camera/color` (640 x 480, 15 Hz).
+  `blick play <file.mcap> --loop` replays a recording.
+- Inspect: `blick list`, `blick hz <stream>`, `blick diagnostics <namespace>`, `blick rerun`, `blick`
+  (terminal interface).
+- Two programs without a router (tests): one with `--listen tcp/127.0.0.1:<port>`, the other with
+  `--connect tcp/127.0.0.1:<port>`.
+
+## Node repositories
+
+Same pattern in each: a uv project pinned to a version of `blick` (`pyproject.toml`, `uv.lock`), `tools/setup.sh`
+for `.venv` and checkpoints, a console script `durchblick-<name>`, outputs below `<camera>/<node>/`, diagnostics on
+`<camera>/diagnostics`, its own `AGENTS.md`. A change here that nodes need: release it, then raise their pin and
+run `uv lock`.

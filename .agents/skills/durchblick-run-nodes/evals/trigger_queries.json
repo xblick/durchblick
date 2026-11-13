@@ -1,0 +1,10 @@
+[
+  {"query": "bring up the vision stack on the second server against the robot's cameras", "should_trigger": true},
+  {"query": "run sam3 and foundationpose on the turntable recording", "should_trigger": true},
+  {"query": "I want a demo with all nodes in rerun", "should_trigger": true},
+  {"query": "start the nodes on GPUs 4 and 5 with MPS", "should_trigger": true},
+  {"query": "how many frames per second does sam3 reach on one gpu", "should_trigger": false},
+  {"query": "start the robot integration's scenario on robot-2", "should_trigger": false},
+  {"query": "write a node for a new pose estimator", "should_trigger": false},
+  {"query": "play this video as a camera stream", "should_trigger": false}
+]

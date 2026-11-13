@@ -1,0 +1,15 @@
+{
+  "skill_name": "durchblick-run-nodes",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "run the turntable recording with NeMO and two FoundationPose instances, each on its own GPU, and show it in rerun",
+      "expected_output": "A placement table confirmed first, router, the replay with a CUDA ring, the nodes in tmux on their GPUs, checks with list and diagnostics, rerun, and the stop commands by PID.",
+      "assertions": [
+        "The agent writes a placement table before starting anything",
+        "The agent checks nvidia-smi for foreign load first",
+        "The handover includes how to stop every process by PID"
+      ]
+    }
+  ]
+}

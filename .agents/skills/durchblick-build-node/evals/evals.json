@@ -1,0 +1,27 @@
+{
+  "skill_name": "durchblick-build-node",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "wrap Depth Anything 3 as a Durchblick node that publishes metric depth for the head camera",
+      "expected_output": "A node repository in the node pattern (uv project pinned to Durchblick, tools/setup.sh, console script, AGENTS.md), results stamped with the input's stamp, diagnostics, tested on a looped replay, with a measured baseline.",
+      "assertions": [
+        "The depth carries the stamp of the colour frame it was computed from",
+        "The subscriber uses transport auto and the node offers --local and --max-hz",
+        "The node is run on a replay, not only on a live camera",
+        "A baseline rate and latency are measured before any optimisation",
+        "The node's options are parameters (declare_options right after parse_args, before the model loads), with its thresholds as live ones"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "boxer got slow again after the update, find out why and fix it",
+      "expected_output": "A baseline on a replay, a decision whether the node is GPU-bound or launch-bound, changes one at a time with numbers, and a table including what did not help.",
+      "assertions": [
+        "The agent determines whether the node is GPU-bound or launch-bound before choosing a fix",
+        "Each change is measured against the same baseline input",
+        "The documentation lists what did not help"
+      ]
+    }
+  ]
+}

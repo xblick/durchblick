@@ -1,0 +1,7 @@
+# Hits of tools/check_references.sh that may stay. "<path>" allows a whole file, "<path>:<text>" the lines that
+# contain <text>. Keep this list short: every entry is a deliberate exception.
+
+# the one link to the ArmarX integration
+README.md:ArmarX integration: `durchblick_armarx`
+# history: entries before 0.4.0 name the integration and robots as they were
+CHANGELOG.md

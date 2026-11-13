@@ -1,0 +1,125 @@
+# Durchblick CI: the reference check, the Python tests (3.10, 3.12), the C++ library with its tests, a project that
+# uses the installed CMake package, C++ against Python, and manylinux wheels. GitHub's runners have no GPU, so the
+# CUDA tests skip (Python: pytest skips; ctest: exit code 77).
+name: ci
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  ZENOH_VERSION: "1.10.1"
+
+jobs:
+  references:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: tools/check_references.sh
+
+  python:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install --quiet uv
+      - run: uv sync --locked --python "${{ matrix.python }}"
+      - run: uv run --locked python -c "import blick; print('blick', blick.__version__)"
+      - run: timeout 1500 uv run --locked pytest -q tests
+
+  cpp:
+    runs-on: ubuntu-24.04
+    env:
+      ZENOH_PREFIX: ${{ github.workspace }}/.zenoh
+      BUILD: build/cpp
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq cmake ninja-build libjpeg-turbo8-dev libpng-dev
+      - run: tools/install_zenoh.sh "$ZENOH_PREFIX"
+      - run: python -m pip install --quiet uv
+      # the Python side of the interop tests; also provides cuda.h (the pip package nvidia-cuda-runtime)
+      - run: uv sync --locked
+      - name: build and test the C++ library
+        run: |
+          CUDA_INCLUDE="$(uv run --locked python -c "import nvidia, os; print(os.path.join(list(nvidia.__path__)[0], 'cu13', 'include'))")"
+          cmake -S . -B "$BUILD" -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_PREFIX_PATH="$ZENOH_PREFIX" \
+            -DDURCHBLICK_CUDA_INCLUDE_DIR="$CUDA_INCLUDE"
+          cmake --build "$BUILD"
+          ctest --test-dir "$BUILD" --output-on-failure
+      - name: a project that uses the installed package
+        run: |
+          cmake --install "$BUILD" --prefix "$BUILD/install" > /dev/null
+          CONSUMER="$BUILD/consumer"
+          mkdir -p "$CONSUMER"
+          cat > "$CONSUMER/CMakeLists.txt" <<'CMAKE'
+          cmake_minimum_required(VERSION 3.24)
+          project(consumer CXX)
+          set(CMAKE_CXX_STANDARD 20)
+          find_package(durchblick 0.4 REQUIRED)
+          add_executable(consumer main.cpp)
+          target_link_libraries(consumer PRIVATE durchblick::durchblick)
+          CMAKE
+          cat > "$CONSUMER/main.cpp" <<'CPP'
+          #include <durchblick/camera.hpp>
+          #include <durchblick/version.hpp>
+          #include <iostream>
+          int main() { std::cout << "consumer of durchblick " << DURCHBLICK_VERSION << std::endl; }
+          CPP
+          cmake -S "$CONSUMER" -B "$CONSUMER/build" -G Ninja -DCMAKE_PREFIX_PATH="$PWD/$BUILD/install;$ZENOH_PREFIX"
+          cmake --build "$CONSUMER/build"
+          LD_LIBRARY_PATH="$ZENOH_PREFIX/lib" "$CONSUMER/build/consumer"
+      - name: C++ against Python
+        run: |
+          DURCHBLICK_CPP_BUILD="$PWD/$BUILD" LD_LIBRARY_PATH="$ZENOH_PREFIX/lib" \
+            timeout 1500 uv run --locked pytest -q tests/test_cpp_interop.py
+
+  wheels:
+    runs-on: ubuntu-24.04
+    container: quay.io/pypa/manylinux_2_28_x86_64
+    env:
+      PYTHONS: cp310-cp310 cp311-cp311 cp312-cp312 cp313-cp313
+    steps:
+      - uses: actions/checkout@v4
+      - name: a tag names the package version (CMakeLists.txt)
+        if: github.ref_type == 'tag'
+        run: |
+          version="$(sed -n 's/^project(durchblick VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)"
+          if [ "${GITHUB_REF_NAME}" != "v${version}" ]; then
+            echo "tag ${GITHUB_REF_NAME} does not name the package version ${version} (CMakeLists.txt)" >&2
+            exit 1
+          fi
+      - name: build, repair and import the wheels
+        run: |
+          rm -rf dist wheelhouse
+          mkdir -p dist
+          for tag in $PYTHONS; do
+            "/opt/python/${tag}/bin/python" -m pip wheel --quiet --no-deps . -w wheelhouse
+          done
+          for wheel in wheelhouse/*.whl; do
+            auditwheel repair "$wheel" -w dist > /dev/null
+          done
+          /opt/python/cp312-cp312/bin/python -m pip install --quiet build
+          /opt/python/cp312-cp312/bin/python -m build --sdist --outdir dist . > /dev/null
+          for tag in $PYTHONS; do
+            env="$(mktemp -d)"
+            "/opt/python/${tag}/bin/python" -m venv "$env"
+            "$env/bin/pip" install --quiet --find-links dist --only-binary blick blick
+            (cd / && "$env/bin/python" -c "import blick, blick._core as c; print('${tag}', blick.__version__, c.host_id()[:8])")
+          done
+          ls -l dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels
+          path: dist/

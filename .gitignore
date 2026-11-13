@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+build/
+.cache/
+
+# Agent skills: Claude Code may write internal files into the linked skills directory
+.agents/skills/.system/

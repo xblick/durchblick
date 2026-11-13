@@ -1,0 +1,12 @@
+[
+  {"query": "put a new open-vocabulary detector on the robot's camera stream", "should_trigger": true},
+  {"query": "can we run FoundationStereo live on the rc_visard", "should_trigger": true},
+  {"query": "the sam3 node uses too much VRAM, can we shrink it", "should_trigger": true},
+  {"query": "make the tapnext node keep up with 30 Hz", "should_trigger": true},
+  {"query": "we need a node that tracks people's hands", "should_trigger": true},
+  {"query": "start sam3 and boxer on the replay", "should_trigger": false},
+  {"query": "measure how fast the existing nodes are on GPU 3", "should_trigger": false},
+  {"query": "add a new message type to the protocol", "should_trigger": false},
+  {"query": "the TUI does not show my node's parameters", "should_trigger": true},
+  {"query": "let the tracker take a new list of objects while it runs", "should_trigger": true}
+]

@@ -1,0 +1,130 @@
+# Durchblick
+
+Durchblick is a middleware for camera streams and perception results. It moves frames between programs in shared
+memory and in GPU memory, and it uses the message types of ROS 2 without needing ROS.
+
+## Why Durchblick
+
+A 1080p colour frame has 6 MB. A publisher that sends it to 16 programs over TCP spends 26 ms of CPU time per
+frame. Durchblick writes the frame once into shared memory and sends each reader only the location of the frame.
+This takes about 1 ms for any number of readers.
+
+- **Each host stores a frame once.** The publisher writes the frame into a ring in shared memory, and all readers
+  on that host work on this one copy. [Rings](docs/concepts/rings.md)
+- **Frames stay on the GPU.** A GPU producer and a GPU consumer exchange frames in GPU memory, without a copy to
+  the CPU. [Frames on the GPU](docs/concepts/gpu-frames.md)
+- **A publisher works only on request.** It encodes a JPEG only while a subscriber asks for JPEG, and it writes a
+  ring only while a reader has it open. [Transports](docs/concepts/transports.md)
+- **Latency stays constant under load.** Every stream keeps only its newest frame, so a slow consumer skips frames
+  and never receives old ones. [Latest value](docs/concepts/latest-value.md)
+- **Every consumer uses the same stream.** The subscriber chooses the transport. The topic, the message type and
+  the API are the same on one host and across the network, in Python and in C++, on a robot and in a simulation.
+  [Streams and topics](docs/concepts/streams-and-topics.md)
+
+## Requirements
+
+Linux on x86-64, Python 3.10 to 3.13, and one Zenoh router (`zenohd` 1.10) per PC. An NVIDIA GPU is needed only for
+frames in GPU memory. C++ programs need CMake and a C++20 compiler.
+
+## Install
+
+```bash
+git clone https://github.com/xblick/durchblick.git
+pip install "./durchblick[rerun,record]"           # builds the C++ core: CMake and a C++20 compiler
+zenohd --no-multicast-scouting -l tcp/0.0.0.0:7447     # the router, once per PC
+```
+
+Extras and C++: [install](docs/getting-started/install.md).
+
+## Use
+
+```bash
+blick test-camera        # publish a moving test pattern
+blick list               # show every stream
+blick hz robot/test_camera/color
+blick rerun              # show every stream and result in the Rerun viewer
+```
+
+```python
+import blick as db
+
+session = db.open_session()
+images = db.ImageSubscriber(session, "robot/test_camera/color", transport="auto")
+frame = images.latest(timeout=1.0)        # the newest frame as a NumPy array
+```
+
+On the publisher's host, `transport="auto"` reads the frame from a ring. On another host, it receives a JPEG over
+the network. Your code is the same in both cases.
+
+Continue with [your first stream](docs/getting-started/first-stream.md). Without a command, `blick` opens a
+[terminal interface](docs/guides/tui.md) with all streams, nodes and parameters.
+
+## Write a node
+
+A node reads the streams of a camera and publishes its results below that camera, at `<camera>/<node>/<name>`.
+The tutorial [your first node](docs/getting-started/first-node.md) builds a complete node in 40 lines. The
+[writing nodes guide](docs/guides/writing-nodes.md) lists what Durchblick gives every node: logging, diagnostics,
+frames as tensors, streams paired by stamp, rate limits and parameters.
+
+Three rules matter most.
+
+1. Stamp each result with the capture time of its input.
+2. Name your CUDA stream when you publish an array from GPU memory.
+3. Fail with a clear message. Do not continue with a default that hides a wrong configuration.
+
+## Nodes
+
+Each perception method is a node in a repository of its own. Every node works on any camera, whether the frames
+come from a robot, a simulation or a recording.
+
+| Task | Nodes |
+| --- | --- |
+| Cameras | [azure-kinect](https://github.com/xblick/durchblick-azure-kinect), [roboception](https://github.com/xblick/durchblick-roboception), [relay](https://github.com/xblick/durchblick-relay) |
+| Depth and point clouds | `fast-foundationstereo`, `durchblick-points` (this repository) |
+| Segmentation, detection, tracking | [sam3](https://github.com/xblick/durchblick-sam3), [boxer](https://github.com/xblick/durchblick-boxer), [tapnext](https://github.com/xblick/durchblick-tapnext) |
+| 6D object poses | `foundationpose`, [nemo](https://github.com/xblick/durchblick-nemo), `ivt` |
+| Meshes of new objects | `recgen`, `sam3d-objects`, `any6d` |
+| People | [gem-x](https://github.com/xblick/durchblick-gem-x), `insightface`, [vjepa2](https://github.com/xblick/durchblick-vjepa2) |
+| Camera pose and map | `mapping` (cuVSLAM, nvblox) |
+| Recording | `blick record`, `blick play` (this repository) |
+
+The [node reference](docs/reference/nodes.md) has the data flow between the nodes, what each node publishes, and
+the GPU memory and load of each.
+
+## Speed
+
+| What | Before | After | Main change |
+| --- | --- | --- | --- |
+| Publish 1080p to 16 readers on one host | 26 ms CPU | 1 ms | one copy in a ring |
+| Azure Kinect 2160p colour for a JPEG consumer | 28 ms | 0.02 ms | the camera's JPEG passed on unchanged |
+| Boxer, median per frame | 140 ms | 28 ms | inputs on the GPU, bfloat16 weights, two CUDA streams |
+| SAM 3.1 with 8 words | 51.1 ms | 24.4 ms | one pass for all words, 672 px |
+| Fast-FoundationStereo, 640 x 480 | 26.3 ms | 11.1 ms | TensorRT |
+| FoundationPose tracking | 22.7 ms | 8.5 ms | a port to PyTorch |
+| NeMO metric pose | 1.2 s | 10 ms | RANSAC on the GPU |
+| IVT localisation of 12 objects | 137-572 ms | 4.9 ms | the pipeline on the GPU |
+| nvblox at 60 frames/s input | 8 frames/s | 47 frames/s | the newest complete set of inputs |
+
+Measured on an RTX PRO 6000 and an AMD EPYC 9335. [Making a node fast](docs/guides/making-a-node-fast.md) explains
+the method, the changes that helped in several nodes, and the changes that did not help.
+
+## Documentation
+
+| | |
+| --- | --- |
+| **Start** | [Install](docs/getting-started/install.md) · [Your first stream](docs/getting-started/first-stream.md) · [Your first node](docs/getting-started/first-node.md) |
+| **Concepts** | [Streams and topics](docs/concepts/streams-and-topics.md) · [Transports](docs/concepts/transports.md) · [Rings](docs/concepts/rings.md) · [Frames on the GPU](docs/concepts/gpu-frames.md) · [Latest value](docs/concepts/latest-value.md) · [Timestamps](docs/concepts/timestamps.md) · [Protocol](docs/concepts/protocol.md) · [Sessions and routers](docs/concepts/sessions.md) |
+| **Guides** | [Writing nodes](docs/guides/writing-nodes.md) · [Pairing streams](docs/guides/pairing-streams.md) · [Making a node fast](docs/guides/making-a-node-fast.md) · [Sharing a GPU](docs/guides/sharing-a-gpu.md) · [Recording](docs/guides/recording.md) · [Video](docs/guides/video.md) · [Point clouds](docs/guides/point-clouds.md) · [Viewer](docs/guides/viewer.md) · [Terminal interface](docs/guides/tui.md) |
+| **Reference** | [Command line](docs/reference/cli.md) · [Python](docs/reference/python-api.md) · [C++](docs/reference/cpp-api.md) · [Topics](docs/reference/topics.md) · [Parameters](docs/reference/parameters.md) · [Nodes](docs/reference/nodes.md) · [Glossary](docs/reference/glossary.md) |
+| **Integrations** | [ROS 2](docs/integrations/ros2.md) |
+| **Project** | [Development](docs/project/development.md) · [Alternatives](docs/project/alternatives.md) · [Writing documentation](docs/project/writing-docs.md) · [Changelog](CHANGELOG.md) |
+
+Coding agents read [AGENTS.md](AGENTS.md) and the project skills in [.agents/skills](.agents/skills/README.md).
+
+ArmarX integration: `durchblick_armarx` (TODO: link to its repository once it exists).
+
+## Status
+
+Version 0.4.0. Durchblick is in active development, and a new minor version can change the protocol. All
+programs of one setup speak the same protocol. The [changelog](CHANGELOG.md) states which versions do. The nodes
+are tested in simulation and on recordings. Tests on robots are in progress.
