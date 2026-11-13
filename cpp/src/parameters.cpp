@@ -9,6 +9,7 @@
 #include <limits>
 #include <set>
 #include <sstream>
+#include <thread>
 
 #include "xblick/camera.hpp"
 #include "xblick/protocol.hpp"
@@ -1276,9 +1277,25 @@ namespace xblick
     std::vector<std::uint8_t> ParameterClient::call(const std::string& service,
                                                     const std::vector<std::uint8_t>& request)
     {
+        // Asked again every 250 ms (Python's FIND_PERIOD) until a reply comes or the timeout passed: a session just
+        // opened knows no queryable yet (through a router their declarations arrive some 0.1-0.3 s later), and a
+        // query sent before ends at once without a reply. A query that reached the node ends with its reply, so the
+        // request is sent again only when no node got it.
+        using clock = std::chrono::steady_clock;
+        const auto end = clock::now() + std::chrono::milliseconds(static_cast<std::int64_t>(timeout_ms_));
+        std::vector<zenoh::Reply> answers;
+        while (true)
+        {
+            const auto left = std::chrono::duration_cast<std::chrono::milliseconds>(end - clock::now());
+            answers = replies(session_, key_ + "/" + service, std::max(left, std::chrono::milliseconds(10)), request);
+            if (not answers.empty() or clock::now() >= end)
+            {
+                break;
+            }
+            std::this_thread::sleep_for(std::min<clock::duration>(std::chrono::milliseconds(250), end - clock::now()));
+        }
         std::vector<std::vector<std::uint8_t>> ok;
-        for (const auto& reply : replies(session_, key_ + "/" + service,
-                                         std::chrono::milliseconds(static_cast<std::int64_t>(timeout_ms_)), request))
+        for (const auto& reply : answers)
         {
             if (not reply.is_ok())
             {

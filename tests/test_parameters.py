@@ -6,7 +6,7 @@ import threading
 from pathlib import Path
 
 import pytest
-from test_camera import sessions, wait_until  # noqa: F401 - sessions is a fixture
+from test_camera import free_port, sessions, wait_until  # noqa: F401 - sessions is a fixture
 
 from xblick import node
 from xblick.msg import ParameterType, ParameterValue
@@ -374,3 +374,36 @@ def test_a_node_that_ends_with_an_exception_before_close_ends():
               "raise KeyboardInterrupt\n")
     out = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, timeout=30)
     assert out.returncode != 0 and "KeyboardInterrupt" in out.stderr
+
+
+def test_a_session_just_opened_through_a_router_finds_the_node():
+    """xblick param as a peer behind a router (the default setup): its session is new when it asks, and through the
+    router the node's queryables and token become known to it only some 0.1-0.3 s later. A single query sent at once
+    ends with no reply; find_nodes and the client's calls ask again until the timeout."""
+    from test_tui import open_router
+
+    from xblick.session import open_session
+
+    port = free_port()
+    router = open_router(port)
+    endpoint = [f"tcp/127.0.0.1:{port}"]
+    node_session = open_session(connect=endpoint, listen=["127.0.0.1:0"])
+    params = Parameters(node_session, NAME, NS)
+    params.declare("threshold", 0.3)
+    try:
+        for i in range(3):  # each a new session, as each xblick param command is
+            with open_session(connect=endpoint, listen=["127.0.0.1:0"]) as asker:
+                assert f"{NS}/{NAME}" in find_nodes(asker, 2.0)
+            with open_session(connect=endpoint, listen=["127.0.0.1:0"]) as asker:
+                value = ParameterClient(asker, f"{NS}/{NAME}", 2.0).get(["threshold"])[0].value()
+                assert value == pytest.approx(0.3 + i * 0.1)
+            with open_session(connect=endpoint, listen=["127.0.0.1:0"]) as asker:
+                assert ParameterClient(asker, f"{NS}/{NAME}", 2.0).set({"threshold": 0.4 + i * 0.1})[0].successful
+        assert params["threshold"] == pytest.approx(0.6)
+        with open_session(connect=endpoint, listen=["127.0.0.1:0"]) as asker:
+            with pytest.raises(TimeoutError, match="no answer"):
+                ParameterClient(asker, f"{NS}/nobody", 0.5).get(["threshold"])
+    finally:
+        params.close()
+        node_session.close()
+        router.close()
