@@ -12,9 +12,9 @@ Save this file as `brightness_node.py`.
 import argparse
 import threading
 
-import blick as db
-from blick import node, session as db_session
-from blick.history import FrameHistory
+import xblick as db
+from xblick import node, session as db_session
+from xblick.history import FrameHistory
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--camera", default="robot/test_camera")
@@ -65,7 +65,7 @@ finally:
 ## Run it
 
 ```bash
-blick test-camera &
+xblick test-camera &
 python brightness_node.py
 ```
 
@@ -75,7 +75,7 @@ brightness: 14.9 frames/s
 ```
 
 The first line states which publisher the node found and which transport it chose. The second line appears every
-ten seconds. In another terminal, `blick diagnostics robot` shows the state of the node once per second.
+ten seconds. In another terminal, `xblick diagnostics robot` shows the state of the node once per second.
 
 ## What each part does
 
@@ -99,8 +99,8 @@ returns OK, or a warning with the reason. Here the node warns while it waits for
 says what it waits for.
 
 **`declare_options`** makes every option a parameter of the node `<camera>/brightness`. `threshold` is live: change
-it while the node runs with `blick param --node robot/test_camera/brightness --set threshold:=0.3`, or in the
-terminal interface (`blick`, tab Parameters). The other options are read-only and apply at the next start.
+it while the node runs with `xblick param --node robot/test_camera/brightness --set threshold:=0.3`, or in the
+terminal interface (`xblick`, tab Parameters). The other options are read-only and apply at the next start.
 [Parameters](../reference/parameters.md#a-nodes-options-as-parameters) explains the rules.
 
 **`color.check()`** raises an error that happened in the reader thread, for example a publisher with another
@@ -112,8 +112,8 @@ A real node differs in three places.
 
 | Topic | What changes | Read |
 | --- | --- | --- |
-| Frames on the GPU | Pass `device="cuda:0"` to the subscriber and convert the frame with `blick.tensors.rgb(frame, "cuda")`. The frame then stays in GPU memory. | [Frames on the GPU](../concepts/gpu-frames.md) |
-| Several inputs | Pair colour, depth and masks by stamp with `blick.rgbd.RGBDInputs`. | [Pairing streams](../guides/pairing-streams.md) |
+| Frames on the GPU | Pass `device="cuda:0"` to the subscriber and convert the frame with `xblick.tensors.rgb(frame, "cuda")`. The frame then stays in GPU memory. | [Frames on the GPU](../concepts/gpu-frames.md) |
+| Several inputs | Pair colour, depth and masks by stamp with `xblick.rgbd.RGBDInputs`. | [Pairing streams](../guides/pairing-streams.md) |
 | Options and settings | Add `--max-hz` and `--local` with `node.add_arguments`, and choose which options are live. | [Writing nodes](../guides/writing-nodes.md#options-as-parameters), [Parameters](../reference/parameters.md) |
 
 The [writing nodes guide](../guides/writing-nodes.md) ends with a checklist for a release. When your node works

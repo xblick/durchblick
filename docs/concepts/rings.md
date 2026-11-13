@@ -58,7 +58,7 @@ ring and its readers.
 
 | Ring | Memory | A reader gets | Transport name |
 | --- | --- | --- | --- |
-| Host ring | POSIX shared memory, `/dev/shm/durchblick-…` | a NumPy array | `shm` |
+| Host ring | POSIX shared memory, `/dev/shm/xblick-…` | a NumPy array | `shm` |
 | CUDA ring | GPU memory that several processes map | a device array on the GPU | `cuda` |
 
 Both kinds use the same slots, counters and descriptors. [Frames on the GPU](gpu-frames.md) explains what is
@@ -105,4 +105,4 @@ periods.
 
 - [Transports](transports.md): how a subscriber chooses between a ring and the network.
 - [Frames on the GPU](gpu-frames.md): the CUDA ring.
-- `cpp/include/durchblick/ring.hpp`: the layout of a host ring and the sequence lock.
+- `cpp/include/xblick/ring.hpp`: the layout of a host ring and the sequence lock.

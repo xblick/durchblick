@@ -29,14 +29,14 @@ A reader takes the fields that it knows and ignores the others. [Timestamps](tim
 
 ## One definition, with versions
 
-`cpp/include/durchblick/protocol.hpp` defines the whole protocol: the topic names, the message types and their
+`cpp/include/xblick/protocol.hpp` defines the whole protocol: the topic names, the message types and their
 versions. The Python package reads these values from the C++ core, so both languages always agree.
 
 Every sample names its schema in its Zenoh encoding:
 
 ```
 application/cdr;sensor_msgs/msg/Image                 a ROS 2 type
-application/cdr;durchblick_msgs/msg/ShmImage@1        a Durchblick type, version 1
+application/cdr;xblick_msgs/msg/ShmImage@1            a Durchblick type, version 1
 ```
 
 Durchblick's own types are the descriptors for the rings. Their version changes whenever their layout changes. A

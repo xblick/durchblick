@@ -1,4 +1,4 @@
-#include "durchblick/points.hpp"
+#include "xblick/points.hpp"
 
 #include <algorithm>
 #include <atomic>
@@ -7,14 +7,14 @@
 #include <mutex>
 #include <set>
 
-#include "durchblick/image.hpp"
-#include "durchblick/protocol.hpp"
-#include "durchblick/ray_cloud.hpp"
-#include "durchblick/version.hpp"
+#include "xblick/image.hpp"
+#include "xblick/protocol.hpp"
+#include "xblick/ray_cloud.hpp"
+#include "xblick/version.hpp"
 #include "json.hpp"
 #include "stream.hpp"
 
-namespace durchblick
+namespace xblick
 {
     namespace p = protocol;
     using detail::declare;
@@ -192,7 +192,7 @@ namespace durchblick
         // Last, so destroyed first, also when the constructor throws: Zenoh's threads answer <base>/info (and rays)
         // from the members above, and undeclaring waits for a callback that runs (zenoh-c 1.10). Declared before them,
         // a query during the destruction read freed members (a CUDA ring's server takes up to 200 ms to stop;
-        // durchblick-relay 0.2.1 stopped with std::length_error).
+        // xblick-relay 0.2.1 stopped with std::length_error).
         std::optional<zenoh::Queryable<void>> info_queryable, rays_queryable;
         std::optional<zenoh::LivelinessToken> alive;  // as CameraPublisher's
 
@@ -457,7 +457,7 @@ namespace durchblick
         const json::Value uuid = cuda_uuid.empty() ? json::Value(nullptr) : json::Value(cuda_uuid);
         return json::write({{"v", static_cast<std::int64_t>(p::kInfoVersion)},
                             {"kind", std::string("points")},
-                            {"durchblick", std::string(DURCHBLICK_VERSION)},
+                            {"xblick", std::string(XBLICK_VERSION)},
                             {"host", m.host},
                             {"transports", transports},
                             {"fields", fields},
@@ -869,4 +869,4 @@ namespace durchblick
         c.valid = std::move(data->valid);
         return c;
     }
-}  // namespace durchblick
+}  // namespace xblick

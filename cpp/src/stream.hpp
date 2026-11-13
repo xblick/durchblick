@@ -20,12 +20,12 @@
 
 #include <zenoh.hxx>
 
-#include "durchblick/camera.hpp"
-#include "durchblick/cuda_ring.hpp"
-#include "durchblick/protocol.hpp"
-#include "durchblick/ring.hpp"
+#include "xblick/camera.hpp"
+#include "xblick/cuda_ring.hpp"
+#include "xblick/protocol.hpp"
+#include "xblick/ring.hpp"
 
-namespace durchblick::detail
+namespace xblick::detail
 {
     std::int64_t now_ns();
     std::string key(const std::string& base, std::string_view suffix);
@@ -271,4 +271,4 @@ namespace durchblick::detail
         HostRingWriter& pinned_host_ring(std::uint32_t slots, std::uint64_t nbytes);
         std::string uuid() const;
     };
-}  // namespace durchblick::detail
+}  // namespace xblick::detail

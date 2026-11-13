@@ -1,11 +1,11 @@
-// durchblick::Options (options.hpp): a command line parsed, wrong ones refused with why, and the options as a node's
+// xblick::Options (options.hpp): a command line parsed, wrong ones refused with why, and the options as a node's
 // parameters (read-only but the live ones, a value given at the start written back), without a Zenoh session.
 #include <cstdio>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
-#include "durchblick/options.hpp"
+#include "xblick/options.hpp"
 
 namespace
 {
@@ -20,10 +20,10 @@ namespace
         }
     }
 
-    durchblick::Options relay_like()
+    xblick::Options relay_like()
     {
-        using namespace durchblick;
-        Options o("durchblick-test", "a test program");
+        using namespace xblick;
+        Options o("xblick-test", "a test program");
         o.add_list("stream", {}, {.help = "the streams", .metavar = "NAME", .required = true, .aliases = {"streams"}});
         o.add("slots", std::int64_t{32}, {.help = "ring slots", .parameter = {.integer_range = IntegerRange{2, 256, 1}}});
         o.add("idle-ms", std::int64_t{2000}, {.help = "silence before idle", .live = true, .parameter = {.unit = "ms"}});
@@ -44,7 +44,7 @@ namespace
         {
             o.parse_or_throw(static_cast<int>(argv.size()), argv.data());
         }
-        catch (const durchblick::OptionsError& error)
+        catch (const xblick::OptionsError& error)
         {
             if (std::string(error.what()).find(part) == std::string::npos)
             {
@@ -59,7 +59,7 @@ namespace
 
 int main()
 {
-    using namespace durchblick;
+    using namespace xblick;
     {
         auto o = relay_like();
         const std::vector<const char*> argv{"x", "--stream", "a/b", "c/d", "--slots", "64", "--prefer-raw",

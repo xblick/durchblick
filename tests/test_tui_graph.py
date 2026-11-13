@@ -3,9 +3,9 @@ people type (session.endpoint): no network, only the functions."""
 
 import pytest
 
-from blick import tui
-from blick.session import endpoint
-from blick.tui_graph import LINES, GraphEdge, GraphNode, GraphView, layout
+from xblick import tui
+from xblick.session import endpoint
+from xblick.tui_graph import LINES, GraphEdge, GraphNode, GraphView, layout
 
 
 @pytest.mark.parametrize("typed, wanted", [
@@ -58,11 +58,11 @@ def test_the_keys_as_a_tree():
 
 def test_short_names_drop_what_another_session_names_already():
     names = tui.short_names({"a": "robot/camera", "b": "robot/camera/sam3", "r": "robot",
-                             "t": "robot/camera/tapnext/tracks", "x": "durchblick/recorder/status",
+                             "t": "robot/camera/tapnext/tracks", "x": "xblick/recorder/status",
                              "v": "subscribes robot/camera", "c": "robot2/camera/sam3",
                              "d": "robot2/camera"})
     assert names == {"a": "camera", "b": "robot/camera/sam3", "r": "robot", "t": "tapnext/tracks",
-                     "x": "durchblick/recorder/status", "v": "subscribes camera",
+                     "x": "xblick/recorder/status", "v": "subscribes camera",
                      "c": "robot2/camera/sam3", "d": "robot2/camera"}  # two sam3: both whole
 
 

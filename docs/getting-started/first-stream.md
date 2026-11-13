@@ -7,7 +7,7 @@ ten minutes and needs no camera and no GPU.
 ## 1. Publish a test camera
 
 ```bash
-blick test-camera
+xblick test-camera
 ```
 
 The command publishes a moving test pattern with 640 x 480 pixels at 15 Hz. The name of the stream is
@@ -17,25 +17,25 @@ and the format. Leave the command running and open a second terminal.
 ## 2. Look at what is published
 
 ```bash
-blick list
+xblick list
 ```
 
 ```
-robot/test_camera/color    rgb8    raw,compressed,shm    source 'test'    host 7620b5c5    durchblick 0.3.53
+robot/test_camera/color    rgb8    raw,compressed,shm    source 'test'    host 7620b5c5    xblick 0.3.53
 ```
 
 The line shows the encoding of the stream and the [transports](../concepts/transports.md) that the publisher
-offers. `blick list` only queries the publishers. The test camera does no work for it.
+offers. `xblick list` only queries the publishers. The test camera does no work for it.
 
 ```bash
-blick hz robot/test_camera/color
+xblick hz robot/test_camera/color
 ```
 
 `hz` subscribes to the stream. It prints the frame rate, the age of the frames and the number of missing frames.
 The test camera starts to write its ring only now, because a publisher works only on request.
 
 ```bash
-blick snapshot robot/test_camera/color frame.png
+xblick snapshot robot/test_camera/color frame.png
 ```
 
 `snapshot` saves one frame as an image file.
@@ -43,7 +43,7 @@ blick snapshot robot/test_camera/color frame.png
 ## 3. Read the stream in Python
 
 ```python
-import blick as db
+import xblick as db
 
 session = db.open_session()                       # connects to the router of this PC
 images = db.ImageSubscriber(session, "robot/test_camera/color", transport="auto")
@@ -66,7 +66,7 @@ frames. [Latest value](../concepts/latest-value.md) explains why.
 ```python
 import time
 import numpy as np
-import blick as db
+import xblick as db
 
 session = db.open_session()
 info = db.CameraInfo.pinhole(640, 480, fx=554.3, fy=554.3, cx=319.5, cy=239.5, frame_id="my_camera")
@@ -86,16 +86,16 @@ Two points matter in this example.
   image. [Timestamps](../concepts/timestamps.md) explains why this time matters.
 - `camera.subscribed` is false while nobody reads the stream. A producer can then skip its work.
 
-Run `blick list` again. Your stream appears beside the test camera.
+Run `xblick list` again. Your stream appears beside the test camera.
 
 ## 5. Look at everything
 
 ```bash
 pip install "xblick[rerun]"
-blick rerun
+xblick rerun
 ```
 
-`blick rerun` opens the [Rerun](https://rerun.io) viewer and shows every stream and every result that it
+`xblick rerun` opens the [Rerun](https://rerun.io) viewer and shows every stream and every result that it
 finds. It needs no options. The [viewer guide](../guides/viewer.md) has the details.
 
 ## Next steps

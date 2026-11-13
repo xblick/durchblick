@@ -10,18 +10,18 @@ frame. Durchblick writes the frame once into shared memory and sends each reader
 This takes about 1 ms for any number of readers.
 
 - **Each host stores a frame once.** The publisher writes the frame into a ring in shared memory, and all readers
-  on that host work on this one copy. [Rings](https://github.com/xblick/durchblick/blob/main/docs/concepts/rings.md)
+  on that host work on this one copy. [Rings](https://github.com/xblick/xblick/blob/main/docs/concepts/rings.md)
 - **Frames stay on the GPU.** A GPU producer and a GPU consumer exchange frames in GPU memory, without a copy to
-  the CPU. [Frames on the GPU](https://github.com/xblick/durchblick/blob/main/docs/concepts/gpu-frames.md)
+  the CPU. [Frames on the GPU](https://github.com/xblick/xblick/blob/main/docs/concepts/gpu-frames.md)
 - **A publisher works only on request.** It encodes a JPEG only while a subscriber asks for JPEG, and it writes a
   ring only while a reader has it open.
-  [Transports](https://github.com/xblick/durchblick/blob/main/docs/concepts/transports.md)
+  [Transports](https://github.com/xblick/xblick/blob/main/docs/concepts/transports.md)
 - **Latency stays constant under load.** Every stream keeps only its newest frame, so a slow consumer skips frames
   and never receives old ones.
-  [Latest value](https://github.com/xblick/durchblick/blob/main/docs/concepts/latest-value.md)
+  [Latest value](https://github.com/xblick/xblick/blob/main/docs/concepts/latest-value.md)
 - **Every consumer uses the same stream.** The subscriber chooses the transport. The topic, the message type and
   the API are the same on one host and across the network, in Python and in C++, on a robot and in a simulation.
-  [Streams and topics](https://github.com/xblick/durchblick/blob/main/docs/concepts/streams-and-topics.md)
+  [Streams and topics](https://github.com/xblick/xblick/blob/main/docs/concepts/streams-and-topics.md)
 
 ## Requirements
 
@@ -35,22 +35,22 @@ pip install "xblick[rerun,record]"                      # wheels for Linux x86-6
 zenohd --no-multicast-scouting -l tcp/0.0.0.0:7447     # the router, once per PC
 ```
 
-To build from a checkout of this repository, run `pip install "./durchblick[rerun,record]"`. The build needs CMake
+To build from a checkout of this repository, run `pip install "./xblick[rerun,record]"`. The build needs CMake
 and a C++20 compiler.
 
-Extras and C++: [install](https://github.com/xblick/durchblick/blob/main/docs/getting-started/install.md).
+Extras and C++: [install](https://github.com/xblick/xblick/blob/main/docs/getting-started/install.md).
 
 ## Use
 
 ```bash
-blick test-camera        # publish a moving test pattern
-blick list               # show every stream
-blick hz robot/test_camera/color
-blick rerun              # show every stream and result in the Rerun viewer
+xblick test-camera       # publish a moving test pattern
+xblick list              # show every stream
+xblick hz robot/test_camera/color
+xblick rerun             # show every stream and result in the Rerun viewer
 ```
 
 ```python
-import blick as db
+import xblick as db
 
 session = db.open_session()
 images = db.ImageSubscriber(session, "robot/test_camera/color", transport="auto")
@@ -60,17 +60,17 @@ frame = images.latest(timeout=1.0)        # the newest frame as a NumPy array
 On the publisher's host, `transport="auto"` reads the frame from a ring. On another host, it receives a JPEG over
 the network. Your code is the same in both cases.
 
-Continue with [your first stream](https://github.com/xblick/durchblick/blob/main/docs/getting-started/first-stream.md).
-Without a command, `blick` opens a
-[terminal interface](https://github.com/xblick/durchblick/blob/main/docs/guides/tui.md)
+Continue with [your first stream](https://github.com/xblick/xblick/blob/main/docs/getting-started/first-stream.md).
+Without a command, `xblick` opens a
+[terminal interface](https://github.com/xblick/xblick/blob/main/docs/guides/tui.md)
 with all streams, nodes and parameters.
 
 ## Write a node
 
 A node reads the streams of a camera and publishes its results below that camera, at `<camera>/<node>/<name>`.
-The tutorial [your first node](https://github.com/xblick/durchblick/blob/main/docs/getting-started/first-node.md)
+The tutorial [your first node](https://github.com/xblick/xblick/blob/main/docs/getting-started/first-node.md)
 builds a complete node in 40 lines. The
-[writing nodes guide](https://github.com/xblick/durchblick/blob/main/docs/guides/writing-nodes.md)
+[writing nodes guide](https://github.com/xblick/xblick/blob/main/docs/guides/writing-nodes.md)
 lists what Durchblick gives every node: logging, diagnostics, frames as tensors, streams paired by stamp, rate
 limits and parameters.
 
@@ -87,16 +87,16 @@ come from a robot, a simulation or a recording.
 
 | Task | Nodes |
 | --- | --- |
-| Cameras | [azure-kinect](https://github.com/xblick/durchblick-azure-kinect), [roboception](https://github.com/xblick/durchblick-roboception), [relay](https://github.com/xblick/durchblick-relay) |
-| Depth and point clouds | `fast-foundationstereo`, `durchblick-points` (this repository) |
-| Segmentation, detection, tracking | [sam3](https://github.com/xblick/durchblick-sam3), [boxer](https://github.com/xblick/durchblick-boxer), [tapnext](https://github.com/xblick/durchblick-tapnext) |
-| 6D object poses | `foundationpose`, [nemo](https://github.com/xblick/durchblick-nemo), `ivt` |
+| Cameras | [azure-kinect](https://github.com/xblick/xblick-azure-kinect), [roboception](https://github.com/xblick/xblick-roboception), [relay](https://github.com/xblick/xblick-relay) |
+| Depth and point clouds | `fast-foundationstereo`, `xblick-points` (this repository) |
+| Segmentation, detection, tracking | [sam3](https://github.com/xblick/xblick-sam3), [boxer](https://github.com/xblick/xblick-boxer), [tapnext](https://github.com/xblick/xblick-tapnext) |
+| 6D object poses | `foundationpose`, [nemo](https://github.com/xblick/xblick-nemo), `ivt` |
 | Meshes of new objects | `recgen`, `sam3d-objects`, `any6d` |
-| People | [gem-x](https://github.com/xblick/durchblick-gem-x), `insightface`, [vjepa2](https://github.com/xblick/durchblick-vjepa2) |
+| People | [gem-x](https://github.com/xblick/xblick-gem-x), `insightface`, [vjepa2](https://github.com/xblick/xblick-vjepa2) |
 | Camera pose and map | `mapping` (cuVSLAM, nvblox) |
-| Recording | `blick record`, `blick play` (this repository) |
+| Recording | `xblick record`, `xblick play` (this repository) |
 
-The [node reference](https://github.com/xblick/durchblick/blob/main/docs/reference/nodes.md)
+The [node reference](https://github.com/xblick/xblick/blob/main/docs/reference/nodes.md)
 has the data flow between the nodes, what each node publishes, and the GPU memory and load of each.
 
 ## Speed
@@ -114,28 +114,29 @@ has the data flow between the nodes, what each node publishes, and the GPU memor
 | nvblox at 60 frames/s input | 8 frames/s | 47 frames/s | the newest complete set of inputs |
 
 Measured on an RTX PRO 6000 and an AMD EPYC 9335.
-[Making a node fast](https://github.com/xblick/durchblick/blob/main/docs/guides/making-a-node-fast.md) explains
+[Making a node fast](https://github.com/xblick/xblick/blob/main/docs/guides/making-a-node-fast.md) explains
 the method, the changes that helped in several nodes, and the changes that did not help.
 
 ## Documentation
 
 | | |
 | --- | --- |
-| **Start** | [Install](https://github.com/xblick/durchblick/blob/main/docs/getting-started/install.md) · [Your first stream](https://github.com/xblick/durchblick/blob/main/docs/getting-started/first-stream.md) · [Your first node](https://github.com/xblick/durchblick/blob/main/docs/getting-started/first-node.md) |
-| **Concepts** | [Streams and topics](https://github.com/xblick/durchblick/blob/main/docs/concepts/streams-and-topics.md) · [Transports](https://github.com/xblick/durchblick/blob/main/docs/concepts/transports.md) · [Rings](https://github.com/xblick/durchblick/blob/main/docs/concepts/rings.md) · [Frames on the GPU](https://github.com/xblick/durchblick/blob/main/docs/concepts/gpu-frames.md) · [Latest value](https://github.com/xblick/durchblick/blob/main/docs/concepts/latest-value.md) · [Timestamps](https://github.com/xblick/durchblick/blob/main/docs/concepts/timestamps.md) · [Protocol](https://github.com/xblick/durchblick/blob/main/docs/concepts/protocol.md) · [Sessions and routers](https://github.com/xblick/durchblick/blob/main/docs/concepts/sessions.md) |
-| **Guides** | [Writing nodes](https://github.com/xblick/durchblick/blob/main/docs/guides/writing-nodes.md) · [Pairing streams](https://github.com/xblick/durchblick/blob/main/docs/guides/pairing-streams.md) · [Making a node fast](https://github.com/xblick/durchblick/blob/main/docs/guides/making-a-node-fast.md) · [Sharing a GPU](https://github.com/xblick/durchblick/blob/main/docs/guides/sharing-a-gpu.md) · [Recording](https://github.com/xblick/durchblick/blob/main/docs/guides/recording.md) · [Video](https://github.com/xblick/durchblick/blob/main/docs/guides/video.md) · [Point clouds](https://github.com/xblick/durchblick/blob/main/docs/guides/point-clouds.md) · [Viewer](https://github.com/xblick/durchblick/blob/main/docs/guides/viewer.md) · [Terminal interface](https://github.com/xblick/durchblick/blob/main/docs/guides/tui.md) |
-| **Reference** | [Command line](https://github.com/xblick/durchblick/blob/main/docs/reference/cli.md) · [Python](https://github.com/xblick/durchblick/blob/main/docs/reference/python-api.md) · [C++](https://github.com/xblick/durchblick/blob/main/docs/reference/cpp-api.md) · [Topics](https://github.com/xblick/durchblick/blob/main/docs/reference/topics.md) · [Parameters](https://github.com/xblick/durchblick/blob/main/docs/reference/parameters.md) · [Nodes](https://github.com/xblick/durchblick/blob/main/docs/reference/nodes.md) · [Glossary](https://github.com/xblick/durchblick/blob/main/docs/reference/glossary.md) |
-| **Integrations** | [ROS 2](https://github.com/xblick/durchblick/blob/main/docs/integrations/ros2.md) |
-| **Project** | [Development](https://github.com/xblick/durchblick/blob/main/docs/project/development.md) · [Alternatives](https://github.com/xblick/durchblick/blob/main/docs/project/alternatives.md) · [Writing documentation](https://github.com/xblick/durchblick/blob/main/docs/project/writing-docs.md) · [Changelog](https://github.com/xblick/durchblick/blob/main/CHANGELOG.md) |
+| **Start** | [Install](https://github.com/xblick/xblick/blob/main/docs/getting-started/install.md) · [Your first stream](https://github.com/xblick/xblick/blob/main/docs/getting-started/first-stream.md) · [Your first node](https://github.com/xblick/xblick/blob/main/docs/getting-started/first-node.md) |
+| **Concepts** | [Streams and topics](https://github.com/xblick/xblick/blob/main/docs/concepts/streams-and-topics.md) · [Transports](https://github.com/xblick/xblick/blob/main/docs/concepts/transports.md) · [Rings](https://github.com/xblick/xblick/blob/main/docs/concepts/rings.md) · [Frames on the GPU](https://github.com/xblick/xblick/blob/main/docs/concepts/gpu-frames.md) · [Latest value](https://github.com/xblick/xblick/blob/main/docs/concepts/latest-value.md) · [Timestamps](https://github.com/xblick/xblick/blob/main/docs/concepts/timestamps.md) · [Protocol](https://github.com/xblick/xblick/blob/main/docs/concepts/protocol.md) · [Sessions and routers](https://github.com/xblick/xblick/blob/main/docs/concepts/sessions.md) |
+| **Guides** | [Writing nodes](https://github.com/xblick/xblick/blob/main/docs/guides/writing-nodes.md) · [Pairing streams](https://github.com/xblick/xblick/blob/main/docs/guides/pairing-streams.md) · [Making a node fast](https://github.com/xblick/xblick/blob/main/docs/guides/making-a-node-fast.md) · [Sharing a GPU](https://github.com/xblick/xblick/blob/main/docs/guides/sharing-a-gpu.md) · [Recording](https://github.com/xblick/xblick/blob/main/docs/guides/recording.md) · [Video](https://github.com/xblick/xblick/blob/main/docs/guides/video.md) · [Point clouds](https://github.com/xblick/xblick/blob/main/docs/guides/point-clouds.md) · [Viewer](https://github.com/xblick/xblick/blob/main/docs/guides/viewer.md) · [Terminal interface](https://github.com/xblick/xblick/blob/main/docs/guides/tui.md) |
+| **Reference** | [Command line](https://github.com/xblick/xblick/blob/main/docs/reference/cli.md) · [Python](https://github.com/xblick/xblick/blob/main/docs/reference/python-api.md) · [C++](https://github.com/xblick/xblick/blob/main/docs/reference/cpp-api.md) · [Topics](https://github.com/xblick/xblick/blob/main/docs/reference/topics.md) · [Parameters](https://github.com/xblick/xblick/blob/main/docs/reference/parameters.md) · [Nodes](https://github.com/xblick/xblick/blob/main/docs/reference/nodes.md) · [Glossary](https://github.com/xblick/xblick/blob/main/docs/reference/glossary.md) |
+| **Integrations** | [ROS 2](https://github.com/xblick/xblick/blob/main/docs/integrations/ros2.md) |
+| **Project** | [Development](https://github.com/xblick/xblick/blob/main/docs/project/development.md) · [Alternatives](https://github.com/xblick/xblick/blob/main/docs/project/alternatives.md) · [Writing documentation](https://github.com/xblick/xblick/blob/main/docs/project/writing-docs.md) · [Changelog](https://github.com/xblick/xblick/blob/main/CHANGELOG.md) |
 
-Coding agents read [AGENTS.md](https://github.com/xblick/durchblick/blob/main/AGENTS.md) and the project skills in
-[.agents/skills](https://github.com/xblick/durchblick/blob/main/.agents/skills/README.md).
+Coding agents read [AGENTS.md](https://github.com/xblick/xblick/blob/main/AGENTS.md) and the project skills in
+[.agents/skills](https://github.com/xblick/xblick/blob/main/.agents/skills/README.md).
 
 ArmarX integration: `durchblick_armarx`.
 
 ## Status
 
-Version 0.4.3. Durchblick is in active development, and a new minor version can change the protocol. All
+Version 0.5.0. Durchblick is in active development, and a new minor version can change the protocol. All
 programs of one setup speak the same protocol. We now released that version.
-The [changelog](https://github.com/xblick/durchblick/blob/main/CHANGELOG.md) states which versions do. The nodes
-are tested in simulation and on recordings. Tests on robots are in progress.
+The [changelog](https://github.com/xblick/xblick/blob/main/CHANGELOG.md) states which versions do. Programs of
+0.5 do not work with programs of 0.3 or 0.4. The nodes are tested in simulation and on recordings. Tests on robots
+are in progress.

@@ -1,4 +1,4 @@
-#include "durchblick/image.hpp"
+#include "xblick/image.hpp"
 
 #include <csetjmp>
 #include <cstdio>
@@ -9,9 +9,9 @@
 #include <jpeglib.h>
 #include <png.h>
 
-#include "durchblick/rvl.hpp"
+#include "xblick/rvl.hpp"
 
-namespace durchblick
+namespace xblick
 {
     // ------------------------------------------------------------------------------------------- encodings
 
@@ -521,4 +521,4 @@ namespace durchblick
         }
         throw EncodingError("compressed format '" + message.format + "' is not one of image_transport's");
     }
-}  // namespace durchblick
+}  // namespace xblick

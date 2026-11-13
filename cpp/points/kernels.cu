@@ -3,7 +3,7 @@
 #include <stdexcept>
 #include <string>
 
-namespace durchblick::points
+namespace xblick::points
 {
     namespace
     {
@@ -82,4 +82,4 @@ namespace durchblick::points
             throw std::runtime_error(std::string("depth_to_points kernel: ") + cudaGetErrorString(error));
         }
     }
-}  // namespace durchblick::points
+}  // namespace xblick::points

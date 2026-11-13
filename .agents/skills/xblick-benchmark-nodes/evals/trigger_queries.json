@@ -1,0 +1,13 @@
+[
+  {"query": "how fast is the new depth node on the rc_visard stream?", "should_trigger": true},
+  {"query": "measure the latency from capture to SAM 3's masks", "should_trigger": true},
+  {"query": "can we fit nvblox, boxer and the robot mask on one GPU of the robot", "should_trigger": true},
+  {"query": "is MPS worth it for our vision PC?", "should_trigger": true},
+  {"query": "compare the relay against decoding in every node", "should_trigger": true},
+  {"query": "benchmark gem-x with two people in view on two gpus", "should_trigger": true},
+  {"query": "start the turntable demo with all pose nodes", "should_trigger": false},
+  {"query": "make boxer faster", "should_trigger": false},
+  {"query": "write an xblick node for a new detector", "should_trigger": false},
+  {"query": "why does xblick list show nothing", "should_trigger": false},
+  {"query": "record the camera streams of the robot for an hour", "should_trigger": false}
+]

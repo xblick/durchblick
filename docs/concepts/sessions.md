@@ -61,7 +61,7 @@ Between PCs the data travels from router to router. A program on another host re
 
 ```bash
 ssh -N -L 7447:127.0.0.1:7447 server
-blick list --zenoh-mode client --connect tcp/127.0.0.1:7447
+xblick list --zenoh-mode client --connect tcp/127.0.0.1:7447
 ```
 
 You must use client mode here. A peer would learn the addresses of the other sessions, which are loopback addresses
@@ -88,7 +88,7 @@ Either give no endpoints, or add `--listen tcp/127.0.0.1:0`, or connect as a cli
 
 **A query can stay open after its timeout.** Zenoh ends a query after its timeout in almost all cases. In one CI
 job, a query with a timeout of 1 s was still open after 5 minutes. Code that iterates over the replies waits that
-long. Use `session.replies(session, selector, timeout, ...)` in Python or `durchblick::replies` in C++. These
+long. Use `session.replies(session, selector, timeout, ...)` in Python or `xblick::replies` in C++. These
 functions return at a deadline with the replies that arrived. The deadline is twice the timeout, and at least 0.5 s
 after the timeout. They count such queries (`session.not_finalized`, C++ `queries_not_finalized()`) and log each
 selector once. The cost is small: 0.15 ms per query against 0.10 ms for the direct iteration, measured on

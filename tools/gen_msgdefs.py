@@ -1,17 +1,17 @@
-"""Generates ``src/blick/msgdefs.py``: the ROS 2 message definitions (``ros2msg``, as rosbag2 writes them into
+"""Generates ``src/xblick/msgdefs.py``: the ROS 2 message definitions (``ros2msg``, as rosbag2 writes them into
 MCAP schemas) of the ROS types Durchblick carries, so that its recordings open in ``ros2 bag``, Foxglove and other MCAP
-readers. Run again when a ROS type is added to the protocol table (cpp/include/durchblick/protocol.hpp).
+readers. Run again when a ROS type is added to the protocol table (cpp/include/xblick/protocol.hpp).
 
 The definitions come from rosbags' type store of ROS 2 Jazzy; vision_msgs (not in it) from a checkout of
 ros-perception/vision_msgs (branch ros2, version 4.x); moveit_msgs/RobotState with the types it needs
 (AttachedCollisionObject, CollisionObject) from a checkout of moveit/moveit_msgs (branch ros2) and
 object_recognition_msgs/ObjectType from one of wg-perception/object_recognition_msgs (branch ros2). Each type is
-checked against Durchblick's own CDR: an example message serialized by ``blick.msg`` must deserialize with the
+checked against Durchblick's own CDR: an example message serialized by ``xblick.msg`` must deserialize with the
 definition.
 
     uv venv /tmp/gen && uv pip install -p /tmp/gen rosbags && uv pip install -p /tmp/gen -e .
     /tmp/gen/bin/python tools/gen_msgdefs.py <vision_msgs> <moveit_msgs> <object_recognition_msgs> \
-        > src/blick/msgdefs.py
+        > src/xblick/msgdefs.py
 """
 
 import sys
@@ -21,8 +21,8 @@ import numpy as np
 
 from rosbags.typesys import Stores, get_types_from_msg, get_typestore
 
-from blick import msg
-from blick._core import protocol
+from xblick import msg
+from xblick._core import protocol
 
 STORE = Stores.ROS2_JAZZY
 
@@ -47,7 +47,7 @@ def typestore(vision_msgs: Path, moveit_msgs: Path, object_recognition_msgs: Pat
 
 
 def examples():
-    """One filled message per ROS type of the protocol table, from blick.msg."""
+    """One filled message per ROS type of the protocol table, from xblick.msg."""
     h = msg.Header(msg.Time(12, 345), "cam")
     pose = msg.Pose(msg.Point(0.1, 0.2, 0.3), msg.Quaternion(0.0, 0.0, 0.0, 1.0))
     hyp = msg.ObjectHypothesisWithPose(msg.ObjectHypothesis("mug", 0.5))
@@ -83,8 +83,8 @@ def examples():
 
 def main():
     store = typestore(Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3]))
-    # durchblick_msgs: not ROS types; rcl_interfaces: a node's parameter services and events, not recorded streams
-    ros_types = sorted(t for t in protocol.TYPES if not t.startswith(("durchblick_msgs/", "rcl_interfaces/")))
+    # xblick_msgs: not ROS types; rcl_interfaces: a node's parameter services and events, not recorded streams
+    ros_types = sorted(t for t in protocol.TYPES if not t.startswith(("xblick_msgs/", "rcl_interfaces/")))
     filled = examples()
     missing = set(ros_types) - set(filled)
     if missing:

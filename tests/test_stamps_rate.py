@@ -10,14 +10,14 @@ import numpy as np
 import pytest
 from test_camera import pattern, sessions, wait_until  # noqa: F401 - sessions is a fixture
 
-from blick import camera as camera_module
-from blick import node, stamps
-from blick.camera import CameraPublisher, ImageSubscriber, MaxRate
-from blick.detections import DetectionPublisher
-from blick.diagnostics import DiagnosticsPublisher
-from blick.msg import (CameraInfo, DiagnosticArray, Detection2DArray, Header, ShmImage, Time)
-from blick.points import XYZRGB, PointCloudPublisher, PointCloudSubscriber, points_dtype
-from blick.rgbd import CameraSpec, RGBDInputs
+from xblick import camera as camera_module
+from xblick import node, stamps
+from xblick.camera import CameraPublisher, ImageSubscriber, MaxRate
+from xblick.detections import DetectionPublisher
+from xblick.diagnostics import DiagnosticsPublisher
+from xblick.msg import (CameraInfo, DiagnosticArray, Detection2DArray, Header, ShmImage, Time)
+from xblick.points import XYZRGB, PointCloudPublisher, PointCloudSubscriber, points_dtype
+from xblick.rgbd import CameraSpec, RGBDInputs
 
 BASE = "robot/x/color"
 MS = 1_000_000
@@ -239,7 +239,7 @@ def test_reports_count_the_skips(sessions):  # noqa: F811
     time.sleep(0.2)
     skipped = sum(s.skipped_max_hz for s in node._subscriptions(inputs))
     assert skipped >= 20
-    report = node.Reporter(a, "robot/x", "node", "durchblick-node", every=0.0)
+    report = node.Reporter(a, "robot/x", "node", "xblick-node", every=0.0)
     report.watch(inputs)
     got = []
     sub = b.declare_subscriber("robot/x/diagnostics", lambda s: got.append(DiagnosticArray.deserialize(
@@ -274,9 +274,9 @@ def test_node_arguments(capsys):
     assert (node.rate_text(30.0), node.rate_text(2.5), node.rate_text(None)) == ("max 30 Hz", "max 2.5 Hz",
                                                                                "every frame")
     capsys.readouterr()
-    node.start("durchblick-test", max_hz=30.0)
-    node.start("durchblick-test", max_hz=None)
-    assert capsys.readouterr().out.splitlines()[-2:] == ["durchblick-test: max 30 Hz", "durchblick-test: every frame"]
+    node.start("xblick-test", max_hz=30.0)
+    node.start("xblick-test", max_hz=None)
+    assert capsys.readouterr().out.splitlines()[-2:] == ["xblick-test: max 30 Hz", "xblick-test: every frame"]
     with pytest.raises(TypeError, match="to watch"):
         node._subscriptions(object())
 
@@ -287,9 +287,9 @@ def test_reports_say_the_rate(sessions):  # noqa: F811
     got = []
     sub = b.declare_subscriber("robot/x/diagnostics", lambda s: got.append(DiagnosticArray.deserialize(
         s.payload.to_bytes()).status[0]))
-    given = node.Reporter(a, "robot/x", "given", "durchblick-given", every=0.0, max_hz=None)
+    given = node.Reporter(a, "robot/x", "given", "xblick-given", every=0.0, max_hz=None)
     limited = ImageSubscriber(a, BASE, transport="shm", max_hz=20)
-    watching = node.Reporter(a, "robot/x", "watching", "durchblick-watching", every=0.0)
+    watching = node.Reporter(a, "robot/x", "watching", "xblick-watching", every=0.0)
     watching.watch(limited)
     time.sleep(0.3)
     given.publish(*node.state("1 frames/s"), {})

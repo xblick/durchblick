@@ -1,4 +1,4 @@
-#include "durchblick/parameters.hpp"
+#include "xblick/parameters.hpp"
 
 #include <algorithm>
 #include <charconv>
@@ -10,11 +10,11 @@
 #include <set>
 #include <sstream>
 
-#include "durchblick/camera.hpp"
-#include "durchblick/protocol.hpp"
+#include "xblick/camera.hpp"
+#include "xblick/protocol.hpp"
 #include "json.hpp"
 
-namespace durchblick
+namespace xblick
 {
     namespace p = protocol;
 
@@ -1333,4 +1333,4 @@ namespace durchblick
         return SetParametersAtomicallyResponse::deserialize(
             call(std::string(p::kSetParametersAtomically), ParametersRequest{parameters}.serialize()));
     }
-}  // namespace durchblick
+}  // namespace xblick

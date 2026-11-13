@@ -438,14 +438,6 @@ wheels = [
 ]
 
 [[package]]
-name = "blick-relay"
-version = "0.3.1"
-source = { registry = "https://pypi.org/simple" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/87/62/e675f347736a186ea3af936f8ac19d35a63b29cd80384b8595e3b1a15eb8/blick_relay-0.3.1-py3-none-manylinux_2_28_x86_64.whl", hash = "sha256:7aab2f6925cde960b17dfd5f43748e0fd8ef042a5ac213b57002f11799a3dea2", size = 7551169, upload-time = "2026-11-13T10:33:04.876Z" },
-]
-
-[[package]]
 name = "colorama"
 version = "0.4.6"
 source = { registry = "https://pypi.org/simple" }
@@ -1437,9 +1429,6 @@ dependencies = [
 record = [
     { name = "mcap" },
 ]
-relay = [
-    { name = "blick-relay" },
-]
 rerun = [
     { name = "rerun-sdk" },
 ]
@@ -1460,7 +1449,6 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "av", marker = "extra == 'video'", specifier = ">=14" },
-    { name = "blick-relay", marker = "extra == 'relay'", specifier = ">=0.3.1,<0.4" },
     { name = "eclipse-zenoh", specifier = ">=1.10,<2" },
     { name = "mcap", marker = "extra == 'record'", specifier = ">=1.6,<2" },
     { name = "numpy", specifier = ">=1.24" },
@@ -1468,7 +1456,7 @@ requires-dist = [
     { name = "rerun-sdk", marker = "extra == 'rerun'", specifier = ">=0.39,<0.40" },
     { name = "textual", specifier = ">=8.2,<9" },
 ]
-provides-extras = ["rerun", "record", "video", "relay"]
+provides-extras = ["rerun", "record", "video"]
 
 [package.metadata.requires-dev]
 dev = [

@@ -9,13 +9,13 @@ import numpy as np
 import pytest
 from test_camera import pattern, sessions, wait_until  # noqa: F401 - sessions is a fixture
 
-from blick import recording, topics
-from blick.camera import CameraPublisher, CountedPublisher, TransformPublisher, cdr_encoding
-from blick.msg import (CameraInfo, Clock, Header, JointState, TFMessage, Time, Transform,
-                            TransformStamped, Vector3)
-from blick.robot import RobotStatePublisher
-from blick.session import open_session, replies
-from blick.sim import Rate, SimPublisher
+from xblick import recording, topics
+from xblick.camera import CameraPublisher, CountedPublisher, TransformPublisher, cdr_encoding
+from xblick.msg import (CameraInfo, Clock, Header, JointState, TFMessage, Time, Transform,
+                        TransformStamped, Vector3)
+from xblick.robot import RobotStatePublisher
+from xblick.session import open_session, replies
+from xblick.sim import Rate, SimPublisher
 
 mcap_reader = pytest.importorskip("mcap.reader")  # the extra xblick[record]
 
@@ -153,7 +153,7 @@ def test_blocking_episode_in_process(tmp_path):
     assert [t for t, _, _ in by_key["sim/tf"]] == episode.frames
     assert json.loads(by_key["sim/events"][0][2])["phase"] == "reach"
     channels = {c.topic: c for c in summary.channels.values()}
-    assert json.loads(channels[f"/{CAMERA}/color/image_raw/compressed"].metadata["durchblick_info"])["blocking"]
+    assert json.loads(channels[f"/{CAMERA}/color/image_raw/compressed"].metadata["xblick_info"])["blocking"]
     check = metadata[recording.METADATA]
     assert json.loads(check["ok"]) is True and json.loads(check["keys"]) == episode.keys
     assert check["log_time"] == "header"
@@ -343,7 +343,7 @@ def test_handshake_and_count_check_over_zenoh(sessions, tmp_path):  # noqa: F811
 
 
 def test_discovery_records_the_simulations_topics(sessions, tmp_path):  # noqa: F811
-    """Without keys (blick record), the simulation's world and commands are among the patterns."""
+    """Without keys (xblick record), the simulation's world and commands are among the patterns."""
     a, b = sessions
     sim = SimPublisher(a, ROBOT)
     recorder = recording.Recorder(b, tmp_path, name="all", split=0, look_every=0.5)
@@ -470,10 +470,10 @@ def test_step_over_zenoh(episode_file, sessions):  # noqa: F811
 
 
 def test_command_line_records_blockingly(tmp_path, capsys):
-    """blick recorder record --key ... --blocking and stop: the node's ready and its checked counts printed."""
+    """xblick recorder record --key ... --blocking and stop: the node's ready and its checked counts printed."""
     from test_points import free_port
 
-    from blick import cli
+    from xblick import cli
 
     port = free_port()
     a = open_session(listen=[f"127.0.0.1:{port}"])
@@ -513,7 +513,7 @@ def test_a_sample_without_stamp_fails_a_header_recording(tmp_path):
 def test_a_blocking_publisher_found_after_ready(tmp_path):
     """A wildcard key's blocking publisher that appears during the recording (a force-torque sensor's first
     measurement): found within a second, blocked for and checked from then on."""
-    from blick.msg import WrenchStamped
+    from xblick.msg import WrenchStamped
 
     session = open_session(local_router=False)
     sim = SimPublisher(session, ROBOT, blocking=True)

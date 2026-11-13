@@ -10,8 +10,8 @@
 #include <string>
 #include <vector>
 
-#include "durchblick/cuda_ring.hpp"
-#include "durchblick/ring.hpp"
+#include "xblick/cuda_ring.hpp"
+#include "xblick/ring.hpp"
 
 namespace
 {
@@ -67,7 +67,7 @@ namespace
             unsigned slot, slot2;
             unsigned long long seq, seq2;
             std::sscanf(to_reader.receive().c_str(), "%127s %u %llu %u %llu", name, &slot, &seq, &slot2, &seq2);
-            durchblick::HostRingReader reader(name);
+            xblick::HostRingReader reader(name);
             std::vector<unsigned char> out(n);
             expect(reader.read(slot, seq, out.data(), out.size()), "read the first frame");
             expect(out == frame(n, 7), "content of the first frame");
@@ -80,7 +80,7 @@ namespace
             expect(not reader.acquire(slot, seq), "acquire refuses an overwritten frame");
             std::exit(failures);
         }
-        durchblick::HostRingWriter writer(3, n);
+        xblick::HostRingWriter writer(3, n);
         const auto a = writer.write(frame(n, 7).data(), n);
         const auto b = writer.write(frame(n, 8).data(), n);
         expect(a.slot != b.slot and a.seq == 2 and b.seq == 2, "slots and sequence numbers");
@@ -108,7 +108,7 @@ namespace
             unsigned slot;
             unsigned long long seq;
             std::sscanf(to_reader.receive().c_str(), "%127s %u %llu", endpoint, &slot, &seq);
-            durchblick::CudaRingReader reader(endpoint);
+            xblick::CudaRingReader reader(endpoint);
             auto buffer = reader.copy(slot, seq);
             expect(buffer != nullptr, "copy of the frame");
             if (buffer)
@@ -117,9 +117,9 @@ namespace
                 buffer->download(out.data());
                 expect(out == frame(n, 42), "content of the frame on the GPU");
             }
-            if (durchblick::cuda_device_count() >= 2)  // a reader on another GPU: the copy arrives there
+            if (xblick::cuda_device_count() >= 2)      // a reader on another GPU: the copy arrives there
             {
-                durchblick::CudaRingReader other(endpoint, 1);
+                xblick::CudaRingReader other(endpoint, 1);
                 expect(other.ring_device() == 0 and other.device() == 1, "devices of a reader on another GPU");
                 auto copied = other.copy(slot, seq);
                 expect(copied != nullptr and copied->device() == 1, "copy onto another GPU");
@@ -129,7 +129,7 @@ namespace
                     copied->download(out.data());
                     expect(out == frame(n, 42), "content of the frame on the other GPU");
                 }
-                durchblick::CudaRingReader same(endpoint, 0);
+                xblick::CudaRingReader same(endpoint, 0);
                 expect(same.device() == 0 and not same.direct(), "the ring's own device as the target");
             }
             to_writer.send("read");
@@ -137,7 +137,7 @@ namespace
             expect(reader.copy(slot, seq) == nullptr, "an overwritten frame is refused");
             std::exit(failures);
         }
-        if (durchblick::cuda_device_count() == 0)
+        if (xblick::cuda_device_count() == 0)
         {
             std::fprintf(stderr, "SKIPPED: no CUDA device\n");
             ::kill(child, SIGKILL);
@@ -145,8 +145,8 @@ namespace
             return 77;  // ctest's SKIP_RETURN_CODE
         }
         // made before the CUDA ring, so that it is destroyed after it: the CUDA ring unpins it
-        durchblick::HostRingWriter host(2, n);
-        durchblick::CudaRingWriter writer(0, 2, n);
+        xblick::HostRingWriter host(2, n);
+        xblick::CudaRingWriter writer(0, 2, n);
         const auto a = writer.write_host(frame(n, 42).data(), n);
         std::vector<unsigned char> back(n);
         writer.read_host(a.slot, back.data(), n);
@@ -158,7 +158,7 @@ namespace
         {
             writer.pin_host(host.slots().data(), host.slots().size());
         }
-        catch (const durchblick::RingError&)
+        catch (const xblick::RingError&)
         {
             refused = true;
         }
@@ -174,7 +174,7 @@ namespace
         {
             writer.loan();
         }
-        catch (const durchblick::RingError&)
+        catch (const xblick::RingError&)
         {
             twice = true;
         }
@@ -185,7 +185,7 @@ namespace
         {
             writer.commit(0, 0);
         }
-        catch (const durchblick::RingError&)
+        catch (const xblick::RingError&)
         {
             unloaned = true;
         }

@@ -5,26 +5,26 @@ import warnings
 import numpy as np
 from test_camera import pattern, sessions, wait_until  # noqa: F401 - sessions is a fixture
 
-from blick.camera import CameraPublisher, ImageSubscriber
-from blick.diagnostics import DiagnosticsPublisher
-from blick.logs import setup
-from blick.msg import CameraInfo, DiagnosticArray
-from blick.rgbd import CameraSpec, RGBDInputs
+from xblick.camera import CameraPublisher, ImageSubscriber
+from xblick.diagnostics import DiagnosticsPublisher
+from xblick.logs import setup
+from xblick.msg import CameraInfo, DiagnosticArray
+from xblick.rgbd import CameraSpec, RGBDInputs
 
 
 def test_setup_hides_what_says_nothing(capsys):
     try:
         with warnings.catch_warnings(record=True) as caught:  # the filters restored afterwards
             warnings.simplefilter("default")  # what a fresh interpreter does; setup's filters go before it
-            log = setup("durchblick-test", ignore=["xFormers is not available"])
+            log = setup("xblick-test", ignore=["xFormers is not available"])
             warnings.warn("old API", FutureWarning, stacklevel=1)
             warnings.warn("xFormers is not available (Block)", UserWarning, stacklevel=1)
             warnings.warn("the depth is empty", UserWarning, stacklevel=1)
         assert [str(w.message) for w in caught] == ["the depth is empty"]
         log.info("ready")
-        logging.getLogger("blick").info("robot/x/color: publisher found")
+        logging.getLogger("xblick").info("robot/x/color: publisher found")
         out = capsys.readouterr().out
-        assert "durchblick-test: ready\n" in out and "durchblick-test: robot/x/color: publisher found\n" in out
+        assert "xblick-test: ready\n" in out and "xblick-test: robot/x/color: publisher found\n" in out
     finally:
         logging.getLogger().handlers.clear()  # it wrote to the captured stdout
 

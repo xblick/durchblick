@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-#include "durchblick/parameters.hpp"
+#include "xblick/parameters.hpp"
 
 namespace
 {
@@ -51,7 +51,7 @@ namespace
 
 int main()
 {
-    using namespace durchblick;
+    using namespace xblick;
     ParameterEvent e;
     e.stamp = Time{12, 34};
     e.node = "/robot/camera/camera";
@@ -91,7 +91,7 @@ int main()
     expect(parameter_from_text(parameter_type::kString, "'a b'").string_value == "a b", "a quoted string");
     expect(parameter_from_text(parameter_type::kStringArray, "[cup, \"a, b\"]").string_array_value ==
                std::vector<std::string>{"cup", "a, b"}, "a string list");
-    const auto path = std::filesystem::temp_directory_path() / "durchblick_test_parameters.yaml";
+    const auto path = std::filesystem::temp_directory_path() / "xblick_test_parameters.yaml";
     std::ofstream(path) << "/**:\n  ros__parameters:\n    enabled: false  # every node\n"
                            "/robot/camera/camera:\n  ros__parameters:\n    exposure_ms: 12.5\n"
                            "    color:\n      gain: 7\n";

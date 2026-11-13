@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include "durchblick/rectify.hpp"
+#include "xblick/rectify.hpp"
 
 namespace
 {
@@ -23,9 +23,9 @@ namespace
         }
     }
 
-    durchblick::RectifyCamera ideal(std::uint32_t w, std::uint32_t h)
+    xblick::RectifyCamera ideal(std::uint32_t w, std::uint32_t h)
     {
-        durchblick::RectifyCamera c;
+        xblick::RectifyCamera c;
         c.width = w;
         c.height = h;
         c.k = {100, 0, 31.5, 0, 100, 23.5, 0, 0, 1};
@@ -35,11 +35,11 @@ namespace
         return c;
     }
 
-    bool throws(durchblick::RectifyCamera c)
+    bool throws(xblick::RectifyCamera c)
     {
         try
         {
-            durchblick::rectify_map(c);
+            xblick::rectify_map(c);
         }
         catch (const std::invalid_argument&)
         {
@@ -51,7 +51,7 @@ namespace
 
 int main()
 {
-    using namespace durchblick;
+    using namespace xblick;
     const std::uint32_t w = 64, h = 48;
 
     // an ideal camera: the identity; remap returns the image as it is, 8 and 16 bit

@@ -1,6 +1,6 @@
 # Recording and playback
 
-`blick record` writes what cameras and nodes publish into MCAP files. `blick play` publishes a recording
+`xblick record` writes what cameras and nodes publish into MCAP files. `xblick play` publishes a recording
 again on the same topics, with its pace and its stamps. Nodes work on a playback as they work on a robot, so a
 recording repeats a situation for a node, a test or a comparison.
 
@@ -10,22 +10,22 @@ Both commands need the extra `xblick[record]`. MCAP is the storage format of ros
 ## Quick start
 
 ```bash
-blick record --dir ~/recordings                  # records until Ctrl-C
-blick play ~/recordings/recorder_<time>.mcap --loop
-blick play ~/recordings/recorder_<time>.mcap --prefix replay    # beside the live streams
+xblick record --dir ~/recordings                 # records until Ctrl-C
+xblick play ~/recordings/recorder_<time>.mcap --loop
+xblick play ~/recordings/recorder_<time>.mcap --prefix replay   # beside the live streams
 ```
 
 Record and play are one node. A running node accepts commands from anywhere:
 
 ```bash
-blick recorder stop                              # also: record, status
-blick recorder play recorder_<time>.mcap --loop --cuda-device 0
-blick recorder pause                             # also: resume
+xblick recorder stop                             # also: record, status
+xblick recorder play recorder_<time>.mcap --loop --cuda-device 0
+xblick recorder pause                            # also: resume
 ```
 
 ## What the recorder records
 
-The recorder finds streams in the same way as `blick rerun`, and it looks again every 5 s.
+The recorder finds streams in the same way as `xblick rerun`, and it looks again every 5 s.
 
 | Data | Form in the file |
 | --- | --- |
@@ -57,15 +57,15 @@ The node has the name `recorder` by default (`--name`).
 
 | Key | Role |
 | --- | --- |
-| `durchblick/<name>/control` | accepts the commands `record`, `stop`, `play`, `pause`, `resume` and `step` |
-| `durchblick/<name>/status` | publishes the state every second and answers queries. States: idle, starting, recording, playing, paused. |
+| `xblick/<name>/control` | accepts the commands `record`, `stop`, `play`, `pause`, `resume` and `step` |
+| `xblick/<name>/status` | publishes the state every second and answers queries. States: idle, starting, recording, playing, paused. |
 
 `play` is a JSON command such as `{"command": "play", "files": [...]}`. The files are relative to `--dir`.
 Optional fields are `rate`, `loop`, `prefix`, `keys` and `cuda_device`.
 
 The control key is also a queryable. A command sent as a query receives its answer once it took effect: `record`
 answers "ready", and `stop` answers with the counts and the check. A refused command answers with the reason.
-`blick recorder <command>` and `recording.request(...)` in Python use this.
+`xblick recorder <command>` and `recording.request(...)` in Python use this.
 
 The node does not record while it plays, because it would record its own playback. It refuses such a command and
 states the reason in its status. `--paused` starts the node idle, so that it waits for a command.
@@ -76,7 +76,7 @@ By default the recorder records what it finds. With `--key` (or `keys` in a comm
 expressions and nothing else.
 
 ```bash
-blick recorder record --key 'sim/*' --key robot/joint_states --blocking --log-time header --file ep.mcap
+xblick recorder record --key 'sim/*' --key robot/joint_states --blocking --log-time header --file ep.mcap
 ```
 
 The recorder looks for the publishers of the keys and answers "ready" once it is subscribed to all of them. It
@@ -90,7 +90,7 @@ waits up to `ready_timeout` (2 s) while a literal key has no publisher. The answ
 | `dropping` | the keys of publishers that do not block |
 
 `--file` names the file. The recorder never overwrites a file, and it does not split this file. The metadata
-record `durchblick_recording` in the file keeps the keys and the counts.
+record `xblick_recording` in the file keeps the keys and the counts.
 
 ## Log time
 
@@ -169,8 +169,8 @@ A `step` command accepts `frames` (default 1), `until_ns` (all frames up to this
 next message on this key, and the rest of its frame). It answers once the messages went out.
 
 ```bash
-blick play ep.mcap --pace step
-blick recorder step                 # or: --frames N, --key KEY
+xblick play ep.mcap --pace step
+xblick recorder step                # or: --frames N, --key KEY
 ```
 
 With `step` and `clock`, every played key blocks, so that a reader receives every frame. In Python, `Player.step`
@@ -178,7 +178,7 @@ does the same.
 
 ### Parameters of a playback
 
-The play node also offers its controls as [parameters](../reference/parameters.md) of the node `durchblick/<name>`.
+The play node also offers its controls as [parameters](../reference/parameters.md) of the node `xblick/<name>`.
 
 | Parameter | Meaning |
 | --- | --- |
@@ -192,12 +192,12 @@ The terminal interface shows them as fields in its Parameters tab. The [video gu
 
 Rerun 0.39 opens the files directly, or converts them with `rerun mcap convert`. It shows images, `camera_info` as
 pinhole cameras, TF, and joint states as plots. It imports detections, odometry and diagnostics without drawing
-them, and it does not import bodies. To see everything as live, run `blick play` together with
-`blick rerun`.
+them, and it does not import bodies. To see everything as live, run `xblick play` together with
+`xblick rerun`.
 
 ## Videos
 
-`blick play` also plays video files and image sequences as camera streams. See the [video guide](video.md).
+`xblick play` also plays video files and image sequences as camera streams. See the [video guide](video.md).
 
 ## How a simulation records
 
@@ -211,24 +211,24 @@ An offline batch records each episode in its own process with `recording.Recordi
 that needs no router and reaches nobody.
 
 ```python
-import blick
-from blick import recording, topics
-from blick.sim import SimPublisher
+import xblick
+from xblick import recording, topics
+from xblick.sim import SimPublisher
 
-session = blick.open_session(local_router=False)       # private: needs no zenohd
+session = xblick.open_session(local_router=False)      # private: needs no zenohd
 sim = SimPublisher(session, "robot", blocking=True)        # robot state, world, commands, events
-head = blick.CameraPublisher(session, "robot/camera/color", encoding="rgb8", frame_id="cam",
+head = xblick.CameraPublisher(session, "robot/camera/color", encoding="rgb8", frame_id="cam",
                                   camera_info=info, source="sim", blocking=True)
 keys = sim.keys + [topics.compressed(head.base), topics.camera_info(head.base)]
 for n, spec in enumerate(specs):
     with recording.Recording(session, f"episodes/{n:04d}.mcap", keys) as rec:   # blocking, log time = stamps
         for step in episode(spec):                           # 1 ms of simulated time each
-            stamp = blick.Time.from_ns(step.t_ns)
+            stamp = xblick.Time.from_ns(step.t_ns)
             sim.clock(step.t_ns)
-            sim.joint_states(blick.JointState(blick.Header(stamp), names, q, dq, tau))
-            sim.command_joints(blick.JointState(blick.Header(stamp), ["hand_left"], [closure]))
+            sim.joint_states(xblick.JointState(xblick.Header(stamp), names, q, dq, tau))
+            sim.command_joints(xblick.JointState(xblick.Header(stamp), ["hand_left"], [closure]))
             if step.camera_frame:                            # at the rate of the fastest camera
-                sim.bodies(blick.TFMessage(poses_of_all_bodies(stamp)))
+                sim.bodies(xblick.TFMessage(poses_of_all_bodies(stamp)))
                 head.publish(step.image, stamp_ns=step.t_ns)
             if step.phase_changed:
                 sim.event(step.t_ns, "phase", phase=step.phase)
@@ -240,7 +240,7 @@ for n, spec in enumerate(specs):
 ### With a recorder node
 
 A teleoperation or a policy evaluation uses a recorder node that runs elsewhere
-(`blick record --paused --dir ...`).
+(`xblick record --paused --dir ...`).
 
 ```python
 ready = recording.request(session, "recorder", "record", keys=keys, blocking=True, log_time="header",

@@ -3,10 +3,10 @@
 import numpy as np
 import pytest
 
-from blick.cdr import CdrError
-from blick.msg import (CameraInfo, Clock, CompressedImage, CudaPointCloud2, DiagnosticArray, DiagnosticStatus, Header,
-                            Image, Imu, KeyValue, PointCloud2, PointField, Quaternion, RegionOfInterest,
-                            ShmPointCloud2, TFMessage, Time, Transform, TransformStamped, Vector3)
+from xblick.cdr import CdrError
+from xblick.msg import (CameraInfo, Clock, CompressedImage, CudaPointCloud2, DiagnosticArray, DiagnosticStatus, Header,
+                        Image, Imu, KeyValue, PointCloud2, PointField, Quaternion, RegionOfInterest,
+                        ShmPointCloud2, TFMessage, Time, Transform, TransformStamped, Vector3)
 
 rosbags = pytest.importorskip("rosbags.typesys")
 STORE = rosbags.get_typestore(rosbags.Stores.ROS2_LYRICAL)
@@ -160,7 +160,7 @@ def test_clock_matches_rosbags():
 
 @pytest.mark.parametrize("labels", [("record", "value"), ("", "a much longer label"), ()])
 def test_float64_multi_array_matches_rosbags(labels):
-    from blick.msg import Float64MultiArray, MultiArrayDimension, MultiArrayLayout
+    from xblick.msg import Float64MultiArray, MultiArrayDimension, MultiArrayLayout
 
     sizes = [3, 2][:len(labels)]
     data = np.arange(np.prod(sizes) if sizes else 5, dtype=np.float64) * 0.5 - 1.0
@@ -202,10 +202,10 @@ def test_cpp_golden_bytes():
     import re
     from pathlib import Path
 
-    from blick.msg import (BoundingBox2D, BoundingBox3D, CameraInfo, Classification, CudaImage, Detection2D,
-                                Detection2DArray, Detection3D, Detection3DArray, Header, Image, JointState, ObjectHypothesis,
-                                ObjectHypothesisWithPose, Odometry, Point, Point2D, Pose, Pose2D, PoseWithCovariance,
-                                ShmImage, Time, Twist, TwistWithCovariance, Wrench, WrenchStamped)
+    from xblick.msg import (BoundingBox2D, BoundingBox3D, CameraInfo, Classification, CudaImage, Detection2D,
+                            Detection2DArray, Detection3D, Detection3DArray, Header, Image, JointState, ObjectHypothesis,
+                            ObjectHypothesisWithPose, Odometry, Point, Point2D, Pose, Pose2D, PoseWithCovariance,
+                            ShmImage, Time, Twist, TwistWithCovariance, Wrench, WrenchStamped)
 
     image = Image(header=Header(stamp=Time(sec=1, nanosec=500000000), frame_id="cam"), height=1, width=2,
                   encoding="rgb8", step=6, data=bytes([1, 2, 3, 4, 5, 6]))
@@ -214,9 +214,9 @@ def test_cpp_golden_bytes():
     info.binning_x = 1
     info.roi.do_rectify = True
     shm = ShmImage(header=Header(stamp=Time(sec=5, nanosec=6), frame_id="f"), height=2, width=3, encoding="16UC1",
-                   step=6, host="h", segment="/durchblick-x", slot=1, seq=2 ** 40)
+                   step=6, host="h", segment="/xblick-x", slot=1, seq=2 ** 40)
     cuda = CudaImage(header=Header(frame_id="g"), height=4, width=5, encoding="rgb8", step=15, host="h2",
-                     endpoint="durchblick-e", device_uuid="ab" * 16, slot=3, seq=8)
+                     endpoint="xblick-e", device_uuid="ab" * 16, slot=3, seq=8)
     tf = TFMessage(transforms=[TransformStamped(
         Header(Time(sec=9, nanosec=10), "depth"), "rgb",
         Transform(Vector3(-0.032, 0.002, 0.004), Quaternion(0.1, 0.0, 0.0, 0.995)))])
@@ -231,10 +231,10 @@ def test_cpp_golden_bytes():
     shm_cloud = ShmPointCloud2(header=Header(Time(17, 18), "d"), height=2, width=3,
                                fields=[PointField("x", 0, PointField.FLOAT32),
                                        PointField("i", 4, PointField.UINT16, 2)],
-                               point_step=8, row_step=24, is_dense=False, host="h", segment="/durchblick-y", slot=2,
+                               point_step=8, row_step=24, is_dense=False, host="h", segment="/xblick-y", slot=2,
                                seq=2 ** 33)
     cuda_cloud = CudaPointCloud2(header=Header(frame_id="e"), height=4, width=5, fields=xyzrgb[:3], point_step=16,
-                                 row_step=80, is_dense=True, host="h3", endpoint="durchblick-f", device_uuid="cd" * 16,
+                                 row_step=80, is_dense=True, host="h3", endpoint="xblick-f", device_uuid="cd" * 16,
                                  slot=1, seq=9)
     cov = np.zeros(36)
     cov[0], cov[35] = 0.01, 0.5
@@ -256,10 +256,10 @@ def test_cpp_golden_bytes():
     wrench = WrenchStamped(Header(Time(27, 28), "FT L"), Wrench(Vector3(1.5, -2.0, 9.81), Vector3(0.1, 0.2, -0.3)))
     actions = Classification(Header(Time(29, 30), "AzureKinectCamera"),
                              [ObjectHypothesis("Opening something", 0.625), ObjectHypothesis("", 0.125)])
-    from blick.msg import Float64MultiArray, MultiArrayDimension, MultiArrayLayout
+    from xblick.msg import Float64MultiArray, MultiArrayDimension, MultiArrayLayout
     records = Float64MultiArray(MultiArrayLayout([MultiArrayDimension("record", 2, 6), MultiArrayDimension("value", 3, 3)]),
                                 np.array([0.5, -1.0, 2.0, 1e-3, 0.0, 7.0]))
-    from blick.msg import MultiDOFJointState, RobotState
+    from xblick.msg import MultiDOFJointState, RobotState
     command = RobotState(JointState(Header(Time(31, 32), ""), ["left_shoulder_1", "LeftHandFingers"],
                                     np.array([0.1, 0.5])),
                          MultiDOFJointState(Header(Time(31, 32), "base_link"), ["left_tcp"],
@@ -276,12 +276,12 @@ def test_cpp_golden_bytes():
 
 # ------------------------------------------------------------------------------------------ rcl_interfaces
 
-from blick.msg import (DescribeParametersRequest, DescribeParametersResponse, FloatingPointRange,  # noqa: E402
-                            GetParametersRequest, GetParametersResponse, GetParameterTypesRequest,
-                            GetParameterTypesResponse, IntegerRange, ListParametersRequest, ListParametersResponse,
-                            Parameter, ParameterDescriptor, ParameterEvent, ParameterType, ParameterValue,
-                            SetParametersAtomicallyRequest, SetParametersAtomicallyResponse, SetParametersRequest,
-                            SetParametersResponse, SetParametersResult)
+from xblick.msg import (DescribeParametersRequest, DescribeParametersResponse, FloatingPointRange,  # noqa: E402
+                        GetParametersRequest, GetParametersResponse, GetParameterTypesRequest,
+                        GetParameterTypesResponse, IntegerRange, ListParametersRequest, ListParametersResponse,
+                        Parameter, ParameterDescriptor, ParameterEvent, ParameterType, ParameterValue,
+                        SetParametersAtomicallyRequest, SetParametersAtomicallyResponse, SetParametersRequest,
+                        SetParametersResponse, SetParametersResult)
 
 # rcl_interfaces/srv/*, as ROS 2 defines them (the typestore has the messages, not the services)
 SERVICES = {
@@ -404,7 +404,7 @@ def test_cpp_parameter_golden_bytes():
     import re
     from pathlib import Path
 
-    from blick.msg import Time
+    from xblick.msg import Time
 
     event = ParameterEvent(Time(12, 34), "/robot/camera/camera",
                            [Parameter("exposure_ms", ParameterValue.of(8.5)),

@@ -1,7 +1,7 @@
 """C++ and Python against each other, every transport in both directions: the C++ tools (cpp/tools) publish and
 receive the test patterns that pattern() and cloud_pattern() compute here.
 
-Needs the C++ build: DURCHBLICK_CPP_BUILD=<CMake build directory with durchblick-cpp-camera and durchblick-cpp-probe>
+Needs the C++ build: XBLICK_CPP_BUILD=<CMake build directory with xblick-cpp-camera and xblick-cpp-probe>
 (CI sets it; skipped without). The cuda cases need a GPU (CUDA_VISIBLE_DEVICES) and are skipped without one."""
 
 import json
@@ -14,14 +14,14 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from blick import _core, diagnostics, stamps, topics
-from blick.camera import CameraPublisher, ImageSubscriber, query_info
-from blick.msg import CameraInfo, CompressedImage, DiagnosticArray
-from blick.points import XYZRGB, PointCloudPublisher, PointCloudSubscriber, points_dtype
-from blick.session import open_session, replies
+from xblick import _core, diagnostics, stamps, topics
+from xblick.camera import CameraPublisher, ImageSubscriber, query_info
+from xblick.msg import CameraInfo, CompressedImage, DiagnosticArray
+from xblick.points import XYZRGB, PointCloudPublisher, PointCloudSubscriber, points_dtype
+from xblick.session import open_session, replies
 
-BUILD = os.environ.get("DURCHBLICK_CPP_BUILD")
-pytestmark = pytest.mark.skipif(not BUILD, reason="DURCHBLICK_CPP_BUILD (the C++ build directory) is not set")
+BUILD = os.environ.get("XBLICK_CPP_BUILD")
+pytestmark = pytest.mark.skipif(not BUILD, reason="XBLICK_CPP_BUILD (the C++ build directory) is not set")
 needs_cuda = pytest.mark.skipif(_core.cuda_device_count() == 0, reason="no CUDA device")
 W, H = 64, 48
 
@@ -62,7 +62,7 @@ def cpp_camera():
               diagnostics=False, params=False, extra=()):
         port = free_port()
         start.port = port
-        cmd = [tool("durchblick-cpp-camera"), "--listen", f"127.0.0.1:{port}", "--base", "t/cpp/color",
+        cmd = [tool("xblick-cpp-camera"), "--listen", f"127.0.0.1:{port}", "--base", "t/cpp/color",
                "--encoding", encoding, "--codec", codec, "--size", str(W), str(H), "--fps", "30", "--seconds", "60"]
         if cuda:
             cmd += ["--cuda-device", "0"] + (["--device-frames"] if device_frames else [])
@@ -214,12 +214,12 @@ def test_cpp_jpeg_frames_pass_through(cpp_camera):
     session = cpp_camera(jpeg_frames=True)
     received = compressed_messages(session, "t/cpp/color")
     message = wait_for(received)
-    assert b"durchblick-test-jpeg " in bytes(message.data) and message.format == "rgb8; jpeg compressed bgr8"
+    assert b"xblick-test-jpeg " in bytes(message.data) and message.format == "rgb8; jpeg compressed bgr8"
     frame = first_frame(ImageSubscriber(session, "t/cpp/color", "raw"))  # now somebody takes the pixels
     np.testing.assert_array_equal(frame.image, pattern("rgb8", frame.seq))
     received.clear()
     message = wait_for(received)
-    assert b"durchblick-test-jpeg " in bytes(message.data)
+    assert b"xblick-test-jpeg " in bytes(message.data)
     sub = ImageSubscriber(session, "t/cpp/color", "compressed")
     decoded = first_frame(sub)
     assert np.abs(decoded.image.astype(int) - pattern("rgb8", decoded.seq)).mean() < 4
@@ -232,7 +232,7 @@ def test_cpp_jpeg_frames_with_device_frames(cpp_camera):
     received = compressed_messages(session, "t/cpp/color")
     frame = first_frame(ImageSubscriber(session, "t/cpp/color", "cuda"))
     np.testing.assert_array_equal(frame.image.numpy(), pattern("rgb8", frame.seq))
-    assert b"durchblick-test-jpeg " in bytes(wait_for(received).data)
+    assert b"xblick-test-jpeg " in bytes(wait_for(received).data)
     session.close()
 
 
@@ -261,7 +261,7 @@ def test_cpp_diagnostics_name_their_session(cpp_camera):
 
 
 def probe(port: int, transport: str, frames: int = 3, *extra, timeout: float = 20) -> list[dict]:
-    proc = subprocess.Popen([tool("durchblick-cpp-probe"), "--connect", f"127.0.0.1:{port}", "--base", "t/py/color",
+    proc = subprocess.Popen([tool("xblick-cpp-probe"), "--connect", f"127.0.0.1:{port}", "--base", "t/py/color",
                              "--transport", transport, "--frames", str(frames), "--timeout", f"{timeout:g}", *extra],
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     return proc
@@ -478,7 +478,7 @@ def test_python_to_cpp_points_cuda():
 def test_cpp_parameters_from_python(cpp_camera):
     """The C++ camera's parameters (Parameters, --params) through Python's client: descriptors and values, checks in
     the same words, a writer's refusal, a write changing another parameter in the event, read-only."""
-    from blick.parameters import RESTART, ParameterClient, find_nodes
+    from xblick.parameters import RESTART, ParameterClient, find_nodes
 
     session = cpp_camera(params=True)
     end = time.monotonic() + 10
@@ -509,9 +509,9 @@ def test_cpp_parameters_from_python(cpp_camera):
 
 
 def test_python_parameters_from_cpp():
-    """Python's Parameters through the C++ client (durchblick-cpp-probe --params): the same descriptors, values and
+    """Python's Parameters through the C++ client (xblick-cpp-probe --params): the same descriptors, values and
     checks."""
-    from blick.parameters import Parameters
+    from xblick.parameters import Parameters
 
     port = free_port()
     session = open_session(listen=[f"127.0.0.1:{port}"])
@@ -521,7 +521,7 @@ def test_python_parameters_from_cpp():
     params.declare("labels", ["cup", "a, b"])
     try:
         def probe_params(*extra):
-            out = subprocess.run([tool("durchblick-cpp-probe"), "--connect", f"127.0.0.1:{port}", "--params",
+            out = subprocess.run([tool("xblick-cpp-probe"), "--connect", f"127.0.0.1:{port}", "--params",
                                   "t/py/boxer", *extra], capture_output=True, text=True, timeout=30, check=True)
             return [json.loads(line) for line in out.stdout.splitlines()]
 
@@ -542,7 +542,7 @@ def test_cpp_auto_refuses_a_remote_source_without_its_form(cpp_camera):
     """A publisher that offers only raw (as the Jetson's ecam24 node in raw mode), not on this host's rings: C++'s
     auto says so (ProtocolError) instead of waiting for compressed frames that never come, as Python does."""
     cpp_camera(extra=["--transports", "raw"])
-    proc = subprocess.run([tool("durchblick-cpp-probe"), "--connect", f"127.0.0.1:{cpp_camera.port}", "--base",
+    proc = subprocess.run([tool("xblick-cpp-probe"), "--connect", f"127.0.0.1:{cpp_camera.port}", "--base",
                            "t/cpp/color", "--transport", "auto", "--frames", "1", "--timeout", "10"],
                           capture_output=True, text=True, timeout=30)
     assert proc.returncode != 0 and "offers no compressed transport" in proc.stderr, (proc.returncode, proc.stderr)
@@ -553,7 +553,7 @@ def test_cpp_auto_moves_to_a_ring_that_appears_and_back(monkeypatch, lag):
     """The C++ subscriber keeps its transport up to date as the Python one does (test_camera.py): it reads a stream of
     another host as compressed, moves to the ring of a publisher that starts later on its own host (a relay), and back
     when that one stops; every frame once, also from a relay that republishes a frame ``lag`` frames late."""
-    from blick import _core
+    from xblick import _core
 
     port = free_port()
     proc = probe(port, "auto", 150, timeout=40)

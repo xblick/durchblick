@@ -6,13 +6,14 @@ guides, reference). Do not duplicate it here. Style rules for documentation: `do
 ## What this is
 
 Durchblick: camera streams and perception results between programs, over Zenoh, as ROS 2 message types (CDR),
-without ROS. C++20 core in `cpp/` (Python bindings `blick._core`), Python package `blick` in `src/blick/`
-(command `blick`). Each perception method is a node in its own repository (`durchblick-<name>`) that depends on this
+without ROS. C++20 core in `cpp/` (Python bindings `xblick._core`), Python package `xblick` in `src/xblick/`
+(command `xblick`). Each perception method is a node in its own repository (`xblick-<name>`) that depends on this
 package. Robot integrations live in repositories of their own. The core never depends on a robot framework.
 
-Names: the Python package and the command are `blick`. Everything else stays `durchblick`: the C++ namespace, include
-directory, CMake package and targets, C++ tools, `DURCHBLICK_*` variables, Zenoh keys, ring names and message types
-(`durchblick_msgs`). Never rename a wire or on-disk name.
+Names: every name in code, on the wire and on disk is `xblick` (since 0.5.0): Python package, distribution and
+command, C++ namespace, include directory, CMake package and targets, C++ programs, `XBLICK_*` variables, Zenoh keys,
+ring names, message types (`xblick_msgs`), directories. Only the prose name of the project is "Durchblick". A new
+name follows this rule. Renaming a wire or on-disk name breaks every older program: only with a minor version.
 
 ## Skills
 
@@ -21,10 +22,10 @@ one: `.agents/skills/README.md`.
 
 | Skill | For |
 | --- | --- |
-| `durchblick-build-node` | a new vision node, or making a node faster or leaner |
-| `durchblick-run-nodes` | several nodes for an experiment or a demo, on one or more GPUs and PCs |
-| `durchblick-benchmark-nodes` | throughput, latency, GPU load and memory of nodes and setups |
-| `durchblick-develop-tui` | the terminal interface (`blick`): tabs, dialogs, layout, its tests and screenshots |
+| `xblick-build-node` | a new vision node, or making a node faster or leaner |
+| `xblick-run-nodes` | several nodes for an experiment or a demo, on one or more GPUs and PCs |
+| `xblick-benchmark-nodes` | throughput, latency, GPU load and memory of nodes and setups |
+| `xblick-develop-tui` | the terminal interface (`xblick`): tabs, dialogs, layout, its tests and screenshots |
 
 - Before a task, look for a matching skill and follow it. Read its `SKILL.md` in full.
 - After a complex task that is likely to recur and can be abstracted (no batch names, dates or results of one
@@ -52,9 +53,9 @@ Reference check: `tools/check_references.sh` (no internal or robot-framework nam
 
 - Fail fast. A wrong configuration, a missing input or a protocol mismatch raises with a message that says what to
   do. Add no default that hides a misconfiguration.
-- Protocol: a change of a Durchblick message's fields raises its version in `cpp/include/durchblick/protocol.hpp`.
+- Protocol: a change of a Durchblick message's fields raises its version in `cpp/include/xblick/protocol.hpp`.
   A ring layout change raises `kVersion` in `ring.hpp`. Either one also raises the package's minor version.
-- Version: only in `CMakeLists.txt` (`project(durchblick VERSION x.y.z)`). Every user-visible change: patch bump,
+- Version: only in `CMakeLists.txt` (`project(xblick VERSION x.y.z)`). Every user-visible change: patch bump,
   entry in `CHANGELOG.md`, status line in `README.md`. Release: tag `vx.y.z`, CI builds the wheels.
 - Python and C++ stay equivalent. A feature of the camera, points or detections API exists in both.
   `tests/test_cpp_interop.py` checks it.
@@ -70,12 +71,12 @@ Reference check: `tools/check_references.sh` (no internal or robot-framework nam
 | --- | --- |
 | Programs find nothing | A peer session with only `--connect` does not listen, and the router does not route between such sessions. Give no endpoints, or add `--listen tcp/127.0.0.1:0`, or use `--zenoh-mode client`. |
 | A query finds nothing right after start | A new session needs time to learn of queryables. Queries repeat every `FIND_PERIOD`. Do not query once. |
-| A loop over query replies hangs for minutes | Zenoh does not always finalize a query at its timeout. Never `for r in session.get(...)` or `liveliness().get`. Use `session.replies(session, selector, timeout, ...)` (C++ `durchblick::replies`). |
+| A loop over query replies hangs for minutes | Zenoh does not always finalize a query at its timeout. Never `for r in session.get(...)` or `liveliness().get`. Use `session.replies(session, selector, timeout, ...)` (C++ `xblick::replies`). |
 | `Session.close()` never returns | Happens after a query Zenoh did not finalize. Open sessions with `open_session` or `open_from_args` (close waits at most 5 s). Wrap an own `zenoh.open` in `session.Session(...)`. |
 | A subscriber gets JPEG on the publisher's host | `ImageSubscriber` defaults to `transport="compressed"`. Pass `transport="auto"`. |
 | A test cannot open its own CUDA ring | The creating process cannot open a CUDA ring. Read it from a `spawn`ed child process. |
 | Device frames arrive wrong or late | `publish()` of a device array needs `stream=` (for PyTorch `torch.cuda.current_stream()`). Without it the publisher waits for all GPU work of the process. |
-| Nodes misbehave on a looped playback | `blick play --loop` moves all stamps forward on each pass. Nodes rely on stamps that only grow. |
+| Nodes misbehave on a looped playback | `xblick play --loop` moves all stamps forward on each pass. Nodes rely on stamps that only grow. |
 | A test or harness never ends | Zenoh threads keep a process alive. Close sessions. Run long checks in the background with `timeout`. Background processes ignore SIGINT: stop them by PID with SIGTERM. Never kill by name pattern. |
 | Large writes fail | NFS. Build and write large outputs on a local disk. |
 
@@ -83,17 +84,17 @@ Reference check: `tools/check_references.sh` (no internal or robot-framework nam
 
 | Path | Content |
 | --- | --- |
-| `cpp/include/durchblick/protocol.hpp` | wire protocol: topics, message types, versions |
-| `cpp/include/durchblick/ring.hpp`, `cuda_ring.hpp` | host ring and CUDA ring |
-| `cpp/include/durchblick/camera.hpp`, `points.hpp`, `msg.hpp`, `parameters.hpp` | C++ API |
-| `cpp/include/durchblick/rectify.hpp`, `src/blick/rectify.py` | rectification map from a CameraInfo (R, P), CPU remap; same in C++ and Python |
-| `cpp/include/durchblick/pairing.hpp` | `partner_of`: partner sample of a primary frame by stamp; Python's `PartnerHistory` calls it via `_core` |
-| `cpp/points/` | point cloud node `durchblick-points` (CUDA) |
-| `cpp/python/bindings.cpp` | `blick._core` |
-| `src/blick/camera.py`, `points.py`, `detections.py`, `session.py` | Python API: streams, sessions |
-| `src/blick/node.py`, `history.py`, `tensors.py`, `rgbd.py`, `parameters.py` | helpers for nodes |
-| `src/blick/cli.py`, `tui.py`, `tui_graph.py`, `rerun_bridge.py`, `recording.py`, `video.py` | tools |
-| `src/blick/robot.py`, `sim.py`, `controller.py`, `poses.py`, `mps.py` | robot state, simulation, controller link, poses, MPS |
+| `cpp/include/xblick/protocol.hpp` | wire protocol: topics, message types, versions |
+| `cpp/include/xblick/ring.hpp`, `cuda_ring.hpp` | host ring and CUDA ring |
+| `cpp/include/xblick/camera.hpp`, `points.hpp`, `msg.hpp`, `parameters.hpp` | C++ API |
+| `cpp/include/xblick/rectify.hpp`, `src/xblick/rectify.py` | rectification map from a CameraInfo (R, P), CPU remap; same in C++ and Python |
+| `cpp/include/xblick/pairing.hpp` | `partner_of`: partner sample of a primary frame by stamp; Python's `PartnerHistory` calls it via `_core` |
+| `cpp/points/` | point cloud node `xblick-points` (CUDA) |
+| `cpp/python/bindings.cpp` | `xblick._core` |
+| `src/xblick/camera.py`, `points.py`, `detections.py`, `session.py` | Python API: streams, sessions |
+| `src/xblick/node.py`, `history.py`, `tensors.py`, `rgbd.py`, `parameters.py` | helpers for nodes |
+| `src/xblick/cli.py`, `tui.py`, `tui_graph.py`, `rerun_bridge.py`, `recording.py`, `video.py` | tools |
+| `src/xblick/robot.py`, `sim.py`, `controller.py`, `poses.py`, `mps.py` | robot state, simulation, controller link, poses, MPS |
 | `tests/`, `cpp/tests/` | Python and C++ tests |
 | `tools/` | `check_references.sh` (+ `reference_allowlist.txt`), `install_zenoh.sh`, `gen_msgdefs.py`, `setup_python.sh`, `tui_screenshots.py` |
 | `.github/workflows/ci.yml` | CI |
@@ -107,16 +108,16 @@ Reference check: `tools/check_references.sh` (no internal or robot-framework nam
   `<camera>/diagnostics`.
 - Transports: `auto`, `compressed`, `raw`, `shm`, `cuda`. Nodes and the CLI use `auto`.
 - Image ring: 32 slots. Point cloud ring: 4 slots.
-- Test without a camera: `blick test-camera` publishes `robot/test_camera/color` (640 x 480, 15 Hz).
-  `blick play <file.mcap> --loop` replays a recording.
-- Inspect: `blick list`, `blick hz <stream>`, `blick diagnostics <namespace>`, `blick rerun`, `blick`
+- Test without a camera: `xblick test-camera` publishes `robot/test_camera/color` (640 x 480, 15 Hz).
+  `xblick play <file.mcap> --loop` replays a recording.
+- Inspect: `xblick list`, `xblick hz <stream>`, `xblick diagnostics <namespace>`, `xblick rerun`, `xblick`
   (terminal interface).
 - Two programs without a router (tests): one with `--listen tcp/127.0.0.1:<port>`, the other with
   `--connect tcp/127.0.0.1:<port>`.
 
 ## Node repositories
 
-Same pattern in each: a uv project pinned to a version of `blick` (`pyproject.toml`, `uv.lock`), `tools/setup.sh`
-for `.venv` and checkpoints, a console script `durchblick-<name>`, outputs below `<camera>/<node>/`, diagnostics on
+Same pattern in each: a uv project pinned to a version of `xblick` (`pyproject.toml`, `uv.lock`), `tools/setup.sh`
+for `.venv` and checkpoints, a console script `xblick-<name>`, outputs below `<camera>/<node>/`, diagnostics on
 `<camera>/diagnostics`, its own `AGENTS.md`. A change here that nodes need: release it, then raise their pin and
 run `uv lock`.

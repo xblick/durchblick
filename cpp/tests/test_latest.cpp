@@ -13,8 +13,8 @@
 
 namespace
 {
-    using durchblick::detail::Item;
-    using durchblick::detail::Latest;
+    using xblick::detail::Item;
+    using xblick::detail::Latest;
 
     int failures = 0;
 
@@ -46,7 +46,7 @@ namespace
         std::memcpy(item->payload.data() + 8, &nanosec, 4);
         latest.offer(std::move(item), route);
         const auto taken = latest.take(true, std::nullopt);
-        return taken ? durchblick::detail::stamp_of(*taken) : -1;
+        return taken ? xblick::detail::stamp_of(*taken) : -1;
     }
 
     // Offers `stamps` by `route` and appends those handed out to `out`.
@@ -138,7 +138,7 @@ namespace
     void restart_boundary()
     {
         constexpr std::int64_t window =
-            std::chrono::duration_cast<std::chrono::nanoseconds>(durchblick::detail::kHandover).count();
+            std::chrono::duration_cast<std::chrono::nanoseconds>(xblick::detail::kHandover).count();
         for (const std::int64_t behind : {-1, 0, 1})
         {
             Latest latest;
@@ -173,7 +173,7 @@ namespace
         offer_all(latest, 1, frames(1, 10), out);
         latest.move(2);
         expect(offer(latest, 2, frame(5)) < 0, "window: the ring's lagging first sample left out");
-        std::this_thread::sleep_for(durchblick::detail::kHandover + std::chrono::milliseconds(100));
+        std::this_thread::sleep_for(xblick::detail::kHandover + std::chrono::milliseconds(100));
         expect(offer(latest, 2, frame(6)) == frame(6), "window: after kHandover an older frame is handed out");
     }
 

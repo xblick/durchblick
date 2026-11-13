@@ -1,6 +1,6 @@
 """The controller manager's and the torque step's messages (msg.py) against rosbags, an independent ROS 2
 implementation: controller_manager_msgs as ros2_control Jazzy defines them (the definitions below are its .msg and .srv
-files, fetched from github.com/ros-controls/ros2_control, branch jazzy, on 2026-11-09), Durchblick's durchblick_msgs as
+files, fetched from github.com/ros-controls/ros2_control, branch jazzy, on 2026-11-09), Durchblick's xblick_msgs as
 protocol.hpp describes them; and the C++ messages (cpp/tests/test_messages.cpp) against the same bytes."""
 
 import re
@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from blick.msg import (
+from xblick.msg import (
     ChainConnection,
     ControllerState,
     CreateControllerRequest,
@@ -62,14 +62,14 @@ builtin_interfaces/Duration timeout
     "controller_manager_msgs/srv/SwitchController_Response": "bool ok\nstring message\n",
     "controller_manager_msgs/srv/UnloadController_Request": "string name\n",
     "controller_manager_msgs/srv/UnloadController_Response": "bool ok\n",
-    "durchblick_msgs/srv/TorqueStep_Request": "string joint\nfloat64 torque\nfloat64 duration\n",
-    "durchblick_msgs/srv/TorqueStep_Response": "bool ok\nstring message\n",
-    "durchblick_msgs/srv/CreateController_Request": "string name\nstring type\nstring config\n",
-    "durchblick_msgs/srv/CreateController_Response": "bool ok\nstring message\n",
-    "durchblick_msgs/srv/GetControllerConfig_Request": "string name\n",
-    "durchblick_msgs/srv/GetControllerConfig_Response": "bool ok\nstring message\nstring config\n",
-    "durchblick_msgs/srv/GetConfigFile_Request": "string type\nstring name\n",
-    "durchblick_msgs/srv/GetConfigFile_Response": "bool ok\nstring message\nstring config\n",
+    "xblick_msgs/srv/TorqueStep_Request": "string joint\nfloat64 torque\nfloat64 duration\n",
+    "xblick_msgs/srv/TorqueStep_Response": "bool ok\nstring message\n",
+    "xblick_msgs/srv/CreateController_Request": "string name\nstring type\nstring config\n",
+    "xblick_msgs/srv/CreateController_Response": "bool ok\nstring message\n",
+    "xblick_msgs/srv/GetControllerConfig_Request": "string name\n",
+    "xblick_msgs/srv/GetControllerConfig_Response": "bool ok\nstring message\nstring config\n",
+    "xblick_msgs/srv/GetConfigFile_Request": "string type\nstring name\n",
+    "xblick_msgs/srv/GetConfigFile_Response": "bool ok\nstring message\nstring config\n",
 }
 
 
@@ -137,22 +137,22 @@ def cases(store):
          "controller_manager_msgs/srv/UnloadController_Request"),
         (UnloadControllerResponse(True), T["controller_manager_msgs/srv/UnloadController_Response"](ok=True),
          "controller_manager_msgs/srv/UnloadController_Response"),
-        (TorqueStepRequest("left_elbow", 1.5, 0.25), T["durchblick_msgs/srv/TorqueStep_Request"](
-            joint="left_elbow", torque=1.5, duration=0.25), "durchblick_msgs/srv/TorqueStep_Request"),
-        (TorqueStepResponse(False, "disabled"), T["durchblick_msgs/srv/TorqueStep_Response"](ok=False, message="disabled"),
-         "durchblick_msgs/srv/TorqueStep_Response"),
-        (CreateControllerRequest("arms", "Impedance", '{"a": 1.5}'), T["durchblick_msgs/srv/CreateController_Request"](
-            name="arms", type="Impedance", config='{"a": 1.5}'), "durchblick_msgs/srv/CreateController_Request"),
-        (CreateControllerResponse(True, ""), T["durchblick_msgs/srv/CreateController_Response"](ok=True, message=""),
-         "durchblick_msgs/srv/CreateController_Response"),
-        (GetControllerConfigRequest("arms"), T["durchblick_msgs/srv/GetControllerConfig_Request"](name="arms"),
-         "durchblick_msgs/srv/GetControllerConfig_Request"),
-        (GetControllerConfigResponse(True, "", "{}"), T["durchblick_msgs/srv/GetControllerConfig_Response"](
-            ok=True, message="", config="{}"), "durchblick_msgs/srv/GetControllerConfig_Response"),
-        (GetConfigFileRequest("Impedance", "robot"), T["durchblick_msgs/srv/GetConfigFile_Request"](
-            type="Impedance", name="robot"), "durchblick_msgs/srv/GetConfigFile_Request"),
-        (GetConfigFileResponse(False, "no file", ""), T["durchblick_msgs/srv/GetConfigFile_Response"](
-            ok=False, message="no file", config=""), "durchblick_msgs/srv/GetConfigFile_Response"),
+        (TorqueStepRequest("left_elbow", 1.5, 0.25), T["xblick_msgs/srv/TorqueStep_Request"](
+            joint="left_elbow", torque=1.5, duration=0.25), "xblick_msgs/srv/TorqueStep_Request"),
+        (TorqueStepResponse(False, "disabled"), T["xblick_msgs/srv/TorqueStep_Response"](ok=False, message="disabled"),
+         "xblick_msgs/srv/TorqueStep_Response"),
+        (CreateControllerRequest("arms", "Impedance", '{"a": 1.5}'), T["xblick_msgs/srv/CreateController_Request"](
+            name="arms", type="Impedance", config='{"a": 1.5}'), "xblick_msgs/srv/CreateController_Request"),
+        (CreateControllerResponse(True, ""), T["xblick_msgs/srv/CreateController_Response"](ok=True, message=""),
+         "xblick_msgs/srv/CreateController_Response"),
+        (GetControllerConfigRequest("arms"), T["xblick_msgs/srv/GetControllerConfig_Request"](name="arms"),
+         "xblick_msgs/srv/GetControllerConfig_Request"),
+        (GetControllerConfigResponse(True, "", "{}"), T["xblick_msgs/srv/GetControllerConfig_Response"](
+            ok=True, message="", config="{}"), "xblick_msgs/srv/GetControllerConfig_Response"),
+        (GetConfigFileRequest("Impedance", "robot"), T["xblick_msgs/srv/GetConfigFile_Request"](
+            type="Impedance", name="robot"), "xblick_msgs/srv/GetConfigFile_Request"),
+        (GetConfigFileResponse(False, "no file", ""), T["xblick_msgs/srv/GetConfigFile_Response"](
+            ok=False, message="no file", config=""), "xblick_msgs/srv/GetConfigFile_Response"),
     ]
 
 
@@ -171,13 +171,13 @@ def test_types_are_named_as_in_protocol():
 def cases_types():
     return [(ListControllersRequest(), None, "controller_manager_msgs/srv/ListControllers_Request"),
             (SwitchControllerRequest(), None, "controller_manager_msgs/srv/SwitchController_Request"),
-            (TorqueStepRequest(), None, "durchblick_msgs/srv/TorqueStep_Request"),
-            (CreateControllerRequest(), None, "durchblick_msgs/srv/CreateController_Request")]
+            (TorqueStepRequest(), None, "xblick_msgs/srv/TorqueStep_Request"),
+            (CreateControllerRequest(), None, "xblick_msgs/srv/CreateController_Request")]
 
 
-def test_durchblick_types_are_versioned():
-    assert CreateControllerRequest.SCHEMA == "durchblick_msgs/srv/CreateController_Request@1"
-    assert TorqueStepRequest.SCHEMA == "durchblick_msgs/srv/TorqueStep_Request@1"
+def test_xblick_types_are_versioned():
+    assert CreateControllerRequest.SCHEMA == "xblick_msgs/srv/CreateController_Request@1"
+    assert TorqueStepRequest.SCHEMA == "xblick_msgs/srv/TorqueStep_Request@1"
     assert ListControllersRequest.SCHEMA == "controller_manager_msgs/srv/ListControllers_Request"
 
 

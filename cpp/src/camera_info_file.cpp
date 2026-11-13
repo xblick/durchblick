@@ -24,9 +24,9 @@
 #include <sstream>
 #include <system_error>
 
-#include "durchblick/msg.hpp"
+#include "xblick/msg.hpp"
 
-namespace durchblick
+namespace xblick
 {
     namespace
     {
@@ -311,4 +311,4 @@ namespace durchblick
             throw std::runtime_error("calibration file " + path + ": cannot be written");
         }
     }
-}  // namespace durchblick
+}  // namespace xblick

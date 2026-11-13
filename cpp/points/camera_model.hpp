@@ -7,17 +7,17 @@
 #include <vector>
 
 #ifdef __CUDACC__
-#define DURCHBLICK_HD __host__ __device__
+#define XBLICK_HD __host__ __device__
 #else
-#define DURCHBLICK_HD
+#define XBLICK_HD
 #endif
 
-namespace durchblick
+namespace xblick
 {
     struct CameraInfo;
 }
 
-namespace durchblick::points
+namespace xblick::points
 {
     // K and D of a CameraInfo (skew and the rectification R, P are not used: points are in the camera's own frame).
     struct CameraModel
@@ -29,7 +29,7 @@ namespace durchblick::points
         // Normalized image coordinates (x/z, y/z) of a point to distorted ones: ROS's / OpenCV's model (float on the
         // GPU, double for the rays).
         template <typename T>
-        DURCHBLICK_HD void distort(T x, T y, T& xd, T& yd) const
+        XBLICK_HD void distort(T x, T y, T& xd, T& yd) const
         {
             const T r2 = x * x + y * y;
             const T radial = (T(1) + r2 * (T(k1) + r2 * (T(k2) + r2 * T(k3)))) /
@@ -39,7 +39,7 @@ namespace durchblick::points
         }
 
         // The pixel of a point in this camera's frame; false if it is behind the camera.
-        DURCHBLICK_HD bool project(float x, float y, float z, float& u, float& v) const
+        XBLICK_HD bool project(float x, float y, float z, float& u, float& v) const
         {
             if (not(z > 0.0f))
             {
@@ -59,4 +59,4 @@ namespace durchblick::points
     // The ray of every pixel (row-major): x/z and y/z of the points it sees, interleaved; NaN where the distortion
     // cannot be inverted (the iteration does not reach 1e-3 px, e.g. outside the lens's calibrated field of view).
     std::vector<float> rays(const CameraModel& model);
-}  // namespace durchblick::points
+}  // namespace xblick::points

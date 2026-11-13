@@ -12,14 +12,14 @@ the publisher sends only while a subscriber exists for this topic.
 | --- | --- | --- |
 | `<base>/image_raw` | `sensor_msgs/msg/Image` | on request |
 | `<base>/image_raw/compressed` | `sensor_msgs/msg/CompressedImage`. JPEG, PNG for lossless images, or RVL for 16-bit depth ([codecs](../concepts/transports.md#the-codecs-of-compressed)). | on request |
-| `<base>/image_raw/shm/<host>` | `durchblick_msgs/msg/ShmImage@1`, the descriptor for a host ring on that host | on request |
-| `<base>/image_raw/cuda/<host>/<gpu>` | `durchblick_msgs/msg/CudaImage@1`, the descriptor for a CUDA ring on that GPU of that host | on request, if the publisher has a `cuda_device` |
+| `<base>/image_raw/shm/<host>` | `xblick_msgs/msg/ShmImage@1`, the descriptor for a host ring on that host | on request |
+| `<base>/image_raw/cuda/<host>/<gpu>` | `xblick_msgs/msg/CudaImage@1`, the descriptor for a CUDA ring on that GPU of that host | on request, if the publisher has a `cuda_device` |
 | `<base>/camera_info` | `sensor_msgs/msg/CameraInfo` with the header of the frame | with every frame, on request |
 | `<base>/info` | queryable, JSON: kind (`image` or `points`), host, Durchblick version, transports, encoding or fields | answered when queried |
 | `<base>/info/<host>/<id>` as a liveliness token | none. It exists while the publisher runs. `<id>` is a random id of the publisher. | to the subscribers of the stream when a publisher comes or goes |
 | `<base>/want/<host>/<id>` as a liveliness token | none. A subscriber with `auto` on `<host>` holds it while the stream's source has no ring on that host. `<id>` is a random id of the subscriber. | to the relay of that host |
 
-`<host>` is the id of the publisher's host (`blick._core.host_id()`, the boot id of the machine). `<gpu>` is the
+`<host>` is the id of the publisher's host (`xblick._core.host_id()`, the boot id of the machine). `<gpu>` is the
 UUID of the ring's GPU with 32 hex digits. A reader subscribes to `<base>/image_raw/cuda/<host>/*` for the rings on
 every GPU of its host.
 
@@ -28,10 +28,10 @@ every GPU of its host.
 | Topic | Type | Sent |
 | --- | --- | --- |
 | `<base>/cloud` | `sensor_msgs/msg/PointCloud2`, the whole cloud | on request |
-| `<base>/cloud/compressed` | `durchblick_msgs/msg/CompressedPointCloud2@1`: the ranges of the points on their rays (RVL) and their colours (JPEG or PNG) ([compressed point clouds](../concepts/transports.md#compressed-point-clouds)) | on request, if the publisher has rays |
-| `<base>/cloud/rays` | queryable, `durchblick_msgs/msg/Rays@1`: the direction of each point's ray | answered when queried |
-| `<base>/cloud/shm/<host>` | `durchblick_msgs/msg/ShmPointCloud2@1`: the fields of the PointCloud2 without data, and the place in a host ring | on request |
-| `<base>/cloud/cuda/<host>/<gpu>` | `durchblick_msgs/msg/CudaPointCloud2@1`: the same for a CUDA ring | on request, if the publisher has a `cuda_device` |
+| `<base>/cloud/compressed` | `xblick_msgs/msg/CompressedPointCloud2@1`: the ranges of the points on their rays (RVL) and their colours (JPEG or PNG) ([compressed point clouds](../concepts/transports.md#compressed-point-clouds)) | on request, if the publisher has rays |
+| `<base>/cloud/rays` | queryable, `xblick_msgs/msg/Rays@1`: the direction of each point's ray | answered when queried |
+| `<base>/cloud/shm/<host>` | `xblick_msgs/msg/ShmPointCloud2@1`: the fields of the PointCloud2 without data, and the place in a host ring | on request |
+| `<base>/cloud/cuda/<host>/<gpu>` | `xblick_msgs/msg/CudaPointCloud2@1`: the same for a CUDA ring | on request, if the publisher has a `cuda_device` |
 | `<base>/info` | as for a camera stream, with kind `points` | answered when queried |
 
 ## Camera
@@ -86,7 +86,7 @@ the stamp of an image.
 ## Simulated world
 
 A simulation publishes the topics of the robot unchanged. In addition it publishes its world below a namespace of
-its own, for example `sim`, and the commands that the robot's controller receives. `blick.sim.SimPublisher`
+its own, for example `sim`, and the commands that the robot's controller receives. `xblick.sim.SimPublisher`
 does this. Every sample carries the simulated time.
 
 | Topic | Type | Content | Default rate |
@@ -139,6 +139,6 @@ their own. The controller accepts or refuses a command as a whole. It refuses a 
 The controller is the parameter node `<robot>/controller/<instance>` with the parameters `level`,
 `state_decimation` and `record_fields` (read-only).
 
-In Python, `topics.controller(robot, instance, name)` returns the keys. `blick.controller` has both sides:
+In Python, `topics.controller(robot, instance, name)` returns the keys. `xblick.controller` has both sides:
 `CommandPublisher` and `ControllerSubscriber` for a client, and `CommandSubscriber` and `ControllerPublisher` for a
 controller or a simulation. `CommandSubscriber` refuses stale commands.

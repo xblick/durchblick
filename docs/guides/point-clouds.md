@@ -1,15 +1,15 @@
 # Point clouds
 
-The point cloud node `durchblick-points` computes coloured point clouds from a depth stream on the GPU. It computes
+The point cloud node `xblick-points` computes coloured point clouds from a depth stream on the GPU. It computes
 each cloud once for all readers and publishes it as a point cloud stream at `<camera>/points`.
 
 ```bash
-durchblick-points --depth robot/camera/depth --color robot/camera/color
+xblick-points --depth robot/camera/depth --color robot/camera/color
 ```
 
 The node works with any camera. It needs the `camera_info` of the streams and the camera's `tf_static`, which
 places the colour camera relative to the depth camera. It does not need `tf_static` when depth and colour share one
-frame. C++ programs can use the node as a class from `durchblick/point_cloud_node.hpp`.
+frame. C++ programs can use the node as a class from `xblick/point_cloud_node.hpp`.
 
 ## The cloud
 
@@ -31,7 +31,7 @@ frame. C++ programs can use the node as a class from `durchblick/point_cloud_nod
 | `--max-depth M` | 0, no limit | points beyond this depth become NaN |
 | `--max-offset-ms MS` | 10 | the largest difference between the stamps of a depth frame and its colour frame |
 | `--max-hz HZ` | every frame | at most this many clouds per second |
-| `--camera`, `--output`, `--source`, `--cuda-device` | | the camera, the name of the output stream, the `source` field and the GPU. See `durchblick-points --help`. |
+| `--camera`, `--output`, `--source`, `--cuda-device` | | the camera, the name of the output stream, the `source` field and the GPU. See `xblick-points --help`. |
 | `--range-step M` | 0.001 | the step of `z` in the compressed cloud, which a reader on another host takes |
 | `--jpeg-quality Q` | 95 | the quality of the colours in the compressed cloud |
 | `--remote compressed\|raw` | | the transport when the camera is on another host. `compressed` uses the cameras' lossless codec for depth (RVL or PNG) and JPEG for colour. |

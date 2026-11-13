@@ -30,4 +30,4 @@ Durchblick's own topics for the rings (`image_raw/shm/<host>`, `image_raw/cuda/<
   could offer its CUDA ring as such a backend. ROS 2 nodes, including Isaac ROS, could then read Durchblick's frames
   in place. [Alternatives](../project/alternatives.md) describes these projects.
 
-To look at streams you need no ROS. Use [`blick rerun`](../guides/viewer.md).
+To look at streams you need no ROS. Use [`xblick rerun`](../guides/viewer.md).

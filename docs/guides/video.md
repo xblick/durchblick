@@ -1,6 +1,6 @@
 # Videos as camera streams
 
-`blick play` turns a video file or an image sequence into a camera stream. The stream has the same topics as
+`xblick play` turns a video file or an image sequence into a camera stream. The stream has the same topics as
 the stream of a camera node, so every node and tool works on it. You can therefore try a node without a camera
 and without a recording.
 
@@ -10,21 +10,21 @@ needed.
 ## Quick start
 
 ```bash
-blick play clip.mp4 --camera robot/video --loop
+xblick play clip.mp4 --camera robot/video --loop
 ```
 
 The video is now the stream `robot/video/color`. Start any node on the camera `robot/video`.
 
 ```bash
 # a stereo pair, with frames paired exactly
-blick play left.mp4 right.mp4 --stream robot/rc_visard/left --stream robot/rc_visard/right \
+xblick play left.mp4 right.mp4 --stream robot/rc_visard/left --stream robot/rc_visard/right \
     --camera-info left.yaml --camera-info right.yaml --loop
 
 # colour and depth from two files, the depth 3 ms later
-blick play color.mp4 depth.mkv --stream cam/color --stream cam/depth --offset-ms 0 --offset-ms 3
+xblick play color.mp4 depth.mkv --stream cam/color --stream cam/depth --offset-ms 0 --offset-ms 3
 
 # an image sequence
-blick play 'frames/*.png' --camera robot/video --fps 10
+xblick play 'frames/*.png' --camera robot/video --fps 10
 ```
 
 ## What counts as a video
@@ -102,8 +102,8 @@ stamp = start of the playback (wall time) + (time of the frame in its video - --
 
 ## Control a playback
 
-The play node offers its controls as [parameters](../reference/parameters.md) of the node `durchblick/<name>`. The
-default name is `durchblick/recorder`. They work for videos and recordings alike.
+The play node offers its controls as [parameters](../reference/parameters.md) of the node `xblick/<name>`. The
+default name is `xblick/recorder`. They work for videos and recordings alike.
 
 | Parameter | Meaning |
 | --- | --- |
@@ -114,7 +114,7 @@ default name is `durchblick/recorder`. They work for videos and recordings alike
 | `duration_s`, `file` | read-only: the length of the files and the file that plays |
 
 ```bash
-blick param --node durchblick/recorder --set paused:=true
+xblick param --node xblick/recorder --set paused:=true
 ```
 
 After a seek, the stamps continue to grow, as after a loop. The frame that you seek to arrives one frame period
@@ -122,7 +122,7 @@ after the last frame sent. The node reports the values that the playback changes
 parameter events about once per second and at the end.
 
 The terminal interface drives a playback through its Parameters tab and shows the position in its Nodes tab. The
-commands `blick recorder pause|resume|stop|status --name <name>` also work. Stepping with `--pace step` exists
+commands `xblick recorder pause|resume|stop|status --name <name>` also work. Stepping with `--pace step` exists
 only for recordings.
 
 ## Diagnostics
@@ -141,16 +141,16 @@ State of the node READMEs on 2026-11-05.
 
 | Node | Needs | On a plain colour video |
 | --- | --- | --- |
-| durchblick-sam3 | colour with `camera_info` | yes (tested, see below) |
-| durchblick-insightface | colour | yes |
-| durchblick-vjepa2 | colour | yes |
-| durchblick-tapnext | colour, depth, and a durchblick-sam3 on the stream | with `--no-depth` (2D only), and with SAM 3 or `--no-segmenter` (points by hand) |
-| durchblick-boxer | colour, depth (`--no-depth` guesses distances), and the pose of the camera on `<camera>/tf` | no. A video has no pose, so the node skips every frame ("no pose"). |
-| durchblick-gem-x | colour and depth, paired | no. Yes with a 16-bit depth video beside it. |
-| durchblick-foundationpose, durchblick-nemo, durchblick-any6d, durchblick-recgen, durchblick-sam3d-objects | colour and depth | no. Yes with a depth video. |
-| durchblick-fast-foundationstereo | a rectified stereo pair `<camera>/left` and `<camera>/right` | from two videos with their calibration files (tested, see below) |
-| durchblick-ivt | a rectified stereo pair as above | from two videos with their calibration files |
-| durchblick-mapping (cuVSLAM, nvblox) | stereo or RGB-D. nvblox also needs the pose of the camera. | not tested |
+| xblick-sam3 | colour with `camera_info` | yes (tested, see below) |
+| xblick-insightface | colour | yes |
+| xblick-vjepa2 | colour | yes |
+| xblick-tapnext | colour, depth, and an xblick-sam3 on the stream | with `--no-depth` (2D only), and with SAM 3 or `--no-segmenter` (points by hand) |
+| xblick-boxer | colour, depth (`--no-depth` guesses distances), and the pose of the camera on `<camera>/tf` | no. A video has no pose, so the node skips every frame ("no pose"). |
+| xblick-gem-x | colour and depth, paired | no. Yes with a 16-bit depth video beside it. |
+| xblick-foundationpose, xblick-nemo, xblick-any6d, xblick-recgen, xblick-sam3d-objects | colour and depth | no. Yes with a depth video. |
+| xblick-fast-foundationstereo | a rectified stereo pair `<camera>/left` and `<camera>/right` | from two videos with their calibration files (tested, see below) |
+| xblick-ivt | a rectified stereo pair as above | from two videos with their calibration files |
+| xblick-mapping (cuVSLAM, nvblox) | stereo or RGB-D. nvblox also needs the pose of the camera. | not tested |
 
 **A stereo pair from videos** consists of two rectified videos of the same length and rate, each with its
 calibration file. The matrix P in the `camera_info` of the right camera carries the baseline: P[3] = -f·b, which is
@@ -165,15 +165,15 @@ Use one terminal for each step.
 zenohd --no-multicast-scouting -l tcp/127.0.0.1:7447
 
 # 2. the video as robot/video/color, looped
-blick play ~/clip.mp4 --camera robot/video --loop
+xblick play ~/clip.mp4 --camera robot/video --loop
 
 # 3. nodes on the video, each from its own checkout and on its own GPU
-cd durchblick-sam3 && CUDA_VISIBLE_DEVICES=0 .venv/bin/durchblick-sam3 --camera robot/video --words person cup
-cd durchblick-insightface && CUDA_VISIBLE_DEVICES=1 .venv/bin/durchblick-insightface --camera robot/video
+cd xblick-sam3 && CUDA_VISIBLE_DEVICES=0 .venv/bin/xblick-sam3 --camera robot/video --words person cup
+cd xblick-insightface && CUDA_VISIBLE_DEVICES=1 .venv/bin/xblick-insightface --camera robot/video
 
 # 4. look at the streams, the reports of the nodes and the position of the playback
-blick
-blick recorder pause          # and: resume
+xblick
+xblick recorder pause         # and: resume
 ```
 
 Without a router, give every program the same options `--connect tcp/<host>:<port> --listen tcp/127.0.0.1:0`, and
@@ -185,5 +185,5 @@ On 2026-11-05 on a server with a private router and two GPUs.
 
 | Input | Node | Result |
 | --- | --- | --- |
-| NVIDIA's GEM-X demo video (1280 x 720, 30 frames per second, 7.2 s, looped) | durchblick-sam3 with `--words person` | The colour stream had 30.0 Hz and an age at send of 0.6 ms. The instances of SAM 3 had 30.0 Hz and an age at send of 29.5 ms, which is its 29 ms per frame. |
-| A stereo pair exported from a simulation recording (1280 x 720, 22 frames per second, 40 s) with calibration files | durchblick-fast-foundationstereo with `--max-width 640` | The node paired every pair at 22.0 pairs per second. The depth had an age at send of 14.1 ms. The send skew of the two streams was 0.04 ms. |
+| NVIDIA's GEM-X demo video (1280 x 720, 30 frames per second, 7.2 s, looped) | xblick-sam3 with `--words person` | The colour stream had 30.0 Hz and an age at send of 0.6 ms. The instances of SAM 3 had 30.0 Hz and an age at send of 29.5 ms, which is its 29 ms per frame. |
+| A stereo pair exported from a simulation recording (1280 x 720, 22 frames per second, 40 s) with calibration files | xblick-fast-foundationstereo with `--max-width 640` | The node paired every pair at 22.0 pairs per second. The depth had an age at send of 14.1 ms. The send skew of the two streams was 0.04 ms. |

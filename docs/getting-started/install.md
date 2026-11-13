@@ -12,7 +12,7 @@ every PC needs.
 | Zenoh router `zenohd` | 1.10 | programs on one PC that find each other without addresses |
 | NVIDIA GPU with its driver | | CUDA rings. The package loads without a GPU. |
 | CMake and a C++20 compiler | | C++ programs, or a build from source |
-| CUDA toolkit with `nvcc` | 12.8 tested | only the point cloud node `durchblick-points` |
+| CUDA toolkit with `nvcc` | 12.8 tested | only the point cloud node `xblick-points` |
 
 ## Python
 
@@ -26,25 +26,25 @@ To build the package from source, use a checkout. The build needs CMake and a C+
 toolkit.
 
 ```bash
-git clone https://github.com/xblick/durchblick.git
-pip install "./durchblick[rerun,record]"
+git clone https://github.com/xblick/xblick.git
+pip install "./xblick[rerun,record]"
 ```
 
 Optional features have extras:
 
 | Extra | Adds |
 | --- | --- |
-| `xblick[rerun]` | the viewer `blick rerun` |
-| `xblick[record]` | `blick record` and `blick play` for MCAP files |
-| `xblick[video]` | videos as camera streams in `blick play` |
-| `xblick[relay]` | the [relay](../concepts/transports.md#relays) program, started by `blick relay` |
+| `xblick[rerun]` | the viewer `xblick rerun` |
+| `xblick[record]` | `xblick record` and `xblick play` for MCAP files |
+| `xblick[video]` | videos as camera streams in `xblick play` |
+| `xblick[relay]` | the [relay](../concepts/transports.md#relays) program, started by `xblick relay` |
 
-In a uv project, add the package with `uv add blick`. To use a commit that is not released, depend on the
+In a uv project, add the package with `uv add xblick`. To use a commit that is not released, depend on the
 repository at that commit. uv then builds the package from source:
 
 ```toml
 [tool.uv.sources]
-blick = { git = "https://github.com/xblick/durchblick.git", rev = "<tag or commit>" }
+xblick = { git = "https://github.com/xblick/xblick.git", rev = "<tag or commit>" }
 ```
 
 ## C++
@@ -54,8 +54,8 @@ blick = { git = "https://github.com/xblick/durchblick.git", rev = "<tag or commi
 3. Use it in your project:
 
 ```cmake
-find_package(durchblick 0.4 REQUIRED)
-target_link_libraries(my_program PRIVATE durchblick::durchblick)
+find_package(xblick 0.5 REQUIRED)
+target_link_libraries(my_program PRIVATE xblick::xblick)
 ```
 
 `find_package` finds Zenoh, JPEG and PNG itself. The [C++ reference](../reference/cpp-api.md) has the details, and
@@ -74,11 +74,11 @@ zenohd --no-multicast-scouting -l tcp/0.0.0.0:7447
 ## Check the installation
 
 ```bash
-blick test-camera &      # publishes a moving test pattern
-blick list               # shows the stream robot/test_camera/color
+xblick test-camera &     # publishes a moving test pattern
+xblick list              # shows the stream robot/test_camera/color
 ```
 
-`blick list` prints one line per stream, with the encoding, the transports and the host. Continue with
+`xblick list` prints one line per stream, with the encoding, the transports and the host. Continue with
 [your first stream](first-stream.md).
 
 ## Other ways to install

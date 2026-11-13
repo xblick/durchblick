@@ -1,10 +1,10 @@
-"""The point cloud node (durchblick-points) end to end: Python publishes a camera (depth, colour, their camera_info,
+"""The point cloud node (xblick-points) end to end: Python publishes a camera (depth, colour, their camera_info,
 tf_static), the program makes the clouds, Python checks every point against the camera model, independently of how
 the node computes it: projected with the depth camera's distortion, a point lands on its own pixel at that pixel's
 depth; its colour is the colour pixel its projection into the colour camera meets (the colour image encodes the pixel
 coordinates).
 
-Needs the C++ build with DURCHBLICK_POINTS (DURCHBLICK_CPP_BUILD with durchblick-points) and a GPU."""
+Needs the C++ build with XBLICK_POINTS (XBLICK_CPP_BUILD with xblick-points) and a GPU."""
 
 import os
 import socket
@@ -16,18 +16,18 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from blick import _core
-from blick.camera import CameraPublisher, StaticTransformPublisher
-from blick.msg import (CameraInfo, DiagnosticArray, Header, Quaternion, Time, Transform, TransformStamped,
-                            Vector3)
-from blick.points import PointCloudSubscriber, unpack_rgb
-from blick.session import open_session
+from xblick import _core
+from xblick.camera import CameraPublisher, StaticTransformPublisher
+from xblick.msg import (CameraInfo, DiagnosticArray, Header, Quaternion, Time, Transform, TransformStamped,
+                        Vector3)
+from xblick.points import PointCloudSubscriber, unpack_rgb
+from xblick.session import open_session
 
-BUILD = os.environ.get("DURCHBLICK_CPP_BUILD")
-PROGRAM = Path(BUILD) / "durchblick-points" if BUILD else None
+BUILD = os.environ.get("XBLICK_CPP_BUILD")
+PROGRAM = Path(BUILD) / "xblick-points" if BUILD else None
 pytestmark = [
-    pytest.mark.skipif(not BUILD, reason="DURCHBLICK_CPP_BUILD (the C++ build directory) is not set"),
-    pytest.mark.skipif(bool(BUILD) and not PROGRAM.exists(), reason="built without DURCHBLICK_POINTS"),
+    pytest.mark.skipif(not BUILD, reason="XBLICK_CPP_BUILD (the C++ build directory) is not set"),
+    pytest.mark.skipif(bool(BUILD) and not PROGRAM.exists(), reason="built without XBLICK_POINTS"),
     pytest.mark.skipif(_core.cuda_device_count() == 0, reason="no CUDA device"),
 ]
 

@@ -1,14 +1,14 @@
-"""blick.rgbd: the camera spec, the camera models, the stamp pairing; the undistortion where torch and OpenCV are
-installed (not by Durchblick itself: run them in a node's environment, e.g. durchblick-foundationpose's)."""
+"""xblick.rgbd: the camera spec, the camera models, the stamp pairing; the undistortion where torch and OpenCV are
+installed (not by Durchblick itself: run them in a node's environment, e.g. xblick-foundationpose's)."""
 
 import threading
 
 import numpy as np
 import pytest
 
-import blick as db
-from blick.history import StampedHistory
-from blick.rgbd import CameraSpec, check_same_camera, scaled_k
+import xblick as db
+from xblick.history import StampedHistory
+from xblick.rgbd import CameraSpec, check_same_camera, scaled_k
 
 
 def test_camera_spec_defaults_and_options():
@@ -49,7 +49,7 @@ def test_stamped_history_keeps_the_newest_and_wakes():
 def test_a_pinhole_camera_is_not_remapped():
     torch = pytest.importorskip("torch")
     pytest.importorskip("cv2")
-    from blick.rgbd import Undistorter
+    from xblick.rgbd import Undistorter
 
     info = db.CameraInfo.pinhole(640, 480, 500.0, 500.0, 319.5, 239.5, frame_id="c")
     u = Undistorter(info, 480, 640, "cpu")
@@ -61,7 +61,7 @@ def test_a_pinhole_camera_is_not_remapped():
 def test_a_distorted_point_lands_where_the_pinhole_camera_sees_it():
     torch = pytest.importorskip("torch")
     cv2 = pytest.importorskip("cv2")
-    from blick.rgbd import Undistorter
+    from xblick.rgbd import Undistorter
 
     w, h = 640, 480
     k = np.array([[500.0, 0, 319.5], [0, 500.0, 239.5], [0, 0, 1]])
@@ -80,7 +80,7 @@ def test_a_distorted_point_lands_where_the_pinhole_camera_sees_it():
 
 
 def test_views_apart_seen_from_the_object():
-    from blick.rgbd import far_enough, view_direction
+    from xblick.rgbd import far_enough, view_direction
 
     cam = np.eye(4)
     cam[:3, 3] = [0.0, 0.0, -1.0]  # 1 m behind the object (at the origin), looking along +z
@@ -96,7 +96,7 @@ def test_views_apart_seen_from_the_object():
 
 def test_segmenter_mask_by_instance_or_largest_label():
     torch = pytest.importorskip("torch")
-    from blick.rgbd import RGBDFrame, segmenter_mask
+    from xblick.rgbd import RGBDFrame, segmenter_mask
 
     ids = torch.zeros(4, 6, dtype=torch.int32)
     ids[0, :2], ids[2:, 2:] = 3, 5  # instance 3: 2 px, instance 5: 8 px, both "mug"
@@ -115,21 +115,21 @@ def test_segmenter_mask_by_instance_or_largest_label():
 
 
 def test_expand_path_expands_variables_and_refuses_unset_ones(monkeypatch):
-    from blick.paths import expand_path
+    from xblick.paths import expand_path
 
-    monkeypatch.setenv("DURCHBLICK_TEST_DIR", "/data/objects")
-    monkeypatch.delenv("DURCHBLICK_TEST_UNSET", raising=False)
-    assert str(expand_path("${DURCHBLICK_TEST_DIR}/NeMO")) == "/data/objects/NeMO"
-    assert str(expand_path("$DURCHBLICK_TEST_DIR")) == "/data/objects"
+    monkeypatch.setenv("XBLICK_TEST_DIR", "/data/objects")
+    monkeypatch.delenv("XBLICK_TEST_UNSET", raising=False)
+    assert str(expand_path("${XBLICK_TEST_DIR}/NeMO")) == "/data/objects/NeMO"
+    assert str(expand_path("$XBLICK_TEST_DIR")) == "/data/objects"
     assert not str(expand_path("~/x")).startswith("~")
-    with pytest.raises(ValueError, match="DURCHBLICK_TEST_UNSET"):
-        expand_path("${DURCHBLICK_TEST_UNSET}/x")
+    with pytest.raises(ValueError, match="XBLICK_TEST_UNSET"):
+        expand_path("${XBLICK_TEST_UNSET}/x")
 
 
 def test_distorter_takes_labels_back_into_the_distorted_image():
     torch = pytest.importorskip("torch")
     cv2 = pytest.importorskip("cv2")
-    from blick.rgbd import Distorter, Undistorter
+    from xblick.rgbd import Distorter, Undistorter
 
     w, h = 640, 480
     k = np.array([[500.0, 0, 319.5], [0, 500.0, 239.5], [0, 0, 1]])

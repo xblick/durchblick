@@ -5,9 +5,9 @@
 #include <stdexcept>
 #include <string>
 
-#include "durchblick/msg.hpp"
+#include "xblick/msg.hpp"
 
-namespace durchblick::points
+namespace xblick::points
 {
     CameraModel camera_model(const CameraInfo& info)
     {
@@ -112,4 +112,4 @@ namespace durchblick::points
         }
         return out;
     }
-}  // namespace durchblick::points
+}  // namespace xblick::points

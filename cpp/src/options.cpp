@@ -1,5 +1,5 @@
 // A program's command-line options as the node's parameters (options.hpp).
-#include "durchblick/options.hpp"
+#include "xblick/options.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -8,7 +8,7 @@
 #include <iostream>
 #include <sstream>
 
-namespace durchblick
+namespace xblick
 {
     namespace
     {
@@ -551,4 +551,4 @@ namespace durchblick
         }
         return out.str();
     }
-}  // namespace durchblick
+}  // namespace xblick

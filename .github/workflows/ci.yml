@@ -33,7 +33,7 @@ jobs:
           python-version: ${{ matrix.python }}
       - run: python -m pip install --quiet uv
       - run: uv sync --locked --python "${{ matrix.python }}"
-      - run: uv run --locked python -c "import blick; print('blick', blick.__version__)"
+      - run: uv run --locked python -c "import xblick; print('xblick', xblick.__version__)"
       - run: timeout 1500 uv run --locked pytest -q tests
 
   cpp:
@@ -55,7 +55,7 @@ jobs:
         run: |
           CUDA_INCLUDE="$(uv run --locked python -c "import nvidia, os; print(os.path.join(list(nvidia.__path__)[0], 'cu13', 'include'))")"
           cmake -S . -B "$BUILD" -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_PREFIX_PATH="$ZENOH_PREFIX" \
-            -DDURCHBLICK_CUDA_INCLUDE_DIR="$CUDA_INCLUDE"
+            -DXBLICK_CUDA_INCLUDE_DIR="$CUDA_INCLUDE"
           cmake --build "$BUILD"
           ctest --test-dir "$BUILD" --output-on-failure
       - name: a project that uses the installed package
@@ -67,22 +67,22 @@ jobs:
           cmake_minimum_required(VERSION 3.24)
           project(consumer CXX)
           set(CMAKE_CXX_STANDARD 20)
-          find_package(durchblick 0.4 REQUIRED)
+          find_package(xblick 0.5 REQUIRED)
           add_executable(consumer main.cpp)
-          target_link_libraries(consumer PRIVATE durchblick::durchblick)
+          target_link_libraries(consumer PRIVATE xblick::xblick)
           CMAKE
           cat > "$CONSUMER/main.cpp" <<'CPP'
-          #include <durchblick/camera.hpp>
-          #include <durchblick/version.hpp>
+          #include <xblick/camera.hpp>
+          #include <xblick/version.hpp>
           #include <iostream>
-          int main() { std::cout << "consumer of durchblick " << DURCHBLICK_VERSION << std::endl; }
+          int main() { std::cout << "consumer of xblick " << XBLICK_VERSION << std::endl; }
           CPP
           cmake -S "$CONSUMER" -B "$CONSUMER/build" -G Ninja -DCMAKE_PREFIX_PATH="$PWD/$BUILD/install;$ZENOH_PREFIX"
           cmake --build "$CONSUMER/build"
           LD_LIBRARY_PATH="$ZENOH_PREFIX/lib" "$CONSUMER/build/consumer"
       - name: C++ against Python
         run: |
-          DURCHBLICK_CPP_BUILD="$PWD/$BUILD" LD_LIBRARY_PATH="$ZENOH_PREFIX/lib" \
+          XBLICK_CPP_BUILD="$PWD/$BUILD" LD_LIBRARY_PATH="$ZENOH_PREFIX/lib" \
             timeout 1500 uv run --locked pytest -q tests/test_cpp_interop.py
 
   wheels:
@@ -93,7 +93,7 @@ jobs:
       - name: a tag names the package version (CMakeLists.txt)
         if: github.ref_type == 'tag'
         run: |
-          version="$(sed -n 's/^project(durchblick VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)"
+          version="$(sed -n 's/^project(xblick VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)"
           if [ "${GITHUB_REF_NAME}" != "v${version}" ]; then
             echo "tag ${GITHUB_REF_NAME} does not name the package version ${version} (CMakeLists.txt)" >&2
             exit 1

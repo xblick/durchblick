@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# The files for PyPI: the wheels of xblick (the Python package blick) for CPython 3.10 to 3.13, repaired by auditwheel (manylinux_2_28_x86_64),
+# The files for PyPI: the wheels of xblick for CPython 3.10 to 3.13, repaired by auditwheel (manylinux_2_28_x86_64),
 # and the sdist. The CI's job wheels and the workflow publish run it; it runs in quay.io/pypa/manylinux_2_28_x86_64:
 #
 #   tools/build_wheels.sh <out dir> <work dir>
 #
 # <out dir> gets the wheels and the sdist only. <work dir> must not exist or be empty: the build directories go there,
 # so the checkout stays unchanged. Network: the build requirements (scikit-build-core, nanobind, nvidia-cuda-runtime for
-# cuda.h) and, for the import check, the dependencies of blick.
+# cuda.h) and, for the import check, the dependencies of xblick.
 set -euo pipefail
 
 if [ $# -ne 2 ]; then
@@ -52,6 +52,6 @@ for tag in $PYTHONS; do
   env="$WORK/check-${tag}"
   "/opt/python/${tag}/bin/python" -m venv "$env"
   "$env/bin/pip" install --quiet --find-links "$OUT" --only-binary xblick xblick
-  (cd / && "$env/bin/python" -c "import blick, blick._core as c; print('${tag}', blick.__version__, c.host_id()[:8])")
+  (cd / && "$env/bin/python" -c "import xblick, xblick._core as c; print('${tag}', xblick.__version__, c.host_id()[:8])")
 done
 ls -l "$OUT"

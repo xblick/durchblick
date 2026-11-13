@@ -1,7 +1,7 @@
-// durchblick-cpp-camera: a C++ publisher of a test pattern (tools.hpp), for checking C++ against Python and as an
+// xblick-cpp-camera: a C++ publisher of a test pattern (tools.hpp), for checking C++ against Python and as an
 // example of the C++ API.
 //
-//   durchblick-cpp-camera --base robot/test_camera/color --encoding rgb8 --size 640 480
+//   xblick-cpp-camera --base robot/test_camera/color --encoding rgb8 --size 640 480
 //                         [--fps 30] [--seconds 10] [--codec png] [--cuda-device 0 [--device-frames]] [--jpeg-frames]
 //                         [--points] [--diagnostics] [--transports shm,cuda] [--relayed-from HOST --origin-seq N]
 //
@@ -20,7 +20,7 @@
 // --rays (with --points): the clouds lie on a camera's rays (tools::ray_cloud_pattern), with cloud/compressed.
 //
 // --jpeg-frames: like an MJPEG camera, every frame also exists as a JPEG (written here, with the comment segment
-// "durchblick-test-jpeg <seq>" so that a subscriber can tell these bytes from a JPEG the publisher wrote); it is
+// "xblick-test-jpeg <seq>" so that a subscriber can tell these bytes from a JPEG the publisher wrote); it is
 // decoded (here: the pattern itself) only if somebody takes the pixels.
 #include <atomic>
 #include <chrono>
@@ -28,9 +28,9 @@
 #include <csignal>
 #include <thread>
 
-#include "durchblick/camera.hpp"
-#include "durchblick/parameters.hpp"
-#include "durchblick/points.hpp"
+#include "xblick/camera.hpp"
+#include "xblick/parameters.hpp"
+#include "xblick/points.hpp"
 #include "tools.hpp"
 
 namespace
@@ -40,7 +40,7 @@ namespace
 
 int main(int argc, char** argv)
 {
-    using namespace durchblick;
+    using namespace xblick;
     tools::Args args(argc, argv);
     std::signal(SIGINT, [](int) { stop = 1; });
     std::signal(SIGTERM, [](int) { stop = 1; });
@@ -212,7 +212,7 @@ int main(int argc, char** argv)
                 if (jpeg_frames)
                 {
                     jpeg = compress(HostImage{frame.data(), height, width, 0}, encoding, kJpeg, 90, Header{}).data;
-                    const std::string comment = "durchblick-test-jpeg " + std::to_string(seq);
+                    const std::string comment = "xblick-test-jpeg " + std::to_string(seq);
                     const auto length = static_cast<std::uint16_t>(comment.size() + 2);
                     std::vector<std::uint8_t> segment = {0xFF, 0xFE, static_cast<std::uint8_t>(length >> 8),
                                                          static_cast<std::uint8_t>(length & 0xFF)};
@@ -259,7 +259,7 @@ int main(int argc, char** argv)
     }
     catch (const std::exception& e)
     {
-        std::cerr << "durchblick-cpp-camera: " << e.what() << std::endl;
+        std::cerr << "xblick-cpp-camera: " << e.what() << std::endl;
         return 1;
     }
     return 0;

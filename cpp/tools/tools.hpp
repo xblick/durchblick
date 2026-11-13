@@ -1,4 +1,4 @@
-// Shared by the command-line tools durchblick-cpp-camera and durchblick-cpp-probe: a tiny argument parser and the
+// Shared by the command-line tools xblick-cpp-camera and xblick-cpp-probe: a tiny argument parser and the
 // test patterns (frames, clouds) that tests/test_cpp_interop.py computes the same way in Python.
 #pragma once
 
@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-namespace durchblick::tools
+namespace xblick::tools
 {
     // Pixel (x, y) of frame `seq`: rgb8 channel c = (x + 2y + 3c + seq) mod 256; 16UC1 = (7x + 13y + 5 seq) mod 65536.
     inline std::vector<std::uint8_t> pattern(const std::string& encoding, std::uint32_t width, std::uint32_t height,
@@ -143,4 +143,4 @@ namespace durchblick::tools
     private:
         std::vector<std::string> args_;
     };
-}  // namespace durchblick::tools
+}  // namespace xblick::tools

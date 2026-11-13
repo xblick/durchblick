@@ -1,11 +1,11 @@
 # Viewer
 
-`blick rerun` shows camera streams and the results of the nodes in [Rerun](https://rerun.io), an open-source
+`xblick rerun` shows camera streams and the results of the nodes in [Rerun](https://rerun.io), an open-source
 viewer for multimodal data. It places everything on the capture time of the frames.
 
 ```bash
 pip install "xblick[rerun]"
-blick rerun
+xblick rerun
 ```
 
 Without arguments, the command shows every stream, label image and detection topic that it finds. It looks again
@@ -15,15 +15,15 @@ every 5 s, so a node that starts later appears too. It starts a viewer on this m
 ## Common calls
 
 ```bash
-blick rerun --connect sim-host                         # everything from another host
-blick rerun --prefix robot/camera                # the streams and results of one camera
-blick rerun --serve --connect sim-host                 # a viewer connects with: rerun --connect <printed URL>
-blick rerun --connect-viewer rerun+http://laptop:9876/proxy --connect sim-host   # to a running viewer
-blick rerun robot/camera/color --save head.rrd --connect sim-host          # write a recording file
+xblick rerun --connect sim-host                        # everything from another host
+xblick rerun --prefix robot/camera               # the streams and results of one camera
+xblick rerun --serve --connect sim-host                # a viewer connects with: rerun --connect <printed URL>
+xblick rerun --connect-viewer rerun+http://laptop:9876/proxy --connect sim-host  # to a running viewer
+xblick rerun robot/camera/color --save head.rrd --connect sim-host         # write a recording file
 ```
 
 Put the streams before `--connect`, because `--connect` accepts several endpoints. The
-[command line reference](../reference/cli.md#durchblick-rerun-streams-) lists all options.
+[command line reference](../reference/cli.md#xblick-rerun-streams-) lists all options.
 
 ## What it draws
 
@@ -48,7 +48,7 @@ The 3D view then has z up.
 trajectories compare two pose sources:
 
 ```bash
-blick rerun --trajectory <camera>/vslam/tf --trajectory <camera>/tf
+xblick rerun --trajectory <camera>/vslam/tf --trajectory <camera>/tf
 ```
 
 ## How results are found
@@ -80,7 +80,7 @@ rate. `--no-ages` removes all of these. [Timestamps](../concepts/timestamps.md#a
 
 ## What you should know
 
-- **The viewer keeps publishers busy.** Rerun cannot tell which streams you look at, so `blick rerun`
+- **The viewer keeps publishers busy.** Rerun cannot tell which streams you look at, so `xblick rerun`
   subscribes to every stream that it shows for as long as it runs. A publisher that renders only for subscribers
   renders all that time.
 - **A point cloud from another host arrives compressed only where its publisher has rays**, as the point cloud node has. Other clouds arrive whole and are large. See [point clouds](point-clouds.md).

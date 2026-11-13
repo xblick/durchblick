@@ -1,4 +1,4 @@
-#include "durchblick/point_cloud_node.hpp"
+#include "xblick/point_cloud_node.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -12,12 +12,12 @@
 #include <cuda_runtime_api.h>
 
 #include "camera_model.hpp"
-#include "durchblick/image.hpp"
-#include "durchblick/pairing.hpp"
-#include "durchblick/points.hpp"
+#include "xblick/image.hpp"
+#include "xblick/pairing.hpp"
+#include "xblick/points.hpp"
 #include "kernels.hpp"
 
-namespace durchblick
+namespace xblick
 {
     namespace
     {
@@ -577,4 +577,4 @@ namespace durchblick
     {
         return impl_->camera;
     }
-}  // namespace durchblick
+}  // namespace xblick

@@ -3,9 +3,9 @@
 import numpy as np
 import pytest
 
-from blick.codecs import compress, decompress, parse_format
-from blick.encodings import EncodingError, image_to_numpy, info, numpy_to_image
-from blick.msg import CompressedImage, Image
+from xblick.codecs import compress, decompress, parse_format
+from xblick.encodings import EncodingError, image_to_numpy, info, numpy_to_image
+from xblick.msg import CompressedImage, Image
 
 RNG = np.random.default_rng(0)
 

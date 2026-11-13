@@ -1,7 +1,7 @@
 # Command line
 
-The command `blick` inspects, records and plays streams.
-Without a subcommand it opens the [terminal interface](../guides/tui.md). `blick <command> --help` prints every
+The command `xblick` inspects, records and plays streams.
+Without a subcommand it opens the [terminal interface](../guides/tui.md). `xblick <command> --help` prints every
 option.
 
 ## Connection options
@@ -22,7 +22,7 @@ that only connects to a router therefore uses `--zenoh-mode client`.
 
 ## Inspect
 
-### `blick list [prefix]`
+### `xblick list [prefix]`
 
 Lists every stream with its encoding or fields, its transports, its host and its Durchblick version. The command
 queries the info records and subscribes to nothing.
@@ -33,7 +33,7 @@ queries the info records and subscribes to nothing.
 | `--seconds S` | how long to look for streams |
 | `--traffic` | subscribe to every topic and show rates and sizes |
 
-### `blick hz <stream>`
+### `xblick hz <stream>`
 
 Subscribes to an image or point cloud stream. Prints the rate, the age at send and at receive, and the missing
 frames.
@@ -43,11 +43,11 @@ frames.
 | `--transport auto\|compressed\|raw\|shm` | the transport to measure |
 | `--seconds S` | stop after this time |
 
-### `blick snapshot <stream> <file>`
+### `xblick snapshot <stream> <file>`
 
 Saves one frame as an image file. PNG keeps 16-bit depth. Options: `--transport`, `--timeout`.
 
-### `blick diagnostics [prefix]`
+### `xblick diagnostics [prefix]`
 
 Prints the state of every program that publishes for a camera, once per second.
 
@@ -57,7 +57,7 @@ Prints the state of every program that publishes for a camera, once per second.
 | `--values` | every value of a status. The default prints level and message. |
 | `--seconds S` | stop after this time |
 
-### `blick rerun [streams ...]`
+### `xblick rerun [streams ...]`
 
 Shows streams and node results in the Rerun viewer. Without arguments it shows everything that it finds. Needs the
 extra `xblick[rerun]`. See the [viewer guide](../guides/viewer.md).
@@ -77,7 +77,7 @@ extra `xblick[rerun]`. See the [viewer guide](../guides/viewer.md).
 
 ## Test
 
-### `blick test-camera`
+### `xblick test-camera`
 
 Publishes a moving test pattern on `robot/test_camera/color`.
 
@@ -89,14 +89,14 @@ Publishes a moving test pattern on `robot/test_camera/color`.
 | `--vfov` | the vertical field of view in degrees for the camera info |
 | `--frame-id` | the frame id of the images |
 
-### `durchblick-cpp-camera`, `durchblick-cpp-probe`
+### `xblick-cpp-camera`, `xblick-cpp-probe`
 
 The C++ counterparts: a test pattern publisher and a prober that prints JSON. `--jpeg-frames` makes the camera
 pass JPEG frames through. `--points` tests point cloud streams. Both programs are part of the C++ build.
 
 ## Parameters
 
-### `blick param`
+### `xblick param`
 
 Reads and changes the parameters of a node. See [parameters](parameters.md).
 
@@ -117,7 +117,7 @@ Reads and changes the parameters of a node. See [parameters](parameters.md).
 See the [recording guide](../guides/recording.md) and the [video guide](../guides/video.md). Both commands need the
 extra `xblick[record]`. Videos need `xblick[video]`.
 
-### `blick record`
+### `xblick record`
 
 | Option | Meaning |
 | --- | --- |
@@ -134,13 +134,13 @@ extra `xblick[record]`. Videos need `xblick[video]`.
 | `--log-time receive\|header` | the log time of a message: its arrival, or its own stamp |
 | `--report S` | seconds between the status lines |
 
-### `blick recorder`
+### `xblick recorder`
 
-Sends commands to a running recorder. `blick recorder --help` lists them.
+Sends commands to a running recorder. `xblick recorder --help` lists them.
 
-### `blick play <files ...>`
+### `xblick play <files ...>`
 
-Plays MCAP files of `blick record` one after another. Files that are not MCAP are played as videos or image
+Plays MCAP files of `xblick record` one after another. Files that are not MCAP are played as videos or image
 sequences, one stream each, on one clock.
 
 | Option | Meaning |
@@ -171,7 +171,7 @@ Options for videos:
 
 ## GPU sharing
 
-### `blick mps`
+### `xblick mps`
 
 Runs NVIDIA's MPS control daemon for the nodes on the GPU of this PC. See
 [sharing a GPU](../guides/sharing-a-gpu.md).
@@ -180,37 +180,37 @@ Runs NVIDIA's MPS control daemon for the nodes on the GPU of this PC. See
 | --- | --- |
 | `--pipe-dir DIR` | the directory of the daemon. Clients set `CUDA_MPS_PIPE_DIRECTORY` to it. |
 | `--log-dir DIR` | the log of the daemon. The default is `<pipe-dir>/log`. |
-| `--name NAME` | its name on Zenoh, `durchblick/mps/<name>`. The default is the host name. |
+| `--name NAME` | its name on Zenoh, `xblick/mps/<name>`. The default is the host name. |
 
 ## Relay
 
-### `blick relay [arguments]`
+### `xblick relay [arguments]`
 
-Starts the program `durchblick-relay` with the arguments as they stand. The relay brings the streams that nodes on
+Starts the program `xblick-relay` with the arguments as they stand. The relay brings the streams that nodes on
 this PC read from other PCs into the rings of this PC. See [relays](../concepts/transports.md#relays).
-`blick relay --help` prints the relay's options.
+`xblick relay --help` prints the relay's options.
 
 ```bash
 pip install "xblick[relay]"
-blick relay --stream robot/camera/color
+xblick relay --stream robot/camera/color
 ```
 
 The command looks for the program in this order and nowhere else.
 
 | Order | Place | Comes from |
 | --- | --- | --- |
-| 1 | the installed package `blick-relay` | `pip install "xblick[relay]"` |
-| 2 | `durchblick-relay` on `PATH` | a CMake build of [durchblick-relay](https://github.com/xblick/durchblick-relay) |
+| 1 | the installed package `xblick-relay` | `pip install "xblick[relay]"` |
+| 2 | `xblick-relay` on `PATH` | a CMake build of [xblick-relay](https://github.com/xblick/xblick-relay) |
 
 If neither exists, the command fails and names both ways to install the relay. If the package is installed without
 its program, the command fails as well. It does not try `PATH` then.
 
 ## Point clouds
 
-### `durchblick-points`
+### `xblick-points`
 
 The point cloud node, a C++ program with CUDA. See the [point cloud guide](../guides/point-clouds.md).
 
 ```bash
-durchblick-points --depth robot/camera/depth --color robot/camera/color
+xblick-points --depth robot/camera/depth --color robot/camera/color
 ```

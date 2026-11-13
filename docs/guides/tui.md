@@ -1,10 +1,10 @@
 # Terminal interface
 
-`blick` without a command opens a terminal interface. It shows every topic, node and parameter that the
+`xblick` without a command opens a terminal interface. It shows every topic, node and parameter that the
 routers and the topics report, and it starts the viewer. It needs no knowledge of any particular node.
 
 ```bash
-blick
+xblick
 ```
 
 The interface needs a terminal of at least 80 x 24 characters. Without a terminal, for example in a pipe or a
@@ -21,7 +21,7 @@ to the interface.
 | Topics | every key that a session publishes, as a tree. `m` measures all of them: rate, size, type, last stamp and age. Enter on a topic subscribes to it alone and shows its publishers, its subscribers, the info record of the stream, and its last message decoded. |
 | Nodes | the sessions, one per program, with kind, address and counts. The routers. The reports on every `<camera>/diagnostics`. The status of the record and play nodes. |
 | Graph | the sessions as boxes and the data between them as arrows. A selected session shows what it sends and takes, and the mouse over an edge shows its keys. |
-| Rerun | the streams, results, label images and pose topics that were found, and the options of `blick rerun`. The tab builds the command line and checks it with the command's own parser. "Launch" runs it as a child process, and "Stop" sends it SIGTERM. "Look again" (`r`) searches for streams at once instead of at the next period of 2 s. |
+| Rerun | the streams, results, label images and pose topics that were found, and the options of `xblick rerun`. The tab builds the command line and checks it with the command's own parser. "Launch" runs it as a child process, and "Stop" sends it SIGTERM. "Look again" (`r`) searches for streams at once instead of at the next period of 2 s. |
 | Parameters | the nodes that offer parameters, and a form built from the descriptors of the chosen node: numbers with range, step and unit, a switch for a boolean, a selection for choices. Read-only parameters are marked. A refused change shows its reason under the field. The node's events keep the values current. "Save as params file" writes them. See [parameters](../reference/parameters.md). |
 
 ### Topics
@@ -124,8 +124,8 @@ when no router answers or no other session is attached.
 ![The connect dialog with an address typed](../media/tui/connect.png)
 
 ```bash
-blick --connect <host>               # tcp/<host>:7447, as a client: everything through that router
-blick --config FILE
+xblick --connect <host>              # tcp/<host>:7447, as a client: everything through that router
+xblick --config FILE
 ```
 
 With `--connect`, the interface is a client by default. Add `--listen` or `--zenoh-mode peer` to make it a peer. A
@@ -137,12 +137,12 @@ Run these commands on your own computer, with Durchblick installed there:
 
 ```bash
 ssh -N -L 7447:127.0.0.1:7447 server
-blick --connect tcp/127.0.0.1:7447
+xblick --connect tcp/127.0.0.1:7447
 ```
 
 The interface must be a client here. A peer would see the sessions and could not reach them, because the router
 gives it loopback addresses of the server. In that case the interface says "not reachable from here". To view
-streams through the tunnel, give `blick rerun` the same options: `--zenoh-mode client --connect
+streams through the tunnel, give `xblick rerun` the same options: `--zenoh-mode client --connect
 tcp/127.0.0.1:7447`. It then receives compressed images.
 
 ## How the interface knows what it shows
@@ -170,10 +170,10 @@ For a network transport, the interface also shows the address that the router se
 data of a client pass through its router. Between peers the admin space shows no links, so the interface makes no
 claim about the path of a peer. Beside the value, it lists the transports that the stream offers.
 
-**Measuring costs work.** `m` subscribes to every topic, as `blick list --traffic` does. All publishers then
+**Measuring costs work.** `m` subscribes to every topic, as `xblick list --traffic` does. All publishers then
 produce every representation, including raw images, while the measurement runs.
 
 ## Presets
 
-The Rerun tab stores named presets in `~/.config/durchblick/rerun_presets.json`, or below `$XDG_CONFIG_HOME`. A
+The Rerun tab stores named presets in `~/.config/xblick/rerun_presets.json`, or below `$XDG_CONFIG_HOME`. A
 preset contains its streams, its options and its Zenoh connection. Loading a preset connects to its connection.

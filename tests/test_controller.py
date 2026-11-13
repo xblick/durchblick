@@ -7,13 +7,13 @@ import time
 import numpy as np
 import pytest
 
-from blick import topics
-from blick.controller import (ArmFields, Command, CommandPublisher, CommandSubscriber, ControllerPublisher,
-                                   ControllerSubscriber, command_of)
-from blick.msg import JointState, TFMessage, WrenchStamped
-from blick.parameters import Parameters
-from blick.robot import RobotStateSubscriber
-from blick.session import open_session
+from xblick import topics
+from xblick.controller import (ArmFields, Command, CommandPublisher, CommandSubscriber, ControllerPublisher,
+                               ControllerSubscriber, command_of)
+from xblick.msg import JointState, TFMessage, WrenchStamped
+from xblick.parameters import Parameters
+from xblick.robot import RobotStateSubscriber
+from xblick.session import open_session
 
 ROOT = "base_link"
 
@@ -109,7 +109,7 @@ def test_stale_and_frameless_commands_are_refused(sessions):
     assert "from now" in refusals[3] and len(got) == 2
     clock.close()
     # a joint or a frame twice: refused (as the bridge does), not the last one taken
-    from blick.controller import command_message
+    from xblick.controller import command_message
     message = command_message(Command(8_000, ROOT, {"left_tcp": POSE}, {"left_shoulder_1": 0.1}))
     message.joint_state.name.append("left_shoulder_1")
     message.joint_state.position = np.array([0.1, 0.2])

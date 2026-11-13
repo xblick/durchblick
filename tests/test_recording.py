@@ -9,18 +9,18 @@ import pytest
 from test_camera import pattern, sessions, wait_until  # noqa: F401 - sessions is a fixture
 from test_points import free_port
 
-from blick import _core, recording
-from blick.camera import (CameraPublisher, ImageSubscriber, StaticTransformPublisher, StaticTransformSubscriber,
-                               cdr_encoding, find_streams)
-from blick.codecs import PNG
-from blick.gpu import CudaImage
-from blick.session import open_session
-from blick.detections import DetectionPublisher, DetectionSubscriber
-from blick.msg import (BoundingBox3D, CameraInfo, CompressedImage, Detection3D, Detection3DArray, Header,
-                            ObjectHypothesis, ObjectHypothesisWithPose, Point, Pose, Quaternion, TFMessage, Time, Transform,
-                            TransformStamped, Vector3)
-from blick.msgdefs import MSGDEFS
-from blick.parameters import ParameterClient
+from xblick import _core, recording
+from xblick.camera import (CameraPublisher, ImageSubscriber, StaticTransformPublisher, StaticTransformSubscriber,
+                           cdr_encoding, find_streams)
+from xblick.codecs import PNG
+from xblick.gpu import CudaImage
+from xblick.session import open_session
+from xblick.detections import DetectionPublisher, DetectionSubscriber
+from xblick.msg import (BoundingBox3D, CameraInfo, CompressedImage, Detection3D, Detection3DArray, Header,
+                        ObjectHypothesis, ObjectHypothesisWithPose, Point, Pose, Quaternion, TFMessage, Time, Transform,
+                        TransformStamped, Vector3)
+from xblick.msgdefs import MSGDEFS
+from xblick.parameters import ParameterClient
 
 mcap_reader = pytest.importorskip("mcap.reader")  # the extra xblick[record]
 
@@ -108,7 +108,7 @@ def test_record_and_play(sessions, tmp_path):  # noqa: F811
     assert schemas["sensor_msgs/msg/CompressedImage"].data == MSGDEFS["sensor_msgs/msg/CompressedImage"].encode()
     channels = {c.topic: c for c in summary.channels.values()}
     color = channels[f"/{CAMERA}/color/image_raw/compressed"]
-    assert color.message_encoding == "cdr" and json.loads(color.metadata["durchblick_info"])["encoding"] == "rgb8"
+    assert color.message_encoding == "cdr" and json.loads(color.metadata["xblick_info"])["encoding"] == "rgb8"
     assert channels[f"/{CAMERA}/gem_x/bodies"].message_encoding == "json"
     assert channels[f"/{CAMERA}/gem_x/bodies"].schema_id == 0
 
@@ -362,7 +362,7 @@ def test_playback_controls_as_parameters(sessions, tmp_path):  # noqa: F811
     stamps = []
     sub = b.declare_subscriber(f"{CAMERA}/color/image_raw/compressed", lambda s: stamps.append(
         CompressedImage.deserialize(s.payload.to_bytes()).header.stamp.to_ns()))
-    client = ParameterClient(b, "durchblick/ctl_play")
+    client = ParameterClient(b, "xblick/ctl_play")
     events = []
     client.on_event(lambda e: events.append({p.name: p.value.value() for p in e.changed_parameters}))
     time.sleep(0.5)

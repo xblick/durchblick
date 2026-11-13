@@ -5,6 +5,46 @@
 Readers and publishers of one setup run the same minor version (0.3.x): the info record's version changed with 0.3.0.
 Within 0.3.x, 0.3.59 changed the rings' keys and the info record's version (3): every program of a setup runs 0.3.59
 or newer. 0.4.0 to 0.4.3 speak the protocol of 0.3.59 to 0.3.68: their programs and those of 0.3.68 work together.
+0.5.0 renamed every name on the wire and on disk: programs of 0.5 do not work with programs of 0.3 or 0.4.
+
+* **0.5.0** Every name in code, on the wire and on disk is `xblick`. Only the prose name of the project stays
+  Durchblick. **Breaking for everything:** programs of 0.5 do not talk to programs of 0.3 or 0.4. Their own message
+  types, info records, ring names and keys differ, and a 0.5 reader refuses a 0.4 info record (its version is 4
+  now). Only samples of ROS types (for example `image_raw`, `image_raw/compressed`, `camera_info`) keep their bytes.
+  Every program and node of a setup must run 0.5. Recordings of 0.4 still play, but their channels lack the info
+  record of `xblick_info`, so `play` serves their streams as plain topics, as it does for other MCAP files. The
+  repository is `github.com/xblick/xblick`. Node repositories are `xblick-<name>`, the relay is `xblick-relay`.
+  The versions of the message types (`@1`) and of the rings (`kVersion`) stay, since their fields and layouts did not
+  change. The ring magics `DBLKRING` and `DBLKCUDA` stay as well.
+
+  | What | Old (0.4) | New (0.5) |
+  | --- | --- | --- |
+  | Python package, extension | `import blick`, `blick._core` | `import xblick`, `xblick._core` |
+  | Distribution, extras | `xblick`, `xblick[relay]` with `blick-relay` 0.3 | unchanged, `xblick[relay]` with `xblick-relay` 0.4 |
+  | Command | `blick` (`blick list`, `blick relay`, `blick mps`, ...) | `xblick` (`xblick list`, `xblick relay`, ...) |
+  | Logger | `blick` | `xblick` |
+  | Terminal interface class | `tui.DurchblickApp` | `tui.XblickApp` |
+  | Relay package and program | `blick_relay`, `durchblick-relay` | `xblick_relay`, `xblick-relay` |
+  | C++ namespace | `durchblick::` | `xblick::` |
+  | C++ headers | `#include <durchblick/camera.hpp>`, `<durchblick/version.hpp>` | `#include <xblick/camera.hpp>`, `<xblick/version.hpp>` |
+  | Version macros | `DURCHBLICK_VERSION`, `DURCHBLICK_VERSION_MAJOR/MINOR/PATCH` | `XBLICK_VERSION`, `XBLICK_VERSION_MAJOR/MINOR/PATCH` |
+  | CMake package | `find_package(durchblick 0.4)`, `lib/cmake/durchblick` | `find_package(xblick 0.5)`, `lib/cmake/xblick` |
+  | CMake targets | `durchblick::core`, `durchblick::durchblick`, `durchblick::points` | `xblick::core`, `xblick::xblick`, `xblick::points` |
+  | CMake options and variables | `DURCHBLICK_CAMERA`, `DURCHBLICK_POINTS`, `DURCHBLICK_CUDA_INCLUDE_DIR`, `durchblick_points_FOUND` | `XBLICK_CAMERA`, `XBLICK_POINTS`, `XBLICK_CUDA_INCLUDE_DIR`, `xblick_points_FOUND` |
+  | Libraries | `libdurchblick_core.a`, `libdurchblick.a`, `libdurchblick_points.a` | `libxblick_core.a`, `libxblick.a`, `libxblick_points.a` |
+  | Programs | `durchblick-points`, `durchblick-cpp-camera`, `durchblick-cpp-probe` | `xblick-points`, `xblick-cpp-camera`, `xblick-cpp-probe` |
+  | Test variables | `DURCHBLICK_CPP_BUILD`, `DURCHBLICK_TUI_SCREENS` | `XBLICK_CPP_BUILD`, `XBLICK_TUI_SCREENS` |
+  | Message types | `durchblick_msgs/msg/...`, `durchblick_msgs/srv/...` | `xblick_msgs/msg/...`, `xblick_msgs/srv/...` |
+  | Info record (`<base>/info`, detections' info) | `{"v":3, ..., "durchblick":"<version>"}` | `{"v":4, ..., "xblick":"<version>"}` |
+  | Shared-memory rings | `/dev/shm/durchblick-<16 hex>` | `/dev/shm/xblick-<16 hex>` |
+  | CUDA ring handshake socket | `\0durchblick-<16 hex>` | `\0xblick-<16 hex>` |
+  | Record and play node | `durchblick/<name>/control`, `durchblick/<name>/status`, parameters of `durchblick/<name>` | `xblick/<name>/control`, `xblick/<name>/status`, parameters of `xblick/<name>` |
+  | MPS daemon | token `durchblick/mps/<name>`, `.../status` `{"v":1, ..., "durchblick":...}`, line `durchblick mps: ready` | token `xblick/mps/<name>`, `.../status` `{"v":2, ..., "xblick":...}`, line `xblick mps: ready` |
+  | MCAP files | library `durchblick <version>`, channel metadata `durchblick_info`, record `durchblick_recording` | library `xblick <version>`, `xblick_info`, `xblick_recording` |
+  | Rerun application id | `durchblick` | `xblick` |
+  | Presets of the terminal interface | `$XDG_CONFIG_HOME/durchblick/rerun_presets.json` | `$XDG_CONFIG_HOME/xblick/rerun_presets.json` |
+  | Test pattern's JPEG comment | `durchblick-test-jpeg <seq>` | `xblick-test-jpeg <seq>` |
+  | Agent skills | `durchblick-build-node`, `durchblick-run-nodes`, `durchblick-benchmark-nodes`, `durchblick-develop-tui` | `xblick-build-node`, `xblick-run-nodes`, `xblick-benchmark-nodes`, `xblick-develop-tui` |
 
 * **0.4.3** The first version on PyPI. The distribution is `xblick` there (`pip install xblick`; PyPI does not allow
   the name `blick`); the module `blick` and the command `blick` keep their names. The extra `xblick[relay]` installs

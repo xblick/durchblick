@@ -8,14 +8,14 @@ import time
 import numpy as np
 import pytest
 
-import blick
-from blick import _core
-from blick.camera import CameraPublisher, ImageSubscriber
-from blick.gpu import CudaImage
-from blick.msg import CudaPointCloud2, PointField, ShmPointCloud2
-from blick.points import (XYZ, XYZRGB, PointCloudPublisher, PointCloudSubscriber, pack_rgb, points_dtype,
-                               unpack_rgb)
-from blick.session import open_session
+import xblick
+from xblick import _core
+from xblick.camera import CameraPublisher, ImageSubscriber
+from xblick.gpu import CudaImage
+from xblick.msg import CudaPointCloud2, PointField, ShmPointCloud2
+from xblick.points import (XYZ, XYZRGB, PointCloudPublisher, PointCloudSubscriber, pack_rgb, points_dtype,
+                           unpack_rgb)
+from xblick.session import open_session
 
 needs_cuda = pytest.mark.skipif(_core.cuda_device_count() == 0, reason="no CUDA device")
 H, W = 48, 64
@@ -90,13 +90,13 @@ def test_rgb_packing_is_pcls():
 def test_descriptor_round_trip_and_versions():
     fields = XYZRGB[0]
     shm = ShmPointCloud2(height=2, width=3, fields=fields, point_step=16, row_step=48, is_dense=True, host="h",
-                         segment="/durchblick-x", slot=1, seq=5)
+                         segment="/xblick-x", slot=1, seq=5)
     assert ShmPointCloud2.deserialize(shm.serialize()) == shm
     cuda = CudaPointCloud2(height=2, width=3, fields=fields, point_step=16, row_step=48, host="h", endpoint="e",
                            device_uuid="ab" * 16, slot=2, seq=6)
     assert CudaPointCloud2.deserialize(cuda.serialize()) == cuda
-    assert ShmPointCloud2.ENCODING == "application/cdr;durchblick_msgs/msg/ShmPointCloud2@1"
-    assert blick.PointCloud2.ENCODING == "application/cdr;sensor_msgs/msg/PointCloud2"
+    assert ShmPointCloud2.ENCODING == "application/cdr;xblick_msgs/msg/ShmPointCloud2@1"
+    assert xblick.PointCloud2.ENCODING == "application/cdr;sensor_msgs/msg/PointCloud2"
 
 
 # ------------------------------------------------------------------------------------------ over Zenoh
@@ -185,16 +185,16 @@ def test_info_record_and_kinds(sessions):
     end = time.monotonic() + 10
     records = []
     while not records and time.monotonic() < end:
-        records = blick.query_info(b, "t/p6/points", timeout=0.5)
+        records = xblick.query_info(b, "t/p6/points", timeout=0.5)
     (record,) = records
     assert record["kind"] == "points" and record["fields"] == ["x", "y", "z", "rgb"]
     assert record["transports"] == ["raw", "shm"] and record["frame_id"] == "depth" and "encoding" not in record
     # a subscriber of the other kind fails loudly instead of waiting for messages that never come
     wrong = ImageSubscriber(b, "t/p6/points", "auto")
-    with pytest.raises(blick.ProtocolError, match="kind 'points'"):
+    with pytest.raises(xblick.ProtocolError, match="kind 'points'"):
         wrong.latest(timeout=10)
     wrong2 = PointCloudSubscriber(b, "t/p6/color")
-    with pytest.raises(blick.ProtocolError, match="kind 'image'"):
+    with pytest.raises(xblick.ProtocolError, match="kind 'image'"):
         wrong2.latest(timeout=10)
     pub.close()
     camera.close()
@@ -305,8 +305,8 @@ def close_cloud(got: np.ndarray, expected: np.ndarray, metres: float, colour: fl
 
 
 def test_a_camera_cloud_is_its_ranges_and_colours():
-    from blick.msg import CompressedPointCloud2
-    from blick.points import compress_cloud, decompress_cloud, rays_id
+    from xblick.msg import CompressedPointCloud2
+    from xblick.points import compress_cloud, decompress_cloud, rays_id
     rays, points = camera_rays(), camera_cloud()
     for codec, colour in (("png", 0), ("jpeg", 3)):
         ranges, colors = compress_cloud(points, rays, 0.001, codec)
@@ -322,8 +322,8 @@ def test_a_camera_cloud_is_its_ranges_and_colours():
 
 def test_a_scanner_cloud_is_rounded_to_the_range_step():
     """Rays that are no camera's: unit vectors of a scanner's beams, ranges along them, no colour."""
-    from blick.points import compress_cloud, decompress_cloud
-    from blick.msg import CompressedPointCloud2
+    from xblick.points import compress_cloud, decompress_cloud
+    from xblick.msg import CompressedPointCloud2
     rng = np.random.default_rng(1)
     azimuth, elevation = np.meshgrid(np.linspace(-3, 3, 90, dtype=np.float32), np.linspace(-0.3, 0.3, 16, dtype=np.float32))
     rays = np.stack([np.cos(elevation) * np.cos(azimuth), np.cos(elevation) * np.sin(azimuth), np.sin(elevation)], -1)
@@ -340,7 +340,7 @@ def test_a_scanner_cloud_is_rounded_to_the_range_step():
 
 
 def test_a_cloud_that_does_not_fit_its_rays_is_refused(sessions):
-    from blick.points import compress_cloud
+    from xblick.points import compress_cloud
     rays, points = camera_rays(), camera_cloud()
     shifted = points.copy()
     shifted["x"] += 0.05  # another frame than the rays'

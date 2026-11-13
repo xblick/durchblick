@@ -24,7 +24,7 @@ a result with the image, the robot state and the results of other nodes for the 
 | a colour frame with depth and instances paired to it | the colour frame | the users of `RGBDInputs` (FoundationPose, NeMO, the mesh makers), GEM-X, IVT with `--depth` |
 | a stereo pair: each left frame with the nearest right frame | the left image, so that depth and left image pair by equal stamps | Fast-FoundationStereo |
 | a stereo pair | the left image | IVT |
-| depth with colour | the depth frame | `durchblick-points` |
+| depth with colour | the depth frame | `xblick-points` |
 | a clip or a sequence | its newest frame | V-JEPA 2, TAPNext++ |
 | a map | the newest frame in the map | nvblox |
 | a registration that ran in the background | the frame that the published pose describes | FoundationPose |
@@ -63,9 +63,9 @@ An age is the difference between a clock and the stamp. Durchblick gives you two
 | --- | --- | --- |
 | Python | `Frame.age_at_send_ns`, `stamps.age_at_send_ns(sample)`, `DetectionSubscriber.age_at_send_ns` | `Frame.age_s` (seconds) |
 | C++ | `Frame::age_at_send_ns()`, `Cloud::age_at_send_ns()` | |
-| `blick hz` | printed | printed |
+| `xblick hz` | printed | printed |
 | Terminal interface | median and 95th percentile over the last second, per topic | the same |
-| `blick rerun` | a plot per topic at `ages/<topic>` in ms. `--no-ages` removes the plots. | |
+| `xblick rerun` | a plot per topic at `ages/<topic>` in ms. `--no-ages` removes the plots. | |
 
 The age at send is empty when a sample has no attachment or no stamp.
 
@@ -78,20 +78,20 @@ clock synchronisation of the PCs, for example with chrony or PTP.
 
 | Source | How it sets the stamp | You can compare it with |
 | --- | --- | --- |
-| Azure Kinect (durchblick-azure-kinect) | The SDK puts the device timestamp at the middle of the exposure. The node moves it to the host's wall clock with a filtered offset, as Microsoft's ROS driver does. | the camera's other streams exactly, because colour, depth, IR and IMU share one device clock. Other clocks only up to a constant delay, which we have not measured. |
-| Roboception rc_visard (durchblick-roboception) | the camera's own timestamp of the image. With PTP, which is on by default, the camera's clock follows the PTP master of the network. | the host's clock only when the PTP master follows the host's clock |
+| Azure Kinect (xblick-azure-kinect) | The SDK puts the device timestamp at the middle of the exposure. The node moves it to the host's wall clock with a filtered offset, as Microsoft's ROS driver does. | the camera's other streams exactly, because colour, depth, IR and IMU share one device clock. Other clocks only up to a constant delay, which we have not measured. |
+| Roboception rc_visard (xblick-roboception) | the camera's own timestamp of the image. With PTP, which is on by default, the camera's clock follows the PTP master of the network. | the host's clock only when the PTP master follows the host's clock |
 | A live simulation | the server's wall clock in the simulation step in which the frame is due, before the frame is rendered. Robot state and object poses get the same stamp. | the other programs of the PC. The rendering time counts into the age of the frame. |
-| An offline simulation through `blick.sim.SimPublisher` | the simulated time, which the simulation also publishes on `<world>/clock` | the other samples of the same simulation |
+| An offline simulation through `xblick.sim.SimPublisher` | the simulated time, which the simulation also publishes on `<world>/clock` | the other samples of the same simulation |
 | A robot state bridge | the time of the state sample in the robot's own system | the clocks of the robot's PCs |
-| `blick play` with an MCAP file | the recorded stamps. In a loop, each pass moves them forward. | the times of the recording |
-| `blick play` with videos | the start of the playback in wall time plus the time of the frame in its video | the wall clock of the playing PC, and the other streams of the same playback exactly |
+| `xblick play` with an MCAP file | the recorded stamps. In a loop, each pass moves them forward. | the times of the recording |
+| `xblick play` with videos | the start of the playback in wall time plus the time of the frame in its video | the wall clock of the playing PC, and the other streams of the same playback exactly |
 | A publisher that gets no stamp | `CameraPublisher` and `PointCloudPublisher` use the publish time. | Avoid this. Always pass the capture time. |
 
 The node repositories describe their stamps in detail. The [recording guide](../guides/recording.md) and the
 [video guide](../guides/video.md) describe the stamps of a playback.
 
 A camera's `<camera>/tf` that comes from a robot's state carries the stamp of the state. It does not carry the
-stamp of an image. A reader interpolates the pose at the stamp of the image. `blick.poses` does this.
+stamp of an image. A reader interpolates the pose at the stamp of the image. `xblick.poses` does this.
 
 ## What follows for your node
 
@@ -108,5 +108,5 @@ stamp of an image. A reader interpolates the pose at the stamp of the image. `bl
 - The Azure Kinect's stamp is late by the mean time from the middle of the exposure to the host. We have not
   measured this delay.
 - Which instant of the exposure the rc_visard stamps is not checked on a device.
-- Two nodes still publish some samples without an attachment: durchblick-gem-x (bodies) and durchblick-mapping
+- Two nodes still publish some samples without an attachment: xblick-gem-x (bodies) and xblick-mapping
   (the cuVSLAM topics). State of 2026-11-05.

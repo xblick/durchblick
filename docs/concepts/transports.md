@@ -171,7 +171,7 @@ lost when the new transport is ahead of the old one. The subscriber stops readin
 first frame of the new one, so the frames that the old transport still had to bring do not arrive.
 
 A node can therefore receive a NumPy array from one frame and a device array from the next. The helpers in
-`blick.tensors` accept both.
+`xblick.tensors` accept both.
 
 ## A publisher works only on request
 
@@ -190,7 +190,7 @@ if camera.subscribed:
     camera.publish(render(), stamp_ns=capture_time_ns)
 ```
 
-`blick list` follows the same rule. It queries the `info` records and subscribes to nothing, so it causes no
+`xblick list` follows the same rule. It queries the `info` records and subscribes to nothing, so it causes no
 work in any publisher.
 
 The rule also covers cameras that deliver JPEG themselves. The publisher passes the camera's JPEG to `compressed`
@@ -203,7 +203,7 @@ A ring exists only on the publisher's host. A stream from another PC therefore a
 and every subscriber decodes it on its own.
 
 A relay removes this repeated work. You start one
-[durchblick-relay](https://github.com/xblick/durchblick-relay) on each PC whose nodes read streams
+[xblick-relay](https://github.com/xblick/xblick-relay) on each PC whose nodes read streams
 from other PCs. For each such stream, the relay subscribes to it once, decodes each frame once and publishes it
 under the same name into rings on its own host. It keeps the header, the sequence number and the source of every
 frame. Its `info` record says `relayed_from: <host>`.
@@ -230,7 +230,7 @@ its own host. A relay never relays a stream that is already relayed.
 
 ## Status and limits
 
-- You start the relay of a PC yourself with `blick relay`, for example beside the PC's router.
+- You start the relay of a PC yourself with `xblick relay`, for example beside the PC's router.
 - Only a subscriber with `auto` asks the relay. For a subscriber with a fixed transport, name the stream with the
   relay's `--stream` option.
 - The relay handles image streams. A point cloud from another PC arrives [compressed](#compressed-point-clouds)

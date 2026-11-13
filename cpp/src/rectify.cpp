@@ -1,10 +1,10 @@
-#include "durchblick/rectify.hpp"
+#include "xblick/rectify.hpp"
 
 #include <cmath>
 #include <cstring>
 #include <stdexcept>
 
-namespace durchblick
+namespace xblick
 {
     namespace
     {
@@ -249,4 +249,4 @@ namespace durchblick
             }
         }
     }
-}  // namespace durchblick
+}  // namespace xblick

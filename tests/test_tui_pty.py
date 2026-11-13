@@ -1,4 +1,4 @@
-"""The terminal interface in a real terminal: ``blick`` in a pseudo-terminal driven by virtui
+"""The terminal interface in a real terminal: ``xblick`` in a pseudo-terminal driven by virtui
 (github.com/honeybadge-labs/virtui), against the fake network of test_tui. Catches what ``App.run_test`` does not: a
 real terminal's size and layout (the status line scrolled away under the header) and keys reaching the widgets
 (focus). Skipped without virtui (on PATH or in ~/.local/bin); it runs its own virtui daemon on a private socket."""
@@ -89,10 +89,10 @@ def terminal(tmp_path):
 
 @pytest.mark.parametrize("size", [(170, 45), (80, 24)])
 def test_blick_in_a_real_terminal(fake, terminal, tmp_path, size):  # noqa: F811
-    blick = str(Path(sys.executable).parent / "blick")
+    xblick = str(Path(sys.executable).parent / "xblick")
     # COLUMNS and LINES as readline leaves them for child processes (Python before 3.13): the interface must take the
     # terminal's size all the same, also after the resizes below
-    terminal.run([blick], {"XDG_CONFIG_HOME": str(tmp_path / "config"), "COLUMNS": "80", "LINES": "24"}, *size)
+    terminal.run([xblick], {"XDG_CONFIG_HOME": str(tmp_path / "config"), "COLUMNS": "80", "LINES": "24"}, *size)
     terminal.wait("Topics")
 
     # connect through the dialog, as a user does: the address, client mode (the default there), Enter
@@ -139,13 +139,13 @@ def test_blick_in_a_real_terminal(fake, terminal, tmp_path, size):  # noqa: F811
     terminal.press("4")
     terminal.wait(f"{BASE}  image")
     terminal.press("Space")
-    terminal.wait(f"blick rerun --spawn {BASE} --zenoh-mode client")
+    terminal.wait(f"xblick rerun --spawn {BASE} --zenoh-mode client")
 
     # resized: too small says so, larger has the status line again
     terminal("resize", "--cols", "60", "--rows", "20", terminal.session)
     terminal.wait("terminal too small: it needs at least 80 x 24")
     terminal("resize", "--cols", "250", "--rows", "70", terminal.session)
-    terminal.wait(f"blick rerun --spawn {BASE} --zenoh-mode client --connect {fake.endpoint}")
+    terminal.wait(f"xblick rerun --spawn {BASE} --zenoh-mode client --connect {fake.endpoint}")
     assert "terminal too small" not in terminal.screen()
     assert "--zenoh-mode client --connect" in terminal.screen().splitlines()[1]
 
@@ -161,7 +161,7 @@ def test_blick_in_a_real_terminal(fake, terminal, tmp_path, size):  # noqa: F811
 @pytest.mark.parametrize("size", [(170, 45), (80, 24)])
 def test_parameters_in_a_real_terminal(fake, terminal, tmp_path, size):  # noqa: F811
     """The Parameters tab in a real terminal: the node, its form, a value refused with the reason, one taken."""
-    from blick.parameters import Parameters
+    from xblick.parameters import Parameters
 
     params = Parameters(fake.node_session, "tracker", "robot/fakecam")
     params.declare("draw", True)
@@ -169,8 +169,8 @@ def test_parameters_in_a_real_terminal(fake, terminal, tmp_path, size):  # noqa:
     params.declare("model", "base", read_only=True)
     params.check_overrides()
     try:
-        blick = str(Path(sys.executable).parent / "blick")
-        terminal.run([blick], {"XDG_CONFIG_HOME": str(tmp_path / "config")}, *size)
+        xblick = str(Path(sys.executable).parent / "xblick")
+        terminal.run([xblick], {"XDG_CONFIG_HOME": str(tmp_path / "config")}, *size)
         terminal.wait("Topics")
         terminal.connect(fake.endpoint)
         terminal.press("5")
@@ -183,8 +183,8 @@ def test_parameters_in_a_real_terminal(fake, terminal, tmp_path, size):  # noqa:
         terminal.type("500")
         terminal.press("Enter")
         terminal.wait("500 is outside 1 to 100")
-        if os.environ.get("DURCHBLICK_TUI_SCREENS"):  # a directory for the screen's text (documentation)
-            (Path(os.environ["DURCHBLICK_TUI_SCREENS"]) / f"parameters-{size[0]}x{size[1]}.txt").write_text(
+        if os.environ.get("XBLICK_TUI_SCREENS"):      # a directory for the screen's text (documentation)
+            (Path(os.environ["XBLICK_TUI_SCREENS"]) / f"parameters-{size[0]}x{size[1]}.txt").write_text(
                 terminal.screen())
         terminal.press("End", "Backspace", "Backspace", "Backspace")
         terminal.type("50")

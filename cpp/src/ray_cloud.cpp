@@ -1,11 +1,11 @@
-#include "durchblick/ray_cloud.hpp"
+#include "xblick/ray_cloud.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <limits>
 
-namespace durchblick::ray_cloud
+namespace xblick::ray_cloud
 {
     Fit ranges(const void* points, std::size_t count, const Layout& layout, const float* rays, double range_step,
                std::uint16_t* steps)
@@ -66,4 +66,4 @@ namespace durchblick::ray_cloud
             std::memcpy(bytes + layout.z, &p[2], 4);
         }
     }
-}  // namespace durchblick::ray_cloud
+}  // namespace xblick::ray_cloud

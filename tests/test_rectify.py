@@ -1,11 +1,11 @@
-"""blick.rectify (C++ rectify.hpp through _core) against OpenCV's initUndistortRectifyMap: every distortion
+"""xblick.rectify (C++ rectify.hpp through _core) against OpenCV's initUndistortRectifyMap: every distortion
 model, a stereo pair's R and P, P all zeros; and the rectified CameraInfo."""
 
 import numpy as np
 import pytest
 
-from blick.msg import CameraInfo
-from blick.rectify import rectified_info, rectify_map
+from xblick.msg import CameraInfo
+from xblick.rectify import rectified_info, rectify_map
 
 cv2 = pytest.importorskip("cv2")
 

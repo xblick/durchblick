@@ -1,6 +1,6 @@
 // A publisher (camera or point cloud) destroyed while another thread queries its <base>/info without pause: Zenoh's thread answers the query
 // from the publisher's members, so the queryable must go before them. A CUDA ring's server takes up to 200 ms to stop,
-// which left a query enough time to read freed members (durchblick-relay 0.2.1 stopped with std::length_error). The
+// which left a query enough time to read freed members (xblick-relay 0.2.1 stopped with std::length_error). The
 // shared-memory case runs everywhere, the CUDA case only with a GPU. Built with -fsanitize=address, the use after free
 // shows as such; without it, a freed string can still throw or crash.
 #include <atomic>
@@ -10,8 +10,8 @@
 #include <thread>
 #include <vector>
 
-#include "durchblick/camera.hpp"
-#include "durchblick/points.hpp"
+#include "xblick/camera.hpp"
+#include "xblick/points.hpp"
 
 namespace
 {
@@ -53,7 +53,7 @@ namespace
         std::thread asker([&] {
             while (not stop.load())
             {
-                for (const auto& reply : durchblick::replies(session, base + "/info", 100ms))
+                for (const auto& reply : xblick::replies(session, base + "/info", 100ms))
                 {
                     if (reply.is_ok())
                     {
@@ -80,7 +80,7 @@ namespace
 
 int main()
 {
-    using namespace durchblick;
+    using namespace xblick;
     zenoh::Session session = open_session({.local_router = false});
     std::vector<std::uint8_t> pixels(64 * 48, 7);
     const auto camera = [&](const std::string& base, PublisherOptions options) {

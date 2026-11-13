@@ -1,5 +1,5 @@
-// blick._core: the C++ rings for Python. Buffers cross without a copy: host slots as NumPy arrays (views into the
-// shared memory, kept alive by the ring object), device buffers as pointers that blick.gpu wraps with
+// xblick._core: the C++ rings for Python. Buffers cross without a copy: host slots as NumPy arrays (views into the
+// shared memory, kept alive by the ring object), device buffers as pointers that xblick.gpu wraps with
 // __cuda_array_interface__. Copies and waits release the GIL.
 #include <algorithm>
 #include <cstring>
@@ -13,18 +13,18 @@
 #include <nanobind/stl/tuple.h>
 #include <nanobind/stl/vector.h>
 
-#include "durchblick/cuda_ring.hpp"
-#include "durchblick/pairing.hpp"
-#include "durchblick/protocol.hpp"
-#include "durchblick/ray_cloud.hpp"
-#include "durchblick/rectify.hpp"
-#include "durchblick/ring.hpp"
-#include "durchblick/rvl.hpp"
-#include "durchblick/version.hpp"
+#include "xblick/cuda_ring.hpp"
+#include "xblick/pairing.hpp"
+#include "xblick/protocol.hpp"
+#include "xblick/ray_cloud.hpp"
+#include "xblick/rectify.hpp"
+#include "xblick/ring.hpp"
+#include "xblick/rvl.hpp"
+#include "xblick/version.hpp"
 
 namespace nb = nanobind;
 using namespace nb::literals;
-using durchblick::Written;
+using xblick::Written;
 
 namespace
 {
@@ -47,33 +47,33 @@ namespace
 
 NB_MODULE(_core, m)
 {
-    m.doc() = "Durchblick's C++ core: shared-memory and CUDA rings (cpp/include/durchblick/ring.hpp describes them)";
-    nb::exception<durchblick::RingError>(m, "RingError", PyExc_RuntimeError);
-    nb::exception<durchblick::rvl::Error>(m, "RvlError", PyExc_ValueError);
+    m.doc() = "Durchblick's C++ core: shared-memory and CUDA rings (cpp/include/xblick/ring.hpp describes them)";
+    nb::exception<xblick::RingError>(m, "RingError", PyExc_RuntimeError);
+    nb::exception<xblick::rvl::Error>(m, "RvlError", PyExc_ValueError);
 
-    m.def("host_id", &durchblick::host_id, "boot id of this host; descriptors carry it");
+    m.def("host_id", &xblick::host_id, "boot id of this host; descriptors carry it");
     m.def("rvl_encode", [](InArray pixels) {
               if (pixels.ndim() != 2 or pixels.dtype() != nb::dtype<std::uint16_t>())
               {
                   throw nb::value_error("rvl_encode takes a 2-D uint16 array");
               }
-              const auto bytes = durchblick::rvl::encode(pixels.data(), static_cast<std::uint32_t>(pixels.shape(0)),
-                                                         static_cast<std::uint32_t>(pixels.shape(1)));
+              const auto bytes = xblick::rvl::encode(pixels.data(), static_cast<std::uint32_t>(pixels.shape(0)),
+                                                     static_cast<std::uint32_t>(pixels.shape(1)));
               return nb::bytes(reinterpret_cast<const char*>(bytes.data()), bytes.size());
           }, "pixels"_a, "a 16-bit image as ROS's compressedDepth rvl writes it (rvl.hpp)");
     m.def("rvl_shape", [](InArray data) {
               const auto [height, width] =
-                  durchblick::rvl::shape({static_cast<const std::uint8_t*>(data.data()), data.nbytes()});
+                  xblick::rvl::shape({static_cast<const std::uint8_t*>(data.data()), data.nbytes()});
               return std::make_tuple(height, width);
           }, "data"_a, "(height, width) of rvl_encode's bytes");
     m.def("rvl_decode", [](InArray data, HostArray out) {
               const std::span<const std::uint8_t> bytes{static_cast<const std::uint8_t*>(data.data()), data.nbytes()};
-              const auto [height, width] = durchblick::rvl::shape(bytes);
+              const auto [height, width] = xblick::rvl::shape(bytes);
               if (out.dtype() != nb::dtype<std::uint16_t>() or out.nbytes() != std::size_t{height} * width * 2)
               {
                   throw nb::value_error("rvl_decode: out is not a uint16 array of rvl_shape's size");
               }
-              durchblick::rvl::decode(bytes, out.data());
+              xblick::rvl::decode(bytes, out.data());
           }, "data"_a, "out"_a, "decodes rvl_encode's bytes into out, a uint16 array of rvl_shape(data)");
     // cloud/compressed (ray_cloud.hpp): points and rays as bytes, x, y, z at their offsets in a point
     m.def("ray_cloud_ranges", [](InArray points, std::uint32_t point_step, std::uint32_t x, std::uint32_t y,
@@ -86,7 +86,7 @@ NB_MODULE(_core, m)
                   throw nb::value_error("ray_cloud_ranges: points, rays (float32, 3 per point) and steps (uint16) "
                                         "are not of one size");
               }
-              const auto fit = durchblick::ray_cloud::ranges(
+              const auto fit = xblick::ray_cloud::ranges(
                   points.data(), count, {point_step, x, y, z}, static_cast<const float*>(rays.data()), range_step,
                   static_cast<std::uint16_t*>(steps.data()));
               return std::make_tuple(fit.valid, fit.low, fit.high, fit.deviation, fit.limit);
@@ -102,9 +102,9 @@ NB_MODULE(_core, m)
                   throw nb::value_error("ray_cloud_points: steps (uint16), rays (float32, 3 per point) and points "
                                         "are not of one size");
               }
-              durchblick::ray_cloud::points(static_cast<const std::uint16_t*>(steps.data()), count,
-                                            static_cast<const float*>(rays.data()), range_step,
-                                            {point_step, x, y, z}, points.data());
+              xblick::ray_cloud::points(static_cast<const std::uint16_t*>(steps.data()), count,
+                                        static_cast<const float*>(rays.data()), range_step,
+                                        {point_step, x, y, z}, points.data());
           }, "steps"_a, "rays"_a, "range_step"_a, "points"_a, "point_step"_a, "x"_a, "y"_a, "z"_a,
           "writes x, y, z of the points of these ranges on their rays (NaN for 0)");
     // rectification (rectify.hpp): the map of a camera, as cv2.initUndistortRectifyMap gives it
@@ -119,7 +119,7 @@ NB_MODULE(_core, m)
                   const auto* v = static_cast<const double*>(a.data());
                   return std::vector<double>(v, v + a.nbytes() / sizeof(double));
               };
-              durchblick::RectifyCamera c;
+              xblick::RectifyCamera c;
               c.width = width;
               c.height = height;
               const auto kv = doubles(k, 9, "k"), rv = doubles(r, 9, "r"), pv = doubles(p, 12, "p");
@@ -134,10 +134,10 @@ NB_MODULE(_core, m)
               {
                   throw nb::value_error("rectify_map: x and y are not float32 of height x width");
               }
-              durchblick::RectifyMap map;
+              xblick::RectifyMap map;
               try
               {
-                  map = durchblick::rectify_map(c);
+                  map = xblick::rectify_map(c);
               }
               catch (const std::invalid_argument& e)
               {
@@ -148,13 +148,13 @@ NB_MODULE(_core, m)
           }, "width"_a, "height"_a, "k"_a, "distortion_model"_a, "d"_a, "r"_a, "p"_a, "x"_a, "y"_a,
           "writes the rectification map of the camera (rectify.hpp) into x and y (float32, height x width)");
     // pairing by stamp (pairing.hpp): history.PartnerHistory pairs with these
-    m.def("partner_period_ns", &durchblick::partner_period_ns, "kept"_a,
+    m.def("partner_period_ns", &xblick::partner_period_ns, "kept"_a,
           "the median step of the kept stamps, each once; None before two different stamps");
     m.def("partner_of", [](const std::vector<std::int64_t>& kept, std::int64_t stamp_ns,
                            std::optional<std::int64_t> max_offset_ns) {
               try
               {
-                  return durchblick::partner_of(kept, stamp_ns, max_offset_ns);
+                  return xblick::partner_of(kept, stamp_ns, max_offset_ns);
               }
               catch (const std::invalid_argument& e)
               {
@@ -162,15 +162,15 @@ NB_MODULE(_core, m)
               }
           }, "kept"_a, "stamp_ns"_a, "max_offset_ns"_a.none(),
           "the stamp of the partner sample of the primary frame stamped stamp_ns (pairing.hpp); None if none (yet)");
-    m.def("cuda_device_count", &durchblick::cuda_device_count, "CUDA devices; 0 without driver or device");
-    m.def("cuda_device_uuid", &durchblick::cuda_device_uuid, "ordinal"_a,
+    m.def("cuda_device_count", &xblick::cuda_device_count, "CUDA devices; 0 without driver or device");
+    m.def("cuda_device_uuid", &xblick::cuda_device_uuid, "ordinal"_a,
           "the UUID of the CUDA device of this ordinal (32 hex digits); empty without a driver");
-    m.def("cuda_device_ordinal", &durchblick::cuda_device_ordinal, "uuid"_a,
+    m.def("cuda_device_ordinal", &xblick::cuda_device_ordinal, "uuid"_a,
           "ordinal of the CUDA device with this UUID; -1 if this process does not see it");
-    m.attr("MAX_SLOTS") = durchblick::kMaxSlots;
-    m.attr("__version__") = DURCHBLICK_VERSION;
+    m.attr("MAX_SLOTS") = xblick::kMaxSlots;
+    m.attr("__version__") = XBLICK_VERSION;
 
-    namespace p = durchblick::protocol;
+    namespace p = xblick::protocol;
     nb::module_ protocol = m.def_submodule("protocol", "the wire protocol's names and versions (protocol.hpp)");
     protocol.attr("IMAGE_RAW") = std::string(p::kImageRaw);
     protocol.attr("COMPRESSED") = std::string(p::kCompressed);
@@ -217,7 +217,7 @@ NB_MODULE(_core, m)
     protocol.attr("ATTACHMENT_VERSION") = p::kAttachmentVersion;
     protocol.attr("INFO_VERSION") = p::kInfoVersion;
     protocol.attr("SENT_VERSION") = p::kSentVersion;
-    protocol.attr("RING_VERSION") = durchblick::kVersion;
+    protocol.attr("RING_VERSION") = xblick::kVersion;
     protocol.attr("DEFAULT_PORT") = p::kDefaultPort;
     nb::dict types;  // type name -> (schema, Zenoh encoding)
     for (const p::MessageType& t : {p::kImageType, p::kCompressedImageType, p::kCameraInfoType, p::kTFMessageType,
@@ -246,11 +246,11 @@ NB_MODULE(_core, m)
     }
     protocol.attr("TYPES") = types;
 
-    nb::class_<durchblick::HostRingWriter>(m, "HostRingWriter")
+    nb::class_<xblick::HostRingWriter>(m, "HostRingWriter")
         .def(nb::init<std::uint32_t, std::uint64_t>(), "slot_count"_a, "slot_size"_a)
         .def(
             "write",
-            [](durchblick::HostRingWriter& w, const InArray& a) {
+            [](xblick::HostRingWriter& w, const InArray& a) {
                 Written out{};
                 {
                     nb::gil_scoped_release release;
@@ -262,21 +262,21 @@ NB_MODULE(_core, m)
         .def(
             "loan",
             [](nb::handle self) {
-                auto& w = nb::cast<durchblick::HostRingWriter&>(self);
+                auto& w = nb::cast<xblick::HostRingWriter&>(self);
                 std::uint8_t* p = w.loan();
                 return ByteView(p, {static_cast<std::size_t>(w.slot_size())}, self);
             },
             "The next slot as a writable uint8 array, to fill in place; then commit(nbytes).")
-        .def("commit", [](durchblick::HostRingWriter& w, std::uint64_t n) { return pair(w.commit(n)); }, "nbytes"_a)
-        .def_prop_ro("name", &durchblick::HostRingWriter::name)
-        .def_prop_ro("slot_count", &durchblick::HostRingWriter::slot_count)
-        .def_prop_ro("slot_size", &durchblick::HostRingWriter::slot_size);
+        .def("commit", [](xblick::HostRingWriter& w, std::uint64_t n) { return pair(w.commit(n)); }, "nbytes"_a)
+        .def_prop_ro("name", &xblick::HostRingWriter::name)
+        .def_prop_ro("slot_count", &xblick::HostRingWriter::slot_count)
+        .def_prop_ro("slot_size", &xblick::HostRingWriter::slot_size);
 
-    nb::class_<durchblick::HostRingReader>(m, "HostRingReader")
+    nb::class_<xblick::HostRingReader>(m, "HostRingReader")
         .def(nb::init<const std::string&>(), "name"_a)
         .def(
             "read",
-            [](const durchblick::HostRingReader& r, std::uint32_t slot, std::uint64_t seq, HostArray out) {
+            [](const xblick::HostRingReader& r, std::uint32_t slot, std::uint64_t seq, HostArray out) {
                 nb::gil_scoped_release release;
                 return r.read(slot, seq, out.data(), nbytes_of(out));
             },
@@ -284,33 +284,33 @@ NB_MODULE(_core, m)
         .def(
             "view",
             [](nb::handle self, std::uint32_t slot, std::uint64_t nbytes) {
-                auto& r = nb::cast<const durchblick::HostRingReader&>(self);
+                auto& r = nb::cast<const xblick::HostRingReader&>(self);
                 if (nbytes > r.slot_size())
                 {
-                    throw durchblick::RingError("view of " + std::to_string(nbytes) + " bytes, slot of " +
-                                                std::to_string(r.slot_size()));
+                    throw xblick::RingError("view of " + std::to_string(nbytes) + " bytes, slot of " +
+                                            std::to_string(r.slot_size()));
                 }
                 return ReadOnlyByteView(r.view(slot), {static_cast<std::size_t>(nbytes)}, self);
             },
             "slot"_a, "nbytes"_a, "The slot's bytes without a copy (read-only); check validate() after use.")
-        .def("acquire", &durchblick::HostRingReader::acquire, "slot"_a, "seq"_a)
-        .def("validate", &durchblick::HostRingReader::validate, "slot"_a, "seq"_a)
-        .def("nbytes", &durchblick::HostRingReader::nbytes, "slot"_a)
-        .def_prop_ro("name", &durchblick::HostRingReader::name)
-        .def_prop_ro("slot_count", &durchblick::HostRingReader::slot_count)
-        .def_prop_ro("slot_size", &durchblick::HostRingReader::slot_size);
+        .def("acquire", &xblick::HostRingReader::acquire, "slot"_a, "seq"_a)
+        .def("validate", &xblick::HostRingReader::validate, "slot"_a, "seq"_a)
+        .def("nbytes", &xblick::HostRingReader::nbytes, "slot"_a)
+        .def_prop_ro("name", &xblick::HostRingReader::name)
+        .def_prop_ro("slot_count", &xblick::HostRingReader::slot_count)
+        .def_prop_ro("slot_size", &xblick::HostRingReader::slot_size);
 
-    nb::class_<durchblick::DeviceBuffer>(m, "DeviceBuffer")
-        .def_prop_ro("ptr", &durchblick::DeviceBuffer::ptr)
-        .def_prop_ro("nbytes", &durchblick::DeviceBuffer::nbytes)
-        .def_prop_ro("device", &durchblick::DeviceBuffer::device)
+    nb::class_<xblick::DeviceBuffer>(m, "DeviceBuffer")
+        .def_prop_ro("ptr", &xblick::DeviceBuffer::ptr)
+        .def_prop_ro("nbytes", &xblick::DeviceBuffer::nbytes)
+        .def_prop_ro("device", &xblick::DeviceBuffer::device)
         .def(
             "download",
-            [](const durchblick::DeviceBuffer& b, HostArray out) {
+            [](const xblick::DeviceBuffer& b, HostArray out) {
                 if (nbytes_of(out) < b.nbytes())
                 {
-                    throw durchblick::RingError("download of " + std::to_string(b.nbytes()) + " bytes into " +
-                                                std::to_string(nbytes_of(out)));
+                    throw xblick::RingError("download of " + std::to_string(b.nbytes()) + " bytes into " +
+                                            std::to_string(nbytes_of(out)));
                 }
                 nb::gil_scoped_release release;
                 b.download(out.data());
@@ -318,24 +318,24 @@ NB_MODULE(_core, m)
             "out"_a)
         .def(
             "upload",
-            [](durchblick::DeviceBuffer& b, const InArray& a) {
+            [](xblick::DeviceBuffer& b, const InArray& a) {
                 if (nbytes_of(a) != b.nbytes())
                 {
-                    throw durchblick::RingError("upload of " + std::to_string(nbytes_of(a)) + " bytes into " +
-                                                std::to_string(b.nbytes()));
+                    throw xblick::RingError("upload of " + std::to_string(nbytes_of(a)) + " bytes into " +
+                                            std::to_string(b.nbytes()));
                 }
                 nb::gil_scoped_release release;
                 b.upload(a.data());
             },
             "array"_a, "Copy a C-contiguous array of nbytes bytes into the buffer.");
-    m.def("make_device_buffer", &durchblick::make_device_buffer, "device"_a, "nbytes"_a,
+    m.def("make_device_buffer", &xblick::make_device_buffer, "device"_a, "nbytes"_a,
           "A device buffer of its own (e.g. for a driver that uploads frames, or tests).");
 
-    nb::class_<durchblick::CudaRingWriter>(m, "CudaRingWriter")
+    nb::class_<xblick::CudaRingWriter>(m, "CudaRingWriter")
         .def(nb::init<int, std::uint32_t, std::uint64_t>(), "device"_a, "slot_count"_a, "slot_size"_a)
         .def(
             "write_device",
-            [](durchblick::CudaRingWriter& w, std::uint64_t ptr, std::uint64_t nbytes, std::uint64_t stream) {
+            [](xblick::CudaRingWriter& w, std::uint64_t ptr, std::uint64_t nbytes, std::uint64_t stream) {
                 Written out{};
                 {
                     nb::gil_scoped_release release;
@@ -346,21 +346,21 @@ NB_MODULE(_core, m)
             "ptr"_a, "nbytes"_a, "stream"_a = 0)
         .def(
             "wait_written",
-            [](durchblick::CudaRingWriter& w, std::uint32_t slot) {
+            [](xblick::CudaRingWriter& w, std::uint32_t slot) {
                 nb::gil_scoped_release release;
                 w.wait_written(slot);
             },
             "slot"_a, "Wait until the frame written into slot is there (write_device's source may then be freed).")
         .def(
             "synchronize_device",
-            [](durchblick::CudaRingWriter& w) {
+            [](xblick::CudaRingWriter& w) {
                 nb::gil_scoped_release release;
                 w.synchronize_device();
             },
             "Wait for all work of this process on the ring's device.")
         .def(
             "write_host",
-            [](durchblick::CudaRingWriter& w, const InArray& a) {
+            [](xblick::CudaRingWriter& w, const InArray& a) {
                 Written out{};
                 {
                     nb::gil_scoped_release release;
@@ -371,39 +371,39 @@ NB_MODULE(_core, m)
             "array"_a)
         .def(
             "read_host",
-            [](durchblick::CudaRingWriter& w, std::uint32_t slot, HostArray out) {
+            [](xblick::CudaRingWriter& w, std::uint32_t slot, HostArray out) {
                 nb::gil_scoped_release release;
                 w.read_host(slot, out.data(), nbytes_of(out));
             },
             "slot"_a, "out"_a)
-        .def_prop_ro("endpoint", &durchblick::CudaRingWriter::endpoint)
-        .def_prop_ro("device_uuid", &durchblick::CudaRingWriter::device_uuid)
-        .def_prop_ro("device", &durchblick::CudaRingWriter::device)
-        .def_prop_ro("slot_count", &durchblick::CudaRingWriter::slot_count)
-        .def_prop_ro("slot_size", &durchblick::CudaRingWriter::slot_size);
+        .def_prop_ro("endpoint", &xblick::CudaRingWriter::endpoint)
+        .def_prop_ro("device_uuid", &xblick::CudaRingWriter::device_uuid)
+        .def_prop_ro("device", &xblick::CudaRingWriter::device)
+        .def_prop_ro("slot_count", &xblick::CudaRingWriter::slot_count)
+        .def_prop_ro("slot_size", &xblick::CudaRingWriter::slot_size);
 
-    nb::class_<durchblick::CudaRingReader>(m, "CudaRingReader")
+    nb::class_<xblick::CudaRingReader>(m, "CudaRingReader")
         .def(nb::init<const std::string&, int>(), "endpoint"_a, "target_device"_a = -1)
         .def(
             "copy",
-            [](durchblick::CudaRingReader& r, std::uint32_t slot, std::uint64_t seq) {
+            [](xblick::CudaRingReader& r, std::uint32_t slot, std::uint64_t seq) {
                 nb::gil_scoped_release release;
                 return r.copy(slot, seq);
             },
             "slot"_a, "seq"_a, "A DeviceBuffer with the frame, or None if it was overwritten.")
-        .def("slot_ptr", &durchblick::CudaRingReader::slot_ptr, "slot"_a)
-        .def("acquire", &durchblick::CudaRingReader::acquire, "slot"_a, "seq"_a)
-        .def("validate", &durchblick::CudaRingReader::validate, "slot"_a, "seq"_a)
+        .def("slot_ptr", &xblick::CudaRingReader::slot_ptr, "slot"_a)
+        .def("acquire", &xblick::CudaRingReader::acquire, "slot"_a, "seq"_a)
+        .def("validate", &xblick::CudaRingReader::validate, "slot"_a, "seq"_a)
         .def(
             "wait",
-            [](const durchblick::CudaRingReader& r, std::uint32_t slot, std::uint64_t stream) {
+            [](const xblick::CudaRingReader& r, std::uint32_t slot, std::uint64_t stream) {
                 nb::gil_scoped_release release;
                 r.wait(slot, stream);
             },
             "slot"_a, "stream"_a = 0)
-        .def("nbytes", &durchblick::CudaRingReader::nbytes, "slot"_a)
-        .def_prop_ro("device", &durchblick::CudaRingReader::device)
-        .def_prop_ro("ring_device", &durchblick::CudaRingReader::ring_device)
-        .def_prop_ro("direct", &durchblick::CudaRingReader::direct)
-        .def_prop_ro("slot_count", &durchblick::CudaRingReader::slot_count);
+        .def("nbytes", &xblick::CudaRingReader::nbytes, "slot"_a)
+        .def_prop_ro("device", &xblick::CudaRingReader::device)
+        .def_prop_ro("ring_device", &xblick::CudaRingReader::ring_device)
+        .def_prop_ro("direct", &xblick::CudaRingReader::direct)
+        .def_prop_ro("slot_count", &xblick::CudaRingReader::slot_count);
 }

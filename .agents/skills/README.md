@@ -15,7 +15,7 @@ the Agent Skills project.
 
 **Scope and name**
 
-1. **Name it `durchblick-<verb>-<object>`**, for example `durchblick-add-camera`. The prefix keeps a project skill
+1. **Name it `xblick-<verb>-<object>`**, for example `xblick-add-camera`. The prefix keeps a project skill
    apart from personal skills of the same name, which would otherwise shadow it.
 2. **Cover one coherent unit of work.** A skill that is too narrow loads together with others for one task. A skill
    that is too broad triggers on the wrong tasks.
@@ -62,7 +62,7 @@ the Agent Skills project.
 ## Layout of a skill
 
 ```
-durchblick-<name>/
+xblick-<name>/
   SKILL.md                    the procedure, under 500 lines
   references/*.md             detail that SKILL.md loads on demand
   scripts/*                   deterministic steps
@@ -89,11 +89,11 @@ in Claude Code.
 
 ```markdown
 ---
-name: durchblick-<verb>-<object>
+name: xblick-<verb>-<object>
 description: >
   Use this skill when the user wants <intent>, also when they only <indirect phrasing>. It <what it does in one
-  sentence>. Not for <neighbouring task> (use durchblick-<other>).
-compatibility: Durchblick 0.4.x
+  sentence>. Not for <neighbouring task> (use xblick-<other>).
+compatibility: Durchblick 0.5.x
 ---
 
 # <Title>

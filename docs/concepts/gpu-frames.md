@@ -124,4 +124,4 @@ it starts after the copy into the slot has finished. You do not need to do anyth
 - [Rings](rings.md): slots, counters and descriptors.
 - [Making a node fast](../guides/making-a-node-fast.md): what else we learned about GPU work in nodes.
 - [Alternatives](../project/alternatives.md): other projects that share GPU memory between processes.
-- `cpp/include/durchblick/cuda_ring.hpp`: the handshake and the slot events.
+- `cpp/include/xblick/cuda_ring.hpp`: the handshake and the slot events.

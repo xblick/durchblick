@@ -21,12 +21,12 @@ import zenoh
 from rich.console import Console
 from test_camera import free_port, pattern, wait_until
 
-from blick import cli, survey, topics, tui
-from blick.camera import CameraPublisher
-from blick.diagnostics import DiagnosticsPublisher
-from blick.msg import CameraInfo
-from blick.session import close as close_session
-from blick.session import Session, open_session
+from xblick import cli, survey, topics, tui
+from xblick.camera import CameraPublisher
+from xblick.diagnostics import DiagnosticsPublisher
+from xblick.msg import CameraInfo
+from xblick.session import close as close_session
+from xblick.session import Session, open_session
 
 CAMERA = "robot/fakecam"
 BASE = f"{CAMERA}/color"
@@ -324,7 +324,7 @@ def run_app(app, test, size=(160, 50)):
 
 
 def test_app_shows_topics_nodes_reports_and_graph(fake, tmp_path):
-    app = tui.DurchblickApp(fake.connection(), tui.Presets(tmp_path / "presets.json"), discover_every=0.5)
+    app = tui.XblickApp(fake.connection(), tui.Presets(tmp_path / "presets.json"), discover_every=0.5)
 
     async def test(pilot):
         await until(pilot, lambda: app.discovery.network is not None and len(app.discovery.network.routers) == 1)
@@ -403,7 +403,7 @@ def test_app_shows_topics_nodes_reports_and_graph(fake, tmp_path):
 
 
 def test_app_reconnects_and_shows_a_failed_connection(fake, tmp_path):
-    app = tui.DurchblickApp(fake.connection(), tui.Presets(tmp_path / "presets.json"), discover_every=0.5)
+    app = tui.XblickApp(fake.connection(), tui.Presets(tmp_path / "presets.json"), discover_every=0.5)
 
     async def test(pilot):
         await until(pilot, lambda: app.discovery.network is not None and app.discovery.network.routers)
@@ -439,7 +439,7 @@ def test_app_reconnects_and_shows_a_failed_connection(fake, tmp_path):
 
 def test_app_rerun_tab_presets_and_launch(fake, tmp_path):
     pytest.importorskip("rerun")
-    app = tui.DurchblickApp(fake.connection(), tui.Presets(tmp_path / "presets.json"), discover_every=0.5)
+    app = tui.XblickApp(fake.connection(), tui.Presets(tmp_path / "presets.json"), discover_every=0.5)
     recording = tmp_path / "fake.rrd"
 
     async def test(pilot):
@@ -452,7 +452,7 @@ def test_app_rerun_tab_presets_and_launch(fake, tmp_path):
         app.query_one("#rerun-stale-after").value = "4"
         await pilot.pause(0.2)
         command = text_of(app, "#rerun-command")
-        assert command.startswith(f"blick rerun --save {recording} {BASE} --stale-after 4 --connect")
+        assert command.startswith(f"xblick rerun --save {recording} {BASE} --stale-after 4 --connect")
 
         # saved, changed, loaded back
         app.query_one("#preset-name").value = "fake"
@@ -478,7 +478,7 @@ def test_app_rerun_tab_presets_and_launch(fake, tmp_path):
                     timeout=60)
         await pilot.pause(2.0)
         app.stop_rerun()
-        await until(pilot, lambda: "blick rerun ended, exit code 0" in app.rerun_output)
+        await until(pilot, lambda: "xblick rerun ended, exit code 0" in app.rerun_output)
         assert recording.stat().st_size > 10_000
 
     run_app(app, test)
@@ -494,29 +494,29 @@ def test_no_command_opens_the_interface(monkeypatch):
 
 
 def test_without_a_terminal_the_interface_refuses():
-    result = subprocess.run([sys.executable, "-m", "blick.cli"], stdin=subprocess.DEVNULL, capture_output=True,
+    result = subprocess.run([sys.executable, "-m", "xblick.cli"], stdin=subprocess.DEVNULL, capture_output=True,
                             text=True, timeout=60, check=False)
     assert result.returncode == 1 and "needs a terminal" in result.stderr
 
 
 def test_commands_do_not_import_textual():
-    code = ("import sys; from blick import cli; cli.build_parser(); "
+    code = ("import sys; from xblick import cli; cli.build_parser(); "
             "print(any(m.split('.')[0] == 'textual' for m in sys.modules))")
     result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=60, check=True)
     assert result.stdout.strip() == "False"
 
 
-def test_blick_is_durchblick(monkeypatch, capsys):
+def test_blick_is_xblick(monkeypatch, capsys):
     scripts = {e.name: e.value for e in entry_points(group="console_scripts") if e.name in cli.SCRIPTS}
-    assert scripts == {"blick": "blick.cli:main"}
-    monkeypatch.setattr(sys, "argv", ["/usr/bin/blick", "-h"])
+    assert scripts == {"xblick": "xblick.cli:main"}
+    monkeypatch.setattr(sys, "argv", ["/usr/bin/xblick", "-h"])
     with pytest.raises(SystemExit):
         cli.main()
-    assert capsys.readouterr().out.startswith("usage: blick ")
+    assert capsys.readouterr().out.startswith("usage: xblick ")
     monkeypatch.setattr(sys, "argv", ["/x/something-else", "-h"])
     with pytest.raises(SystemExit):
         cli.main()
-    assert capsys.readouterr().out.startswith("usage: blick ")
+    assert capsys.readouterr().out.startswith("usage: xblick ")
 
 
 @pytest.mark.parametrize("size", [(80, 24), (250, 70)])
@@ -524,7 +524,7 @@ def test_app_fits_the_terminal(fake, tmp_path, size):
     """At the smallest size supported and a large one: no screen scroll (the status line under the header), the key
     column whole, the detail panes, every tab's main widget and the connect dialog on the screen, the Rerun tab's
     lists side by side only when wide."""
-    app = tui.DurchblickApp(fake.connection(), tui.Presets(tmp_path / "presets.json"), discover_every=0.5)
+    app = tui.XblickApp(fake.connection(), tui.Presets(tmp_path / "presets.json"), discover_every=0.5)
     width, height = size
 
     def on_screen(widget):
@@ -546,7 +546,7 @@ def test_app_fits_the_terminal(fake, tmp_path, size):
         await until(pilot, lambda: "width" in text_of(app, "#topic-detail"))
         detail = app.query_one("#topic-detail").parent
         assert on_screen(detail) and detail.region.height >= 3
-        for tab, widget in tui.DurchblickApp.MAIN.items():
+        for tab, widget in tui.XblickApp.MAIN.items():
             app.action_tab(tab)
             await pilot.pause(0.3)
             assert app.focused is app.query_one(widget), (tab, app.focused)
@@ -571,7 +571,7 @@ def test_app_fits_the_terminal(fake, tmp_path, size):
 
 
 def test_too_small_says_so(tmp_path):
-    app = tui.DurchblickApp(tui.Connection(listen=["127.0.0.1:0"]), tui.Presets(tmp_path / "presets.json"))
+    app = tui.XblickApp(tui.Connection(listen=["127.0.0.1:0"]), tui.Presets(tmp_path / "presets.json"))
 
     async def test(pilot):
         await pilot.pause(0.5)
@@ -586,18 +586,18 @@ def test_too_small_says_so(tmp_path):
 
 
 def test_the_interface_takes_session_options(monkeypatch):
-    """``blick --connect ...``: the interface's first connection; with endpoints a client unless it listens or is
+    """``xblick --connect ...``: the interface's first connection; with endpoints a client unless it listens or is
     told peer (a peer over a tunnel cannot reach the other sessions)."""
-    c = cli._interface_connection(["--connect", "127.0.0.1:7447"], "blick")
+    c = cli._interface_connection(["--connect", "127.0.0.1:7447"], "xblick")
     assert (c.connect, c.listen, c.mode) == (["tcp/127.0.0.1:7447"], [], "client")
-    c = cli._interface_connection(["--connect", "tcp/a:7447", "--listen", "tcp/127.0.0.1:0"], "blick")
+    c = cli._interface_connection(["--connect", "tcp/a:7447", "--listen", "tcp/127.0.0.1:0"], "xblick")
     assert c.mode == "peer" and c.listen == ["tcp/127.0.0.1:0"]
     with pytest.raises(SystemExit):  # a peer that only connects receives nothing: refused
-        cli._interface_connection(["--connect", "tcp/a:7447", "--zenoh-mode", "peer"], "blick")
-    assert cli._interface_connection([], "blick") is None
+        cli._interface_connection(["--connect", "tcp/a:7447", "--zenoh-mode", "peer"], "xblick")
+    assert cli._interface_connection([], "xblick") is None
     started = []
     monkeypatch.setattr(tui, "run", lambda connection=None: started.append(connection) or 0)
-    monkeypatch.setattr(sys, "argv", ["/usr/bin/blick"])
+    monkeypatch.setattr(sys, "argv", ["/usr/bin/xblick"])
     assert cli.main(["--connect", "tcp/127.0.0.1:7447"]) == 0
     assert started[0].mode == "client" and started[0].connect == ["tcp/127.0.0.1:7447"]
 
@@ -628,12 +628,12 @@ def test_a_peer_warns_of_peers_it_cannot_reach(fake, monkeypatch, tmp_path):  # 
                      "r": Node("router")}
     session = type("S", (), {"info": Info("me", ["near"])})()
     as_peer = type("A", (), {"connection": tui.Connection(connect=["tcp/x:7447"], listen=["tcp/127.0.0.1:0"])})()
-    assert tui.DurchblickApp._unreachable(as_peer, session, network, {}) == ["far"]
+    assert tui.XblickApp._unreachable(as_peer, session, network, {}) == ["far"]
     as_client = type("A", (), {"connection": tui.Connection(connect=["tcp/x:7447"], mode="client")})()
-    assert tui.DurchblickApp._unreachable(as_client, session, network, {}) == []
+    assert tui.XblickApp._unreachable(as_client, session, network, {}) == []
     # and in the status line
     connection = tui.Connection(connect=[fake.endpoint], listen=["tcp/127.0.0.1:0"], mode="peer")
-    app = tui.DurchblickApp(connection, tui.Presets(tmp_path / "presets.json"), discover_every=0.5)
+    app = tui.XblickApp(connection, tui.Presets(tmp_path / "presets.json"), discover_every=0.5)
 
     async def test(pilot):
         await until(pilot, lambda: app.discovery.network is not None)
@@ -653,7 +653,7 @@ def test_without_anything_on_this_pc_the_connect_dialog_opens_on_the_address(fak
     with socket.socket() as s:
         if s.connect_ex(("127.0.0.1", 7447)) == 0:
             pytest.skip("a router runs on this PC (port 7447): the interface finds it")
-    app = tui.DurchblickApp(presets=tui.Presets(tmp_path / "presets.json"), discover_every=0.5)
+    app = tui.XblickApp(presets=tui.Presets(tmp_path / "presets.json"), discover_every=0.5)
 
     async def test(pilot):
         await until(pilot, lambda: isinstance(app.screen, tui.ConnectScreen)

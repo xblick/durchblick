@@ -1,4 +1,4 @@
-"""blick rerun: frames, calibration and body tracking results reach a Rerun recording, over real Zenoh
+"""xblick rerun: frames, calibration and body tracking results reach a Rerun recording, over real Zenoh
 sessions."""
 
 import contextlib
@@ -13,19 +13,19 @@ import pytest
 from PIL import Image as PILImage
 from test_camera import BASE, pattern, sessions, wait_until  # noqa: F401 - sessions is a fixture
 
-from blick.camera import (CameraPublisher, CountedPublisher, ProtocolError, StaticTransformPublisher,
-                               TransformPublisher, cdr_encoding, find_streams)
-from blick.codecs import PNG
-from blick.detections import DetectionPublisher
-from blick.msg import (BoundingBox2D, BoundingBox3D, CameraInfo, Classification, Detection2D, Detection2DArray,
-                            Detection3D, Detection3DArray, DiagnosticArray, DiagnosticStatus, Header, Imu, KeyValue,
-                            ObjectHypothesis, ObjectHypothesisWithPose, Point, Point2D, PointField, Pose, Pose2D, Quaternion, Time,
-                            TFMessage, Transform, TransformStamped, Vector3)
-from blick.points import XYZRGB, PointCloudPublisher, pack_rgb, points_dtype
-from blick import rerun_bridge
-from blick.cli import _bridged
-from blick.rerun_bridge import K4ABT_BODY_32, TIMELINE, RerunBridge, label_color
-from blick.topics import WORLD
+from xblick.camera import (CameraPublisher, CountedPublisher, ProtocolError, StaticTransformPublisher,
+                           TransformPublisher, cdr_encoding, find_streams)
+from xblick.codecs import PNG
+from xblick.detections import DetectionPublisher
+from xblick.msg import (BoundingBox2D, BoundingBox3D, CameraInfo, Classification, Detection2D, Detection2DArray,
+                        Detection3D, Detection3DArray, DiagnosticArray, DiagnosticStatus, Header, Imu, KeyValue,
+                        ObjectHypothesis, ObjectHypothesisWithPose, Point, Point2D, PointField, Pose, Pose2D, Quaternion, Time,
+                        TFMessage, Transform, TransformStamped, Vector3)
+from xblick.points import XYZRGB, PointCloudPublisher, pack_rgb, points_dtype
+from xblick import rerun_bridge
+from xblick.cli import _bridged
+from xblick.rerun_bridge import K4ABT_BODY_32, TIMELINE, RerunBridge, label_color
+from xblick.topics import WORLD
 
 CAMERA = BASE.rpartition("/")[0]
 
@@ -240,7 +240,7 @@ def test_sixteen_bit_images(sessions):  # noqa: F811
 
 
 def bodies_json(ids, stamp_ns, frame_id="depth_cam", version=1):
-    """A result as durchblick-k4abt publishes it: body k's joint j at (k, j, 1000 + j) mm."""
+    """A result as xblick-k4abt publishes it: body k's joint j at (k, j, 1000 + j) mm."""
     return json.dumps({"v": version, "model": "K4ABT_BODY_32", "stamp_ns": stamp_ns, "frame_id": frame_id,
                        "latency_ms": 10.0,
                        "bodies": [{"id": k, "joints": {name: {"position_mm": [k, j, 1000 + j],
@@ -346,7 +346,7 @@ def test_results_of_a_topic_gone_quiet_are_cleared(sessions):  # noqa: F811
 
 
 def test_a_nodes_bodies_below_the_camera(sessions):  # noqa: F811
-    """durchblick-gem-x's <camera>/gem_x/bodies beside the Azure Kinect tracker's <camera>/bodies: each its own entity,
+    """xblick-gem-x's <camera>/gem_x/bodies beside the Azure Kinect tracker's <camera>/bodies: each its own entity,
     each shown in the 2D view of the stream in its own frame (gem-x: the colour camera's)."""
     a, b = sessions
     depth_base, color_base = f"{CAMERA}/depth", f"{CAMERA}/color"
@@ -566,7 +566,7 @@ def test_find_streams(sessions):  # noqa: F811
 
 
 def test_node_results_are_found(sessions):  # noqa: F811
-    """Detections and label images answer <key>/info as streams do: blick rerun finds them without options, and
+    """Detections and label images answer <key>/info as streams do: xblick rerun finds them without options, and
     bridges those that start later."""
     a, b = sessions
     color_base, key = f"{CAMERA}/color", f"{CAMERA}/sam3/instances"
@@ -629,7 +629,7 @@ def test_trajectory(sessions, monkeypatch):  # noqa: F811
 def test_real_rerun_takes_a_trajectory(sessions):  # noqa: F811
     rr = pytest.importorskip("rerun")
     a, b = sessions
-    rr.init("durchblick-test", strict=True)  # strict: a rejected archetype raises instead of a warning
+    rr.init("xblick-test", strict=True)      # strict: a rejected archetype raises instead of a warning
     rr.memory_recording()
     key = f"{CAMERA}/vslam/tf"
     publisher = CountedPublisher(a, key, cdr_encoding(TFMessage))
@@ -649,7 +649,7 @@ def test_real_rerun_takes_a_trajectory(sessions):  # noqa: F811
 def test_real_rerun_takes_what_the_bridge_logs(sessions):  # noqa: F811
     rr = pytest.importorskip("rerun")
     a, b = sessions
-    rr.init("durchblick-test", strict=True)  # strict: a rejected archetype raises instead of a warning
+    rr.init("xblick-test", strict=True)      # strict: a rejected archetype raises instead of a warning
     rr.memory_recording()
     info = CameraInfo.pinhole(64, 48, 50.0, 50.0, 31.5, 23.5, frame_id="cam")
     publisher = CameraPublisher(a, BASE, encoding="rgb8", frame_id="cam", camera_info=info)
@@ -666,7 +666,7 @@ def test_real_rerun_takes_what_the_bridge_logs(sessions):  # noqa: F811
 def test_real_rerun_takes_depth_and_bodies(sessions):  # noqa: F811
     rr = pytest.importorskip("rerun")
     a, b = sessions
-    rr.init("durchblick-test", strict=True)
+    rr.init("xblick-test", strict=True)
     rr.memory_recording()
     base = f"{CAMERA}/depth"
     info = CameraInfo.pinhole(64, 48, 50.0, 50.0, 31.5, 23.5, frame_id="depth_cam")
@@ -703,7 +703,7 @@ def test_real_rerun_takes_depth_and_bodies(sessions):  # noqa: F811
 def test_real_rerun_takes_point_clouds(sessions):  # noqa: F811
     rr = pytest.importorskip("rerun")
     a, b = sessions
-    rr.init("durchblick-test", strict=True)
+    rr.init("xblick-test", strict=True)
     rr.memory_recording()
     cloud_base = f"{CAMERA}/points"
     transforms = StaticTransformPublisher(a, CAMERA, depth_to_color())
@@ -786,7 +786,7 @@ def test_detections(sessions):  # noqa: F811
 
 
 def test_classification(sessions):  # noqa: F811
-    """A Classification (durchblick-vjepa2's actions) as a text log line at its key, best first, with a view of its
+    """A Classification (xblick-vjepa2's actions) as a text log line at its key, best first, with a view of its
     own once it came."""
     a, b = sessions
     color_base, key = f"{CAMERA}/color", f"{CAMERA}/vjepa2/actions"
@@ -812,7 +812,7 @@ def test_classification(sessions):  # noqa: F811
 
 
 def instances():
-    """A label image as durchblick-sam3 publishes it: ids 1..3 (two over 255 apart: mono16), 0 elsewhere."""
+    """A label image as xblick-sam3 publishes it: ids 1..3 (two over 255 apart: mono16), 0 elsewhere."""
     ids = np.zeros((48, 64), np.uint16)
     ids[5:20, 5:30], ids[25:40, 10:20], ids[30:45, 40:60] = 1, 2, 300
     return ids
@@ -881,7 +881,7 @@ def test_segmentation_goes_to_the_colour_image(sessions):  # noqa: F811
 def test_real_rerun_takes_segmentation(sessions):  # noqa: F811
     rr = pytest.importorskip("rerun")
     a, b = sessions
-    rr.init("durchblick-test", strict=True)
+    rr.init("xblick-test", strict=True)
     rr.memory_recording()
     color_base, key = f"{CAMERA}/color", f"{CAMERA}/sam3/instances"
     info = CameraInfo.pinhole(64, 48, 50.0, 50.0, 31.5, 23.5, frame_id="color_cam")
@@ -943,7 +943,7 @@ def test_camera_in_the_world(sessions):  # noqa: F811
 
 
 def test_save_survives_sigterm(tmp_path):
-    """blick rerun --save ended by SIGTERM (kill, a service manager) writes what it bridged, the world poses
+    """xblick rerun --save ended by SIGTERM (kill, a service manager) writes what it bridged, the world poses
     included: it ends as on Ctrl-C and flushes Rerun (it lost the camera's poses and the scene's axes before)."""
     import os
     import re
@@ -954,7 +954,7 @@ def test_save_survives_sigterm(tmp_path):
 
     from test_camera import free_port
 
-    from blick.session import open_session
+    from xblick.session import open_session
     pytest.importorskip("rerun")
     rerun_cli = Path(sys.executable).parent / "rerun"
     if not rerun_cli.exists():
@@ -965,7 +965,7 @@ def test_save_survives_sigterm(tmp_path):
     color = CameraPublisher(session, f"{CAMERA}/color", encoding="rgb8", frame_id="cam", camera_info=info)
     world = TransformPublisher(session, CAMERA)
     out = tmp_path / "saved.rrd"
-    bridge = subprocess.Popen([sys.executable, "-m", "blick.cli", "rerun", f"{CAMERA}/color", "--save", str(out),
+    bridge = subprocess.Popen([sys.executable, "-m", "xblick.cli", "rerun", f"{CAMERA}/color", "--save", str(out),
                                "--report", "1", "--connect", f"127.0.0.1:{port}"],
                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     try:

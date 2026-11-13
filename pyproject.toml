@@ -1,5 +1,5 @@
 [build-system]
-# the C++ core (CMakeLists.txt) becomes blick._core; nvidia-cuda-runtime only provides the header cuda.h
+# the C++ core (CMakeLists.txt) becomes xblick._core; nvidia-cuda-runtime only provides the header cuda.h
 # (libcuda.so.1 of the driver is opened at run time)
 requires = ["scikit-build-core>=0.11", "nanobind>=2.4", "nvidia-cuda-runtime>=13,<14"]
 build-backend = "scikit_build_core.build"
@@ -37,37 +37,32 @@ dependencies = [
     "numpy>=1.24",
     # JPEG and PNG for sensor_msgs/CompressedImage
     "pillow>=10",
-    # the terminal interface, `blick` without a command (tui.py); its API changes between major versions
+    # the terminal interface, `xblick` without a command (tui.py); its API changes between major versions
     "textual>=8.2,<9",
 ]
 
 [project.scripts]
-blick = "blick.cli:main"
+xblick = "xblick.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/xblick/durchblick"
-Repository = "https://github.com/xblick/durchblick"
-Documentation = "https://github.com/xblick/durchblick/tree/main/docs"
-Changelog = "https://github.com/xblick/durchblick/blob/main/CHANGELOG.md"
-Issues = "https://github.com/xblick/durchblick/issues"
+Homepage = "https://github.com/xblick/xblick"
+Repository = "https://github.com/xblick/xblick"
+Documentation = "https://github.com/xblick/xblick/tree/main/docs"
+Changelog = "https://github.com/xblick/xblick/blob/main/CHANGELOG.md"
+Issues = "https://github.com/xblick/xblick/issues"
 
 [project.optional-dependencies]
 rerun = [
-    # blick rerun (rerun_bridge.py); Rerun's API changes between minor versions
+    # xblick rerun (rerun_bridge.py); Rerun's API changes between minor versions
     "rerun-sdk>=0.39,<0.40",
 ]
 record = [
-    # blick record and play (recording.py): MCAP files, rosbag2's storage
+    # xblick record and play (recording.py): MCAP files, rosbag2's storage
     "mcap>=1.6,<2",  # 1.6: iter_messages(starting_at=) for seeking
 ]
 video = [
-    # blick video (video.py): video files decoded by FFmpeg inside PyAV's wheels
+    # xblick video (video.py): video files decoded by FFmpeg inside PyAV's wheels
     "av>=14",
-]
-relay = [
-    # blick relay (cli.py): durchblick-relay, a C++ program of its own repository, as the wheel blick-relay with
-    # libzenohc.so in it; its 0.3 line speaks this version's protocol
-    "blick-relay>=0.3.1,<0.4",
 ]
 
 [dependency-groups]
@@ -77,7 +72,7 @@ relay = [
 dev = ["pytest>=8", "rosbags>=0.10", "nvidia-cuda-runtime>=13,<14", "pytest-timeout>=2.3"]
 
 [tool.uv]
-# uv keeps an installed local project: rebuild it (its C++ core, blick._core) when these change, so that
+# uv keeps an installed local project: rebuild it (its C++ core, xblick._core) when these change, so that
 # `uv sync` after a pull (tools/setup_python.sh, a workspace upgrade) does not keep an old core
 cache-keys = [{ file = "pyproject.toml" }, { file = "CMakeLists.txt" }, { file = "cpp/**/*.cpp" },
               { file = "cpp/**/*.hpp" }, { file = "cpp/**/*.cu" }]
@@ -96,8 +91,8 @@ timeout_method = "thread"
 minimum-version = "build-system.requires"
 metadata.version.provider = "scikit_build_core.metadata.regex"
 metadata.version.input = "CMakeLists.txt"
-metadata.version.regex = 'project\(durchblick VERSION (?P<value>[0-9.]+)'
-wheel.packages = ["src/blick"]
+metadata.version.regex = 'project\(xblick VERSION (?P<value>[0-9.]+)'
+wheel.packages = ["src/xblick"]
 build-dir = "build/{wheel_tag}"
 # the sdist: the sources, tests and the text of the documentation; not its screenshots, the CI, the agent skills and
 # uv.lock (development only; relocking then leaves the built sdist valid)
@@ -107,4 +102,4 @@ sdist.exclude = ["docs/media", ".agents", ".claude", ".github", "uv.lock", "dist
 
 [tool.scikit-build.cmake.define]
 # cuda.h of the pip package nvidia-cuda-runtime in the build environment
-DURCHBLICK_CUDA_INCLUDE_DIR = { env = "DURCHBLICK_CUDA_INCLUDE_DIR", default = "" }
+XBLICK_CUDA_INCLUDE_DIR = { env = "XBLICK_CUDA_INCLUDE_DIR", default = "" }

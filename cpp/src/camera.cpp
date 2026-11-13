@@ -1,4 +1,4 @@
-#include "durchblick/camera.hpp"
+#include "xblick/camera.hpp"
 
 #include <algorithm>
 #include <atomic>
@@ -8,12 +8,12 @@
 #include <set>
 #include <regex>
 
-#include "durchblick/protocol.hpp"
-#include "durchblick/version.hpp"
+#include "xblick/protocol.hpp"
+#include "xblick/version.hpp"
 #include "json.hpp"
 #include "stream.hpp"
 
-namespace durchblick
+namespace xblick
 {
     namespace p = protocol;
 
@@ -176,7 +176,7 @@ namespace durchblick
         // Last, so destroyed first, also when the constructor throws: Zenoh's threads answer <base>/info (and rays)
         // from the members above, and undeclaring waits for a callback that runs (zenoh-c 1.10). Declared before them,
         // a query during the destruction read freed members (a CUDA ring's server takes up to 200 ms to stop;
-        // durchblick-relay 0.2.1 stopped with std::length_error).
+        // xblick-relay 0.2.1 stopped with std::length_error).
         std::optional<zenoh::Queryable<void>> info_queryable;
         std::optional<zenoh::LivelinessToken> alive;  // tells subscribers that this publisher came (and went)
 
@@ -655,7 +655,7 @@ namespace durchblick
         const json::Value uuid = cuda_uuid.empty() ? json::Value(nullptr) : json::Value(cuda_uuid);
         return json::write({{"v", static_cast<std::int64_t>(p::kInfoVersion)},
                             {"kind", std::string("image")},
-                            {"durchblick", std::string(DURCHBLICK_VERSION)},
+                            {"xblick", std::string(XBLICK_VERSION)},
                             {"host", m.host},
                             {"transports", transports},
                             {"encoding", m.o.encoding},
@@ -918,7 +918,7 @@ namespace durchblick
             std::lock_guard said_lock(said_mutex);
             if (said.insert(selector).second)
             {
-                std::fprintf(stderr, "durchblick: query %s not finalized by Zenoh after %lld ms (its timeout %lld ms): "
+                std::fprintf(stderr, "xblick: query %s not finalized by Zenoh after %lld ms (its timeout %lld ms): "
                                      "going on with the %zu replies that came\n",
                              selector.c_str(), static_cast<long long>(deadline.count()),
                              static_cast<long long>(timeout.count()), state->replies.size());
@@ -960,7 +960,7 @@ namespace durchblick
             }
             StreamInfo s;
             s.kind = json::get<std::string>(record, "kind").value_or("");
-            s.durchblick = json::get<std::string>(record, "durchblick").value_or("");
+            s.xblick = json::get<std::string>(record, "xblick").value_or("");
             s.host = json::get<std::string>(record, "host").value_or("");
             s.transports = json::get<std::vector<std::string>>(record, "transports").value_or(std::vector<std::string>{});
             s.encoding = json::get<std::string>(record, "encoding").value_or("");
@@ -1229,4 +1229,4 @@ namespace durchblick
         ++m.decoded;
         return f;
     }
-}  // namespace durchblick
+}  // namespace xblick

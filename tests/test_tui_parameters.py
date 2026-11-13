@@ -6,8 +6,8 @@ another program's change shown from the event, read-only fields, the params file
 import pytest
 from test_tui import fake, run_app, text_of, until  # noqa: F401 - fake is a fixture
 
-from blick import tui
-from blick.parameters import Parameters, read_params_file
+from xblick import tui
+from xblick.parameters import Parameters, read_params_file
 
 NODE = "robot/fakecam/tracker"
 
@@ -33,7 +33,7 @@ def field(app, name):
 
 
 def test_parameters_tab(fake, node, tmp_path):  # noqa: F811
-    app = tui.DurchblickApp(fake.connection(), tui.Presets(tmp_path / "presets.json"), discover_every=0.5)
+    app = tui.XblickApp(fake.connection(), tui.Presets(tmp_path / "presets.json"), discover_every=0.5)
 
     async def test(pilot):
         pane = app.query_one(tui.ParametersPane)
@@ -117,7 +117,7 @@ def test_parameters_tab(fake, node, tmp_path):  # noqa: F811
 
 @pytest.mark.parametrize("size", [(80, 24), (250, 70)])
 def test_parameters_tab_fits(fake, node, tmp_path, size):  # noqa: F811
-    app = tui.DurchblickApp(fake.connection(), tui.Presets(tmp_path / "presets.json"), discover_every=0.5)
+    app = tui.XblickApp(fake.connection(), tui.Presets(tmp_path / "presets.json"), discover_every=0.5)
 
     async def test(pilot):
         pane = app.query_one(tui.ParametersPane)

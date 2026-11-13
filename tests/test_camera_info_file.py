@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 from ruamel.yaml import YAML
 
-from blick.msg import CameraInfo
+from xblick.msg import CameraInfo
 
 # as camera_calibration writes it (ost.yaml), with a comment and one list over three lines as hand-edited files have
 ROS_FILE = """\

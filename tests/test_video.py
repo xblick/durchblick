@@ -1,4 +1,4 @@
-"""Videos played by blick play (video.py through recording.Recorder.play): two generated videos of different
+"""Videos played by xblick play (video.py through recording.Recorder.play): two generated videos of different
 frame rates (a colour one at 20 frames/s, a 16-bit depth one at 10 frames/s, 3 ms later), played at once: their size
 and encoding, stamps from their PTS on one clock (equal PTS: stamps exactly the offset apart), sent at their stamps,
 paired by PartnerHistory within a maximum offset, looped with the stamps growing by the longest video's length, the
@@ -11,10 +11,10 @@ import numpy as np
 import pytest
 from test_camera import sessions, wait_until  # noqa: F401 - sessions is a fixture
 
-from blick import _core, recording
-from blick.camera import ImageSubscriber
-from blick.history import FrameHistory, PartnerHistory
-from blick.parameters import ParameterClient
+from xblick import _core, recording
+from xblick.camera import ImageSubscriber
+from xblick.history import FrameHistory, PartnerHistory
+from xblick.parameters import ParameterClient
 
 av = pytest.importorskip("av")  # the extra xblick[video]
 
@@ -82,7 +82,7 @@ def test_two_videos_on_one_clock(sessions, videos, tmp_path):  # noqa: F811
         assert recorder.status()["play"]["passes"] >= 1
 
         # the rate through the node's parameters: twice the pace, the stamps 25 ms apart from then on
-        client = ParameterClient(b, "durchblick/video_test")
+        client = ParameterClient(b, "xblick/video_test")
         assert client.set({"rate": 2.0})[0].successful
         time.sleep(0.6)
         later = sorted(s for s in color.stamps() if s > stamps[-1])
@@ -135,7 +135,7 @@ def test_an_image_sequence_and_what_is_refused(sessions, videos, tmp_path):  # n
             recorder.play([fake_mcap], streams=["t/a/color"], fps=10.0)
         with pytest.raises(ValueError, match="of 640x480, the stream is 64x48"):
             calibration = tmp_path / "cal.yaml"
-            from blick.msg import CameraInfo
+            from xblick.msg import CameraInfo
 
             calibration.write_text(CameraInfo.pinhole(640, 480, 500, 500, 320, 240).to_yaml("cam"))
             recorder.play([color_mp4], streams=["t/a/color"], camera_infos=[calibration])
@@ -158,7 +158,7 @@ def test_video_controls_as_parameters(sessions, videos, tmp_path):  # noqa: F811
     color_mp4, _ = videos
     recorder = recording.Recorder(a, tmp_path, name="video_ctl")
     color = FrameHistory(ImageSubscriber(b, "t/ctl/color", transport="raw"), 400)
-    client = ParameterClient(b, "durchblick/video_ctl")
+    client = ParameterClient(b, "xblick/video_ctl")
     events = []
     client.on_event(lambda e: events.append({p.name: p.value.value() for p in e.changed_parameters}))
     try:
@@ -194,7 +194,7 @@ def test_video_controls_as_parameters(sessions, videos, tmp_path):  # noqa: F811
 
 def _play_videos_on_gpu(port, files, ready):
     """Child (a CUDA ring cannot be opened by the process that made it): two videos played with a CUDA ring each."""
-    from blick.session import open_session
+    from xblick.session import open_session
 
     session = open_session(listen=[f"127.0.0.1:{port}"])
     node = recording.Recorder(session, Path(files[0]).parent, name="video_gpu")
@@ -209,8 +209,8 @@ def test_videos_in_cuda_rings(videos, tmp_path):
     takes by default (local auto, device cuda:0); it keeps serving after a seek and across loops."""
     import multiprocessing as mp
 
-    from blick.gpu import CudaImage
-    from blick.session import open_session
+    from xblick.gpu import CudaImage
+    from xblick.session import open_session
     from test_points import free_port
 
     ctx = mp.get_context("spawn")
@@ -237,7 +237,7 @@ def test_videos_in_cuda_rings(videos, tmp_path):
             assert subscriber.transport == "cuda", subscriber.transport_reason
             assert isinstance(frame.image, CudaImage) and frame.image.shape == shape
             assert subscriber.transport_reason == "cuda (publisher on this GPU)"
-        client = ParameterClient(session, "durchblick/video_gpu")
+        client = ParameterClient(session, "xblick/video_gpu")
         before = frame_of(color).stamp_ns
         assert client.set({"position_s": 0.0})[0].successful
         time.sleep(1.5)  # past a loop too (the videos are 1 s long)

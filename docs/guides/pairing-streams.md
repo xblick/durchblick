@@ -22,7 +22,7 @@ frames of each stream, so Durchblick has a class for this.
 
 ## Keep recent frames: `FrameHistory`
 
-`blick.history.FrameHistory` reads every frame of a subscriber in a thread of its own. It keeps the last
+`xblick.history.FrameHistory` reads every frame of a subscriber in a thread of its own. It keeps the last
 frames by stamp.
 
 ```python
@@ -32,15 +32,15 @@ stamp, frame = color.newest()
 
 Several histories can share one lock, so that you read a consistent set of them.
 
-## Colour, depth and masks together: `blick.rgbd`
+## Colour, depth and masks together: `xblick.rgbd`
 
 Most nodes for object poses need the same inputs: colour, depth, and optionally the instances and detections of a
-segmenter. `blick.rgbd` pairs them by stamp and prepares them on the GPU. It needs torch and OpenCV, which
+segmenter. `xblick.rgbd` pairs them by stamp and prepares them on the GPU. It needs torch and OpenCV, which
 Durchblick does not install. Your node brings them.
 
 ```python
 import threading
-from blick.rgbd import CameraSpec, FramePreparer, RGBDInputs
+from xblick.rgbd import CameraSpec, FramePreparer, RGBDInputs
 
 spec = CameraSpec.parse("robot/rc_visard:color=left:depth=ffs/depth", segmenter="sam3")
 wake = threading.Event()
@@ -76,7 +76,7 @@ camera moves. It takes views that are at least `min_angle` degrees apart as seen
 from the segmenter, selected by label or by instance id.
 
 ```python
-from blick.rgbd import collect_views
+from xblick.rgbd import collect_views
 views = collect_views(session, spec, 4, "cuda", label="mug", min_angle=15.0, timeout=60.0)   # a list of View
 ```
 
@@ -127,7 +127,7 @@ frame. For such a partner, and until the partner has two samples, `PartnerHistor
 is the same for the default offset and for an explicit one.
 
 In C++ the pieces are `SubscriberOptions::keep_recent`, `ImageSubscriber::recent_stamps` and `ImageSubscriber::at`.
-`partner_of` in `durchblick/pairing.hpp` chooses the stamp. `PartnerHistory` calls the same function, so Python and
+`partner_of` in `xblick/pairing.hpp` chooses the stamp. `PartnerHistory` calls the same function, so Python and
 C++ pair alike.
 
 `RGBDInputs` works this way, with colour as the primary stream. Its `max_offset_ns` for the depth is None by
@@ -142,15 +142,15 @@ them, so a newer sample that replaces the newest one loses nothing.
 
 ```python
 node.add_arguments(parser, max_hz=30.0)                  # --max-hz HZ, default 30
-log = node.start("durchblick-mynode", max_hz=args.max_hz)
+log = node.start("xblick-mynode", max_hz=args.max_hz)
 inputs = RGBDInputs(session, spec, 30, args.local, wake, max_hz=args.max_hz)
 report.watch(inputs)
 ```
 
 - `node.add_arguments(parser, max_hz=...)` adds the option with your node's default. The vision nodes use about
   20-30 Hz. Camera nodes, the point cloud node, nvblox and cuVSLAM give no default and take every frame.
-- `node.start(prog, max_hz=...)` writes the rate to the start log, for example `durchblick-mynode: max 30 Hz` or
-  `durchblick-mynode: every frame`.
+- `node.start(prog, max_hz=...)` writes the rate to the start log, for example `xblick-mynode: max 30 Hz` or
+  `xblick-mynode: every frame`.
 - `report.watch(...)` adds the values `max-hz` and `skipped for max-hz` to every diagnostics report.
 
 ## Related pages

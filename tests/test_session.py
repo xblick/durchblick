@@ -7,8 +7,8 @@ import time
 import pytest
 import zenoh
 
-from blick import session
-from blick.session import LOCAL_LISTEN, ROUTER, make_config, replies
+from xblick import session
+from xblick.session import LOCAL_LISTEN, ROUTER, make_config, replies
 
 
 def endpoints(config):
@@ -36,7 +36,7 @@ def test_client_mode_connects_to_the_router_without_listening():
 def test_zenoh_mode_on_the_command_line():
     import argparse
 
-    from blick import session
+    from xblick import session
 
     parser = argparse.ArgumentParser()
     session.add_arguments(parser)
@@ -85,7 +85,7 @@ def test_error_replies_are_passed_on():
 def test_replies_return_at_the_deadline_when_zenoh_never_finalizes(caplog):
     session.not_finalized.pop("x/never", None)
     started = time.monotonic()
-    with caplog.at_level("WARNING", logger="blick"):
+    with caplog.at_level("WARNING", logger="xblick"):
         got = session.collect(FakeChannel(["a"], ends=False), "x/never", timeout=0.2)
         again = session.collect(FakeChannel([], ends=False), "x/never", timeout=0.2)
     elapsed = time.monotonic() - started
@@ -141,7 +141,7 @@ def test_close_waits_at_most_its_timeout(caplog):
             threading.Event().wait()
 
     started = time.monotonic()
-    with caplog.at_level("WARNING", logger="blick"):
+    with caplog.at_level("WARNING", logger="xblick"):
         assert session.close(Stuck(), timeout=0.2) is False
     assert time.monotonic() - started < 1.0 and "did not close within 0.2 s" in caplog.text
 
@@ -167,7 +167,7 @@ def test_open_session_closes_within_its_timeout(monkeypatch, caplog):
 
     object.__setattr__(stuck, "_session", Blocking())
     started = time.monotonic()
-    with caplog.at_level("WARNING", logger="blick"):
+    with caplog.at_level("WARNING", logger="xblick"):
         assert session.close(stuck, timeout=0.2) is False
     assert time.monotonic() - started < 1.0 and "did not close within" in caplog.text
     real.close()

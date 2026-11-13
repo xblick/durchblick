@@ -8,17 +8,17 @@ Durchblick uses the parameter model of ROS 2. A node describes each parameter wi
 `rcl_interfaces/msg/ParameterEvent`. The messages have the same bytes as in ROS 2. Only the keys follow Durchblick's
 naming, so a later ROS mode needs to map only the keys.
 
-The API is `blick.parameters` in Python, also reachable as `node.Parameters`, and `durchblick/parameters.hpp`
+The API is `xblick.parameters` in Python, also reachable as `node.Parameters`, and `xblick/parameters.hpp`
 in C++. Both have the same model, keys, checks and messages.
 
 ## Read and change parameters
 
 ```bash
-blick param --nodes                                   # the nodes that offer parameters
-blick param --node robot/camera                 # names and values
-blick param --node robot/camera --describe      # with type, range, step, unit, choices, read-only
-blick param --node robot/camera --set color.exposure_time_us:=10000 --set color.gain:=20
-blick param --node robot/camera --dump ~/kinect.yaml     # write a params file
+xblick param --nodes                                  # the nodes that offer parameters
+xblick param --node robot/camera                # names and values
+xblick param --node robot/camera --describe     # with type, range, step, unit, choices, read-only
+xblick param --node robot/camera --set color.exposure_time_us:=10000 --set color.gain:=20
+xblick param --node robot/camera --dump ~/kinect.yaml    # write a params file
 ```
 
 `--set` prints `name: set` or `name: refused: <reason>` for each parameter. The command ends with status 1 when the
@@ -32,14 +32,14 @@ In a program, use a client:
 | Language | API |
 | --- | --- |
 | Python | `parameters.ParameterClient(session, "<namespace>/<name>")` with `list`, `describe`, `get`, `types`, `set`, `set_atomically`, `all` and `on_event`. `parameters.find_nodes(session)` finds the nodes. |
-| C++ | `durchblick::ParameterClient` |
+| C++ | `xblick::ParameterClient` |
 
 The client raises an error when no node answers, or when more than one node answers.
 
 ## Set values at start
 
 ```bash
-durchblick-some-node --param threshold:=0.5 --param mode:=accurate --params-file ~/tracker.yaml \
+xblick-some-node --param threshold:=0.5 --param mode:=accurate --params-file ~/tracker.yaml \
     --dump-params /tmp/effective.yaml
 ```
 
@@ -93,7 +93,7 @@ with a name that a node does not have stops that node too.
 Python:
 
 ```python
-from blick import node
+from xblick import node
 
 parser = argparse.ArgumentParser()
 node.Parameters.add_arguments(parser)          # --param, --params-file, --dump-params, --params-read-only
@@ -114,18 +114,18 @@ params.close()
 C++:
 
 ```cpp
-#include "durchblick/parameters.hpp"
+#include "xblick/parameters.hpp"
 
-durchblick::Parameters params(session, "camera", "robot/camera");
-params.configure(durchblick::parameter_args(argc, argv));
+xblick::Parameters params(session, "camera", "robot/camera");
+params.configure(xblick::parameter_args(argc, argv));
 params.declare("color.exposure_time_us", std::int64_t{8000},
                {.description = "exposure time", .unit = "us",
-                .integer_range = durchblick::IntegerRange{500, 33000, 1}},
-               [&](const durchblick::ParameterValue& v) { return device.set_exposure(v.integer_value); },
-               [&] { return durchblick::ParameterValue::of(device.exposure()); });
+                .integer_range = xblick::IntegerRange{500, 33000, 1}},
+               [&](const xblick::ParameterValue& v) { return device.set_exposure(v.integer_value); },
+               [&] { return xblick::ParameterValue::of(device.exposure()); });
 params.declare("fps", std::int64_t{30},
-               {.choices = {durchblick::ParameterValue::of(std::int64_t{5}),
-                            durchblick::ParameterValue::of(std::int64_t{30})},
+               {.choices = {xblick::ParameterValue::of(std::int64_t{5}),
+                            xblick::ParameterValue::of(std::int64_t{30})},
                 .read_only = true});
 params.check_overrides();
 ```
@@ -136,7 +136,7 @@ the ranges are those of the device. Then call `check_overrides()`.
 ### A node's options as parameters
 
 Every Python node declares its command-line options as parameters with one call. The terminal interface and
-`blick param` then show how the node runs, and `--param` and `--params-file` set any option at the start.
+`xblick param` then show how the node runs, and `--param` and `--params-file` set any option at the start.
 
 ```python
 args = parser.parse_args()
@@ -166,12 +166,12 @@ when that is safe from another thread.
 
 ### A C++ program's options as parameters
 
-A C++ program defines each option once with `durchblick::Options` (`durchblick/options.hpp`): its name, its default
+A C++ program defines each option once with `xblick::Options` (`xblick/options.hpp`): its name, its default
 and so its type, its help, and whether it is live. The class parses the command line and declares the options as
 parameters, as `declare_options` does in Python.
 
 ```cpp
-durchblick::Options options("durchblick-relay", "relays image streams of other PCs into this PC's rings");
+xblick::Options options("xblick-relay", "relays image streams of other PCs into this PC's rings");
 options.add_list("stream", {}, {.help = "the streams", .metavar = "NAME", .required = true});
 options.add("slots", std::int64_t{32}, {.help = "ring slots", .parameter = {.integer_range = IntegerRange{2, 256, 1}}});
 options.add("max-rate", 0.0, {.help = "pairs a second", .live = true, .parameter = {.unit = "Hz"}});
@@ -181,8 +181,8 @@ options.add_session_options();     // --connect, --listen, --zenoh-mode, --zenoh
 options.add_parameter_options();   // --param, --params-file, --dump-params, --params-read-only
 options.parse(argc, argv);         // --help prints the help; a wrong command line ends the program (2)
 
-zenoh::Session session = durchblick::open_session(options.session_options());
-durchblick::Parameters params(session, "relay", "robot");
+zenoh::Session session = xblick::open_session(options.session_options());
+xblick::Parameters params(session, "relay", "robot");
 params.configure(options.parameter_startup());
 options.declare(params, {{"max_rate", [&](const ParameterValue& v) { return tracker.set_rate(v.double_value); }}});
 params.check_overrides();
@@ -297,8 +297,8 @@ request and response of each service (`ListParametersRequest` to `SetParametersA
 
 ## Examples in the tools
 
-- `durchblick-cpp-camera --params` declares a few parameters as an example, as the node `<camera>/cpp_camera`.
-- `durchblick-cpp-probe --params <node> [--set NAME:=VALUE]` reads and sets them from C++.
+- `xblick-cpp-camera --params` declares a few parameters as an example, as the node `<camera>/cpp_camera`.
+- `xblick-cpp-probe --params <node> [--set NAME:=VALUE]` reads and sets them from C++.
 
 ## Status and limits
 

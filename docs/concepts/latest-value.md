@@ -35,7 +35,7 @@ skips the others before it decodes them. Nodes offer this as `--max-hz`. The
 Some tasks need more than the newest frame.
 
 **Pairing streams by stamp.** A node that combines colour and depth needs the two frames of the same instant, and
-the newest frame of each stream may not match. `blick.history.FrameHistory` takes every frame of a subscriber
+the newest frame of each stream may not match. `xblick.history.FrameHistory` takes every frame of a subscriber
 in its own thread and keeps the last ones by stamp. See the [pairing guide](../guides/pairing-streams.md).
 
 **Recording.** A recording of a simulation must not lose a sample. For this case a publisher can block.

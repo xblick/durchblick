@@ -1,0 +1,18 @@
+[
+  {"query": "the graph in xblick is hard to read, make it clearer", "should_trigger": true},
+  {"query": "add a column with the message size to the topics table", "should_trigger": true},
+  {"query": "the connect dialog in the terminal interface should remember the last host", "should_trigger": true},
+  {"query": "xblick's table is cut off on my laptop's 80 column terminal", "should_trigger": true},
+  {"query": "update the screenshots of the tui in the docs", "should_trigger": true},
+  {"query": "setting parameters in the xblick tui is clumsy", "should_trigger": true},
+  {"query": "add a tab that shows the recorder's progress", "should_trigger": true},
+  {"query": "press m and nothing happens in xblick", "should_trigger": true},
+  {"query": "sam3 should offer its threshold as a parameter", "should_trigger": false},
+  {"query": "start the camera and three nodes in tmux", "should_trigger": false},
+  {"query": "measure the latency of the boxer node", "should_trigger": false},
+  {"query": "write a new node for hand tracking", "should_trigger": false},
+  {"query": "xblick list shows no streams", "should_trigger": false},
+  {"query": "show the streams in rerun", "should_trigger": false},
+  {"query": "add a new message type for meshes", "should_trigger": false},
+  {"query": "the relay does not forward the depth images", "should_trigger": false}
+]

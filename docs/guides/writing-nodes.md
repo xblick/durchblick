@@ -11,17 +11,17 @@ that your code contains only your method.
 
 | Module | What you use | What it does |
 | --- | --- | --- |
-| `blick.node` | `start(prog)` | It sets up the logging. It makes SIGTERM end the node as Ctrl-C does, through your cleanup. |
+| `xblick.node` | `start(prog)` | It sets up the logging. It makes SIGTERM end the node as Ctrl-C does, through your cleanup. |
 | | `Reporter` | It publishes your counts as diagnostics on `<camera>/diagnostics` about once a second. It writes a log line every ten seconds. |
 | | `state()` | It returns the level and the message of a report. The level is OK, or WARN with the problems or with what the node waits for. |
 | | `add_arguments(parser, ...)` | It adds `--max-hz` and `--local` to your parser. |
-| `blick.logs` | `setup(prog)` | `start` calls it. Durchblick's and your messages go to stdout. It hides the deprecation warnings of libraries. The log states which publisher a stream found and through which transport. |
-| `blick.history` | `FrameHistory` | A thread of its own takes every frame of a subscriber and keeps the last ones by stamp. Several histories can share one lock. |
-| `blick.tensors` | `rgb`, `depth`, `depth_metres` | They return a frame as a torch tensor on a device. They copy only where a copy is needed. `rgb` accepts `rgb8`, `rgba8`, `bgr8`, `bgra8` and `mono8`. `depth_metres` accepts `16UC1` (mm) and `32FC1` (m). |
-| `blick.rgbd` | `RGBDInputs`, `FramePreparer` | They pair colour, depth and a segmenter's results of one camera by stamp and prepare them on the GPU. See [pairing streams](pairing-streams.md). |
-| `blick.camera` | `check_local` | It stops a node that was told to keep frames on the GPU (`--local cuda`) when the publisher on its host offers no CUDA ring. |
-| `blick.parameters` | `node.Parameters`, `declare_options` | Your options become ROS 2 parameters with type, range, step, unit, choices and a read-only flag. It adds `--param NAME:=VALUE`, `--params-file`, `--dump-params` and `--params-read-only`. Other programs change the live parameters over Zenoh. The module checks each change and passes it to your writer. See [options as parameters](#options-as-parameters). |
-| `blick.poses` | `CameraPoses`, `RobotPoses` | They give a camera's or a robot's poses at an image's stamp. The module also has rotations, quaternions, `transform_of` and `pose_of`. |
+| `xblick.logs` | `setup(prog)` | `start` calls it. Durchblick's and your messages go to stdout. It hides the deprecation warnings of libraries. The log states which publisher a stream found and through which transport. |
+| `xblick.history` | `FrameHistory` | A thread of its own takes every frame of a subscriber and keeps the last ones by stamp. Several histories can share one lock. |
+| `xblick.tensors` | `rgb`, `depth`, `depth_metres` | They return a frame as a torch tensor on a device. They copy only where a copy is needed. `rgb` accepts `rgb8`, `rgba8`, `bgr8`, `bgra8` and `mono8`. `depth_metres` accepts `16UC1` (mm) and `32FC1` (m). |
+| `xblick.rgbd` | `RGBDInputs`, `FramePreparer` | They pair colour, depth and a segmenter's results of one camera by stamp and prepare them on the GPU. See [pairing streams](pairing-streams.md). |
+| `xblick.camera` | `check_local` | It stops a node that was told to keep frames on the GPU (`--local cuda`) when the publisher on its host offers no CUDA ring. |
+| `xblick.parameters` | `node.Parameters`, `declare_options` | Your options become ROS 2 parameters with type, range, step, unit, choices and a read-only flag. It adds `--param NAME:=VALUE`, `--params-file`, `--dump-params` and `--params-read-only`. Other programs change the live parameters over Zenoh. The module checks each change and passes it to your writer. See [options as parameters](#options-as-parameters). |
+| `xblick.poses` | `CameraPoses`, `RobotPoses` | They give a camera's or a robot's poses at an image's stamp. The module also has rotations, quaternions, `transform_of` and `pose_of`. |
 
 A subscriber keeps only the newest frame. [Latest value](../concepts/latest-value.md) explains why. A node that
 looks a frame up by its stamp later therefore needs a `FrameHistory`.
@@ -33,15 +33,15 @@ The skeleton reads one colour stream, counts the frames and reports once a secon
 ```python
 import threading
 
-import blick as db
-from blick import node, tensors
-from blick.history import FrameHistory
+import xblick as db
+from xblick import node, tensors
+from xblick.history import FrameHistory
 
 camera = "robot/camera"                            # an example
-node.start("durchblick-mynode")                          # before you load models: their libraries log while loading
+node.start("xblick-mynode")                              # before you load models: their libraries log while loading
 session = db.open_session()                              # this PC's router
 wake = threading.Event()
-report = node.Reporter(session, camera, "mynode", "durchblick-mynode")
+report = node.Reporter(session, camera, "mynode", "xblick-mynode")
 color = FrameHistory(db.ImageSubscriber(session, f"{camera}/color", transport="auto", camera_info=True), 10, wake.set)
 try:
     while True:
@@ -74,7 +74,7 @@ Three details matter in this skeleton.
 
 ## Options as parameters
 
-Declare your node's options as parameters, so that the terminal interface and `blick param` show how the node
+Declare your node's options as parameters, so that the terminal interface and `xblick param` show how the node
 runs. Do it right after `parse_args`, before you load a model, because a value given with `--param` or a params file
 is written back into `args` there.
 
@@ -99,7 +99,7 @@ if score >= params["threshold"]:                          # a live parameter, re
   that both say the same.
 
 [Parameters](../reference/parameters.md#a-nodes-options-as-parameters) has the rules, and its C++ section shows
-`durchblick::Options`.
+`xblick::Options`.
 
 ## Restarts and changing cameras
 
@@ -123,11 +123,11 @@ A publisher on the node's host offers a host ring and possibly a CUDA ring. `--l
 reads.
 
 ```python
-from blick import camera, node
+from xblick import camera, node
 
 node.add_arguments(parser, local=camera.LOCAL)           # --local {auto,shm,cuda}, default auto
 args = parser.parse_args()
-node.start("durchblick-mynode", local=args.local)        # logs "durchblick-mynode: frames on this host: auto"
+node.start("xblick-mynode", local=args.local)            # logs "xblick-mynode: frames on this host: auto"
 ```
 
 | Value | The node reads |
@@ -165,7 +165,7 @@ repeats it as the value `transport <stream>` for the subscriptions that you gave
    first frame.
 6. **Limit the rate by stamp and pair as a pair.** Offer `--max-hz` through `node.add_arguments`, and limit only the
    primary stream. [Pairing streams](pairing-streams.md) shows how.
-7. **Check for the MPS daemon if the node shares a GPU.** Call `blick.mps.check()` before the first CUDA call.
+7. **Check for the MPS daemon if the node shares a GPU.** Call `xblick.mps.check()` before the first CUDA call.
    [Sharing a GPU](sharing-a-gpu.md) explains why.
 8. **Start and stop in any order.** Start the node before its camera, restart the camera, and stop the node with
    SIGTERM. The node must end through its `finally` block.

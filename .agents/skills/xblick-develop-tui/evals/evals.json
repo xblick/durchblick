@@ -1,0 +1,35 @@
+{
+  "skill_name": "xblick-develop-tui",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "the topics tab should show the message rate of every topic all the time, not only after pressing m",
+      "expected_output": "The agent explains that a rate needs a subscription, that subscribing to image keys makes the cameras produce every representation, and offers an explicit key or a cost-free source (diagnostics, sent counts) instead of subscribing by default; any change is tested headless and in a real terminal.",
+      "assertions": [
+        "The agent states that subscribing to a camera's keys makes the camera encode or copy frames",
+        "The agent does not make the interface subscribe to every topic by default",
+        "The real-terminal tests (tests/test_tui_pty.py) are run"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "at 80 columns the parameters form cuts off the units, fix it",
+      "expected_output": "A layout change for the narrow breakpoint, checked at 80 x 24 in a real terminal (virtui), the screenshots regenerated and looked at, the guide and changelog updated.",
+      "assertions": [
+        "The fix is checked in a real terminal at 80 x 24, not only headless",
+        "tools/tui_screenshots.py is run and the PNGs are inspected",
+        "The CHANGELOG has an entry and the version is raised"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "add a search to the graph so I can jump to a node by name",
+      "expected_output": "A key (e.g. /) that opens an input and selects the matching box in GraphView, logic in a plain function with its own test, the guide's key table extended, screenshots regenerated.",
+      "assertions": [
+        "The change is made in tui_graph.py (GraphView), not by hard-coding node names",
+        "A test covers the search without a network or in the headless app",
+        "docs/guides/tui.md lists the new key"
+      ]
+    }
+  ]
+}

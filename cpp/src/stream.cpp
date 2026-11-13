@@ -6,10 +6,10 @@
 #include <random>
 #include <stdexcept>
 
-#include "durchblick/version.hpp"
+#include "xblick/version.hpp"
 #include "json.hpp"
 
-namespace durchblick::detail
+namespace xblick::detail
 {
     namespace p = protocol;
 
@@ -266,7 +266,7 @@ namespace durchblick::detail
         if (item.encoding != type.encoding())
         {
             throw ProtocolError(item.key + ": the publisher sends '" + item.encoding + "', this subscriber reads '" +
-                                type.encoding() + "' (Durchblick " DURCHBLICK_VERSION
+                                type.encoding() + "' (Durchblick " XBLICK_VERSION
                                 "); run the same Durchblick version on both sides");
         }
     }
@@ -448,7 +448,7 @@ namespace durchblick::detail
                         source_ring_here =
                             source_ring_here or json::get<std::string>(record, "relayed_from").value_or("").empty();
                     }
-                    // a relay (durchblick-relay) offers only its own host's rings: the network forms are the source's
+                    // a relay (xblick-relay) offers only its own host's rings: the network forms are the source's
                     if (json::get<std::string>(record, "relayed_from").value_or("").empty() and
                         not offers(to_string(remote_)))
                     {
@@ -459,7 +459,7 @@ namespace durchblick::detail
                 if (found and not closed_.load())
                 {
                     // the want token while the stream has no source with a ring on this host: this host's relay
-                    // (durchblick-relay, where one runs) then brings the stream into rings here
+                    // (xblick-relay, where one runs) then brings the stream into rings here
                     if (not source_ring_here and not want_)
                     {
                         want_.emplace(session_.liveliness_declare_token(zenoh::KeyExpr(want_key(base_, host_))));
@@ -797,4 +797,4 @@ namespace durchblick::detail
         std::lock_guard lock(uuid_mutex);
         return cuda_uuid;
     }
-}  // namespace durchblick::detail
+}  // namespace xblick::detail

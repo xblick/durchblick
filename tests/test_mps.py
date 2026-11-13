@@ -1,11 +1,11 @@
-"""blick.mps without a GPU: check() passes without CUDA_MPS_PIPE_DIRECTORY and refuses one where no daemon
+"""xblick.mps without a GPU: check() passes without CUDA_MPS_PIPE_DIRECTORY and refuses one where no daemon
 answers (none there, or the socket an ended daemon left); serve() refuses a pipe directory too long for its sockets."""
 
 import socket
 
 import pytest
 
-from blick import mps
+from xblick import mps
 
 
 def test_check_without_mps(monkeypatch):
@@ -119,7 +119,7 @@ def start_mps(env, pipe, *zenoh_args):
     import subprocess
     import sys
 
-    process = subprocess.Popen([sys.executable, "-m", "blick.cli", "mps", "--pipe-dir", str(pipe), "--name",
+    process = subprocess.Popen([sys.executable, "-m", "xblick.cli", "mps", "--pipe-dir", str(pipe), "--name",
                                 "testpc", *zenoh_args], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                text=True)
     return process, Lines(process)
@@ -130,15 +130,15 @@ def stop_mps(process, lines):
 
     process.send_signal(signal.SIGTERM)
     assert process.wait(20) == 0, lines.lines
-    lines.wait_for("blick mps: quit")
+    lines.wait_for("xblick mps: quit")
 
 
 def test_mps_announces_itself_on_zenoh(fake_tools, tmp_path):
     from test_camera import free_port, wait_until
     from test_tui import open_router
 
-    from blick import survey, tui
-    from blick.session import open_session
+    from xblick import survey, tui
+    from xblick.session import open_session
 
     port = free_port()
     router = open_router(port)
@@ -146,22 +146,22 @@ def test_mps_announces_itself_on_zenoh(fake_tools, tmp_path):
     process, lines = start_mps(fake_tools, pipe, "--connect", f"127.0.0.1:{port}", "--listen", "127.0.0.1:0")
     try:
         lines.wait_for(mps.READY)
-        assert any(line == "blick mps: on Zenoh as durchblick/mps/testpc (status durchblick/mps/testpc/status)"
+        assert any(line == "xblick mps: on Zenoh as xblick/mps/testpc (status xblick/mps/testpc/status)"
                    for line in lines.lines), lines.lines
         daemon_pid = int((pipe / "fake.pid").read_text())
         with open_session(connect=[f"127.0.0.1:{port}"], listen=["127.0.0.1:0"]) as z:
             # a new session learns of the queryable over time (CLAUDE.md): asked again until it answers
-            wait_until(lambda: "durchblick/mps/testpc/status" in tui.statuses(z, 0.5), timeout=10)
-            status = tui.statuses(z, 2.0)["durchblick/mps/testpc/status"]
+            wait_until(lambda: "xblick/mps/testpc/status" in tui.statuses(z, 0.5), timeout=10)
+            status = tui.statuses(z, 2.0)["xblick/mps/testpc/status"]
             assert status["kind"] == "mps" and status["v"] == mps.STATUS_VERSION and status["name"] == "testpc"
             assert status["pipe_dir"] == str(pipe.resolve()) and status["daemon_pid"] == daemon_pid
             assert status["gpus"] == [{"index": 0, "uuid": "GPU-00000000-fake", "name": "Fake GPU"}]
             [server] = status["servers"]
             assert server["pid"] == 4242 and [c["pid"] for c in server["clients"]] == [daemon_pid]
             assert "1 clients" in tui._status_line(status) and "Fake GPU" in tui._status_line(status)
-            assert "durchblick/mps/testpc" in survey.liveliness_tokens(z)
+            assert "xblick/mps/testpc" in survey.liveliness_tokens(z)
             network = survey.query_network(z)
-            assert "durchblick/mps/testpc" in {n.label for n in network.nodes.values()}
+            assert "xblick/mps/testpc" in {n.label for n in network.nodes.values()}
         stop_mps(process, lines)
     finally:
         if process.poll() is None:
@@ -182,7 +182,7 @@ def test_mps_without_a_router_runs_and_says_so(fake_tools, tmp_path):
         lines.wait_for(mps.READY)
         assert any("no Zenoh router reached yet" in line for line in lines.lines), lines.lines
         router = open_router(port)  # Zenoh goes on connecting
-        lines.wait_for("blick mps: Zenoh router reached: announced")
+        lines.wait_for("xblick mps: Zenoh router reached: announced")
         stop_mps(process, lines)
     finally:
         if process.poll() is None:
@@ -199,6 +199,6 @@ def test_mps_with_a_wrong_zenoh_config_ends_before_the_daemon(fake_tools, tmp_pa
     config = tmp_path / "zenoh.json5"
     config.write_text("{ mode: ")
     pipe = tmp_path / "p"
-    result = subprocess.run([sys.executable, "-m", "blick.cli", "mps", "--pipe-dir", str(pipe), "--config",
+    result = subprocess.run([sys.executable, "-m", "xblick.cli", "mps", "--pipe-dir", str(pipe), "--config",
                              str(config)], env=fake_tools, capture_output=True, text=True, timeout=60, check=False)
     assert result.returncode != 0 and "expected" in result.stderr and not (pipe / "fake.pid").exists()

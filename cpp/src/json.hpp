@@ -13,7 +13,7 @@
 #include <variant>
 #include <vector>
 
-namespace durchblick::json
+namespace xblick::json
 {
     using Value = std::variant<std::nullptr_t, bool, std::int64_t, std::string, std::vector<std::string>>;
     using Object = std::map<std::string, Value>;
@@ -292,4 +292,4 @@ namespace durchblick::json
         }
         return std::nullopt;
     }
-}  // namespace durchblick::json
+}  // namespace xblick::json

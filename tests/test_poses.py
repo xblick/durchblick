@@ -7,13 +7,13 @@ import time
 import numpy as np
 import pytest
 
-from blick import topics
-from blick.camera import TransformPublisher
-from blick.msg import Header, Quaternion, TFMessage, Time, Transform, TransformStamped, Vector3
-from blick.poses import (CameraPoses, PoseBuffer, RobotPoses, interpolate, matrix_of, quaternion_from_rotation,
-                              rotation_from_quaternion)
-from blick.robot import RobotStatePublisher
-from blick.session import open_session
+from xblick import topics
+from xblick.camera import TransformPublisher
+from xblick.msg import Header, Quaternion, TFMessage, Time, Transform, TransformStamped, Vector3
+from xblick.poses import (CameraPoses, PoseBuffer, RobotPoses, interpolate, matrix_of, quaternion_from_rotation,
+                          rotation_from_quaternion)
+from xblick.robot import RobotStatePublisher
+from xblick.session import open_session
 
 
 def yaw(angle: float, t=(0.0, 0.0, 0.0)) -> np.ndarray:

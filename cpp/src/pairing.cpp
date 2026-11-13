@@ -1,11 +1,11 @@
-#include "durchblick/pairing.hpp"
+#include "xblick/pairing.hpp"
 
 #include <algorithm>
 #include <cstdlib>
 #include <stdexcept>
 #include <string>
 
-namespace durchblick
+namespace xblick
 {
     namespace
     {

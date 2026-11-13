@@ -9,15 +9,15 @@ measurements in detail.
 | What | Before | After | Main change | Details |
 | --- | --- | --- | --- | --- |
 | Publish 1080p to 16 readers on one host | 26 ms publisher CPU (Zenoh TCP) | about 1 ms | one copy in a ring, descriptors to the readers | [Rings](../concepts/rings.md) |
-| Azure Kinect colour at 2160p for a JPEG consumer | 28 ms | 0.02 ms | the camera's JPEG passed on, decoded only for pixel subscribers | durchblick-azure-kinect |
-| Boxer, median per frame (fastest frames) | 140 ms (85 ms) | 28 ms (17.4 ms) | inputs on the GPU, weights in bfloat16, two CUDA streams | durchblick-boxer |
-| SAM 3.1 with 8 words, compiled | 51.1 ms at 1008 px | 24.4 ms at 672 px | all words in one pass, mask head only for detections, lower resolution | durchblick-sam3 |
-| Fast-FoundationStereo, 640 x 480 | 26.3 ms (PyTorch) | 11.1 ms | TensorRT | durchblick-fast-foundationstereo |
-| FoundationPose tracking | 22.7 ms (the original) | 8.5 ms | a port to PyTorch, merged vertices, compilation, 3 refiner passes | durchblick-foundationpose |
-| NeMO, metric pose per query | 1.2 s | 10 ms | RANSAC with all hypotheses on the GPU | durchblick-nemo |
-| Azure Kinect body tracking | 123 ms CPU, 16.4 ms CUDA | 7.0 ms | TensorRT | durchblick-azure-kinect |
-| IVT localisation of 12 textured objects | 137-572 ms (32 to 1 threads) | 4.9 ms offline, 5.6 ms live | the pipeline in PyTorch on the GPU | durchblick-ivt |
-| nvblox at 60 frames/s input | 8 frames/s | 47 frames/s | the newest complete set of inputs | durchblick-mapping |
+| Azure Kinect colour at 2160p for a JPEG consumer | 28 ms | 0.02 ms | the camera's JPEG passed on, decoded only for pixel subscribers | xblick-azure-kinect |
+| Boxer, median per frame (fastest frames) | 140 ms (85 ms) | 28 ms (17.4 ms) | inputs on the GPU, weights in bfloat16, two CUDA streams | xblick-boxer |
+| SAM 3.1 with 8 words, compiled | 51.1 ms at 1008 px | 24.4 ms at 672 px | all words in one pass, mask head only for detections, lower resolution | xblick-sam3 |
+| Fast-FoundationStereo, 640 x 480 | 26.3 ms (PyTorch) | 11.1 ms | TensorRT | xblick-fast-foundationstereo |
+| FoundationPose tracking | 22.7 ms (the original) | 8.5 ms | a port to PyTorch, merged vertices, compilation, 3 refiner passes | xblick-foundationpose |
+| NeMO, metric pose per query | 1.2 s | 10 ms | RANSAC with all hypotheses on the GPU | xblick-nemo |
+| Azure Kinect body tracking | 123 ms CPU, 16.4 ms CUDA | 7.0 ms | TensorRT | xblick-azure-kinect |
+| IVT localisation of 12 textured objects | 137-572 ms (32 to 1 threads) | 4.9 ms offline, 5.6 ms live | the pipeline in PyTorch on the GPU | xblick-ivt |
+| nvblox at 60 frames/s input | 8 frames/s | 47 frames/s | the newest complete set of inputs | xblick-mapping |
 | Boxer beside nvblox and the robot mask at 60 frames/s | 62 ms latency | 30 ms | NVIDIA MPS | [Sharing a GPU](sharing-a-gpu.md) |
 
 GPU: RTX PRO 6000 Blackwell unless a node's page states another. CPU: AMD EPYC 9335. The 28 ms for the Azure Kinect
@@ -115,14 +115,14 @@ speeds up computation does not help a launch-bound stage. Small problems are oft
 
 | Node | What its page covers |
 | --- | --- |
-| durchblick-azure-kinect | the JPEG pass-through, nvJPEG into the CUDA ring (720p: 0.56 ms against 2.02 ms on the CPU), NPP remap for the rectified colour image (0.6-0.7 ms against 3.2-3.7 ms), body tracking with TensorRT |
-| `durchblick-points` | rays once per calibration and a kernel that writes into the CUDA ring: 1.7-2.7 ms host time per cloud. Readers have the cloud 1.9-2.0 ms after the stamp. [Point clouds](point-clouds.md) |
-| durchblick-boxer | the four steps from 140 to 28 ms, and where the time goes |
-| durchblick-sam3 | words in one pass, the mask head, the resolution, compilation with a warm-up |
-| durchblick-fast-foundationstereo | TensorRT, the choice of the checkpoint by accuracy and time, `--max-width` |
-| durchblick-foundationpose | the port to PyTorch, merged vertices (rendering 646 to 195 ms), compilation, refiner passes |
-| durchblick-nemo | the RANSAC on the GPU, detection in bfloat16 (61 against 160 ms) |
-| durchblick-tapnext | one state of slots for all tracks, catch-up states |
-| durchblick-mapping | its own build of nvblox (384 feature channels in one map: 7.2 against 14 ms), the feed, MPS |
-| durchblick-gem-x, durchblick-vjepa2, durchblick-insightface | persons batched in bfloat16 (GEM-X: 30 ms per person), frames prepared on arrival (V-JEPA 2), InsightFace on ONNX Runtime |
-| durchblick-ivt | the GPU pipeline step by step (13.0 to 4.9 ms), the CPU clock, what stays on the CPU |
+| xblick-azure-kinect | the JPEG pass-through, nvJPEG into the CUDA ring (720p: 0.56 ms against 2.02 ms on the CPU), NPP remap for the rectified colour image (0.6-0.7 ms against 3.2-3.7 ms), body tracking with TensorRT |
+| `xblick-points` | rays once per calibration and a kernel that writes into the CUDA ring: 1.7-2.7 ms host time per cloud. Readers have the cloud 1.9-2.0 ms after the stamp. [Point clouds](point-clouds.md) |
+| xblick-boxer | the four steps from 140 to 28 ms, and where the time goes |
+| xblick-sam3 | words in one pass, the mask head, the resolution, compilation with a warm-up |
+| xblick-fast-foundationstereo | TensorRT, the choice of the checkpoint by accuracy and time, `--max-width` |
+| xblick-foundationpose | the port to PyTorch, merged vertices (rendering 646 to 195 ms), compilation, refiner passes |
+| xblick-nemo | the RANSAC on the GPU, detection in bfloat16 (61 against 160 ms) |
+| xblick-tapnext | one state of slots for all tracks, catch-up states |
+| xblick-mapping | its own build of nvblox (384 feature channels in one map: 7.2 against 14 ms), the feed, MPS |
+| xblick-gem-x, xblick-vjepa2, xblick-insightface | persons batched in bfloat16 (GEM-X: 30 ms per person), frames prepared on arrival (V-JEPA 2), InsightFace on ONNX Runtime |
+| xblick-ivt | the GPU pipeline step by step (13.0 to 4.9 ms), the CPU clock, what stays on the CPU |

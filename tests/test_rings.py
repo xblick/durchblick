@@ -1,4 +1,4 @@
-"""The shm and cuda transports: the C++ rings through blick._core, and publisher/subscriber over Zenoh.
+"""The shm and cuda transports: the C++ rings through xblick._core, and publisher/subscriber over Zenoh.
 
 CUDA's interprocess events cannot be opened in the process that created them, so the CUDA tests run the publishers
 in processes of their own (multiprocessing, spawn). They need a GPU with virtual memory management and are skipped
@@ -13,13 +13,13 @@ import numpy as np
 import pytest
 from test_camera import wait_until
 
-import blick
-from blick import _core
-from blick.camera import CameraPublisher, ImageSubscriber
-from blick.gpu import CudaImage
-from blick.msg import CudaImage as CudaImageMsg
-from blick.msg import Header, ShmImage, Time
-from blick.session import open_session
+import xblick
+from xblick import _core
+from xblick.camera import CameraPublisher, ImageSubscriber
+from xblick.gpu import CudaImage
+from xblick.msg import CudaImage as CudaImageMsg
+from xblick.msg import Header, ShmImage, Time
+from xblick.session import open_session
 
 needs_cuda = pytest.mark.skipif(_core.cuda_device_count() == 0, reason="no CUDA device")
 
@@ -86,7 +86,7 @@ def test_host_ring_rejects_too_large_frames_and_unknown_names():
     with pytest.raises(_core.RingError):
         writer.write(np.zeros(4097, np.uint8))
     with pytest.raises(_core.RingError):
-        _core.HostRingReader("/durchblick-does-not-exist")
+        _core.HostRingReader("/xblick-does-not-exist")
 
 
 def test_ring_goes_with_its_writer():
@@ -102,10 +102,10 @@ def test_ring_goes_with_its_writer():
 
 def test_descriptor_round_trip():
     header = Header(stamp=Time(sec=3, nanosec=4), frame_id="cam")
-    shm = ShmImage(header=header, height=2, width=3, encoding="rgb8", step=9, host="h", segment="/durchblick-x",
+    shm = ShmImage(header=header, height=2, width=3, encoding="rgb8", step=9, host="h", segment="/xblick-x",
                    slot=1, seq=2 ** 40)
     assert ShmImage.deserialize(shm.serialize()) == shm
-    cuda = CudaImageMsg(header=header, height=2, width=3, encoding="16UC1", step=6, host="h", endpoint="durchblick-y",
+    cuda = CudaImageMsg(header=header, height=2, width=3, encoding="16UC1", step=6, host="h", endpoint="xblick-y",
                         device_uuid="ab" * 16, slot=3, seq=8)
     assert CudaImageMsg.deserialize(cuda.serialize()) == cuda
 
@@ -456,9 +456,9 @@ def test_device_frames_published_complete_and_before_reuse(mode):
 
 
 def test_descriptor_encodings_carry_their_version():
-    assert ShmImage.ENCODING == "application/cdr;durchblick_msgs/msg/ShmImage@1"
-    assert CudaImageMsg.ENCODING == "application/cdr;durchblick_msgs/msg/CudaImage@1"
-    assert blick.Image.ENCODING == "application/cdr;sensor_msgs/msg/Image"  # ROS types: the plain ROS name
+    assert ShmImage.ENCODING == "application/cdr;xblick_msgs/msg/ShmImage@1"
+    assert CudaImageMsg.ENCODING == "application/cdr;xblick_msgs/msg/CudaImage@1"
+    assert xblick.Image.ENCODING == "application/cdr;sensor_msgs/msg/Image"  # ROS types: the plain ROS name
 
 
 def test_other_protocol_version_is_refused(sessions):
@@ -466,9 +466,9 @@ def test_other_protocol_version_is_refused(sessions):
     a, b = sessions
     sub = ImageSubscriber(b, "t/v/color", "shm")
     pub = a.declare_publisher(f"t/v/color/image_raw/shm/{_core.host_id()}",
-                              encoding=zenoh.Encoding("application/cdr;durchblick_msgs/msg/ShmImage@2"))
+                              encoding=zenoh.Encoding("application/cdr;xblick_msgs/msg/ShmImage@2"))
     end = time.monotonic() + 10
-    with pytest.raises(blick.ProtocolError, match="ShmImage@2"):
+    with pytest.raises(xblick.ProtocolError, match="ShmImage@2"):
         while time.monotonic() < end:
             pub.put(b"\x00\x01\x00\x00")
             sub.latest(timeout=0.05)
@@ -481,10 +481,10 @@ def test_info_record(sessions):
     end = time.monotonic() + 10
     records = []
     while not records and time.monotonic() < end:
-        records = blick.query_info(b, "t/i/color", timeout=0.5)
+        records = xblick.query_info(b, "t/i/color", timeout=0.5)
     (record,) = records
     assert record["host"] == _core.host_id() and record["encoding"] == "bgr8" and record["source"] == "test"
-    assert record["transports"] == ["raw", "compressed", "shm"] and record["durchblick"] == blick.__version__
+    assert record["transports"] == ["raw", "compressed", "shm"] and record["xblick"] == xblick.__version__
     pub.close()
 
 

@@ -7,7 +7,7 @@
 
 #include "camera_model.hpp"
 
-namespace durchblick::points
+namespace xblick::points
 {
     enum class DepthFormat
     {
@@ -39,4 +39,4 @@ namespace durchblick::points
     // it); without colour, rgb is 0.
     void depth_to_points(const void* depth, DepthFormat format, int width, int height, const float* rays,
                          float max_depth, const ColorInput* color, void* points, cudaStream_t stream);
-}  // namespace durchblick::points
+}  // namespace xblick::points

@@ -1,4 +1,4 @@
-#include "durchblick/ring.hpp"
+#include "xblick/ring.hpp"
 
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -11,7 +11,7 @@
 #include <random>
 #include <utility>
 
-namespace durchblick
+namespace xblick
 {
     namespace
     {
@@ -155,7 +155,7 @@ namespace durchblick
         {
             throw RingError("slot count " + std::to_string(slot_count) + ": 2 to " + std::to_string(kMaxSlots));
         }
-        mapping_ = Mapping::create(random_name("/durchblick-"), kControlSize + data_bytes);
+        mapping_ = Mapping::create(random_name("/xblick-"), kControlSize + data_bytes);
         auto* h = header();
         std::memcpy(h->magic, kMagic, sizeof(kMagic));
         h->version = kVersion;
@@ -347,4 +347,4 @@ namespace durchblick
         check_slot(slot);
         return control_.data() + slot * control_.slot_size();
     }
-}  // namespace durchblick
+}  // namespace xblick

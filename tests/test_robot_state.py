@@ -7,12 +7,12 @@ import time
 import numpy as np
 import pytest
 
-from blick import topics
-from blick.camera import ProtocolError
-from blick.msg import (Header, JointState, Odometry, Point, Pose, PoseWithCovariance, Quaternion, TFMessage, Time,
-                            Transform, TransformStamped, Twist, TwistWithCovariance, Vector3, Wrench, WrenchStamped)
-from blick.robot import RobotStatePublisher, RobotStateSubscriber
-from blick.session import open_session
+from xblick import topics
+from xblick.camera import ProtocolError
+from xblick.msg import (Header, JointState, Odometry, Point, Pose, PoseWithCovariance, Quaternion, TFMessage, Time,
+                        Transform, TransformStamped, Twist, TwistWithCovariance, Vector3, Wrench, WrenchStamped)
+from xblick.robot import RobotStatePublisher, RobotStateSubscriber
+from xblick.session import open_session
 
 typesys = pytest.importorskip("rosbags.typesys")
 STORE = typesys.get_typestore(typesys.Stores.ROS2_LYRICAL)

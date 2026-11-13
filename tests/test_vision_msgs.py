@@ -7,9 +7,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from blick.msg import (BoundingBox2D, BoundingBox3D, Classification, Detection2D, Detection2DArray, Detection3D,
-                            Detection3DArray, Header, ObjectHypothesis, ObjectHypothesisWithPose, Point, Point2D,
-                            Pose, Pose2D, PoseWithCovariance, Quaternion, Time, Vector3)
+from xblick.msg import (BoundingBox2D, BoundingBox3D, Classification, Detection2D, Detection2DArray, Detection3D,
+                        Detection3DArray, Header, ObjectHypothesis, ObjectHypothesisWithPose, Point, Point2D,
+                        Pose, Pose2D, PoseWithCovariance, Quaternion, Time, Vector3)
 
 typesys = pytest.importorskip("rosbags.typesys")
 STORE = typesys.get_typestore(typesys.Stores.ROS2_LYRICAL)

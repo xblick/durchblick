@@ -6,7 +6,7 @@
 The network runs in this process, each "program" a Zenoh session of its own on a router with the admin space on (as
 zenohd): an Azure Kinect (color and depth, frames from a pattern), SAM 3 taking the color images by shm, FoundationPose
 taking color, depth and SAM 3's instances, TAPNext and SAM 3 taking each other's results (a cycle), a robot state
-bridge, a recorder and a viewer as a client taking compressed images. SAM 3 offers some of durchblick-sam3's
+bridge, a recorder and a viewer as a client taking compressed images. SAM 3 offers some of xblick-sam3's
 parameters, with its names, defaults and live ones (its options as declare_options makes them). Only the camera sends images; the nodes send
 their results and diagnostics as small JSON. Nothing of a real node runs.
 
@@ -33,14 +33,14 @@ from pathlib import Path
 import numpy as np
 import zenoh
 
-from blick import tui
-from blick.camera import CameraPublisher
-from blick.diagnostics import DiagnosticsPublisher
-from blick.msg import CameraInfo
-from blick import _core
-from blick.parameters import Parameters
-from blick.session import Session, open_session
-from blick.session import close as close_session
+from xblick import tui
+from xblick.camera import CameraPublisher
+from xblick.diagnostics import DiagnosticsPublisher
+from xblick.msg import CameraInfo
+from xblick import _core
+from xblick.parameters import Parameters
+from xblick.session import Session, open_session
+from xblick.session import close as close_session
 
 REPO = Path(__file__).resolve().parents[1]
 CAMERA = "robot/camera"
@@ -128,8 +128,8 @@ class DemoNetwork:
         self._thread(state)
         recorder = self._session()
         status = recorder.declare_queryable(
-            "durchblick/recorder/status",
-            lambda q: q.reply("durchblick/recorder/status", json.dumps(
+            "xblick/recorder/status",
+            lambda q: q.reply("xblick/recorder/status", json.dumps(
                 {"name": "recorder", "state": "recording", "file": "/data/robot/demo.mcap", "messages": 18234,
                  "dropped": 0}), encoding=zenoh.Encoding.APPLICATION_JSON))
         recorder_subs = [recorder.declare_subscriber(k, lambda s: None) for k in ("robot/joint_states", "robot/tf")]
@@ -195,13 +195,13 @@ def chromium() -> str:
 def to_png(svg: Path, png: Path, size: tuple[int, int]):
     """The SVG as a PNG of its own size, with DejaVu Sans Mono embedded for every font the SVG names."""
     faces = "".join(
-        f"@font-face {{ font-family: 'Durchblick Mono'; font-weight: {weight}; "
+        f"@font-face {{ font-family: 'Xblick Mono'; font-weight: {weight}; "
         f"src: url(data:font/ttf;base64,{base64.b64encode((FONT / file).read_bytes()).decode()}); }}\n"
         for weight, file in (("normal", "DejaVuSansMono.ttf"), ("bold", "DejaVuSansMono-Bold.ttf")))
     text = svg.read_text()
     width, height = (float(v) for v in text.split('viewBox="', 1)[1].split('"', 1)[0].split()[2:4])
     html = (f"<!doctype html><meta charset='utf-8'><style>{faces} html, body {{ margin: 0; background: #1e1e1e; }}"
-            f" svg text, svg tspan {{ font-family: 'Durchblick Mono' !important; }}</style>{text}")
+            f" svg text, svg tspan {{ font-family: 'Xblick Mono' !important; }}</style>{text}")
     with tempfile.TemporaryDirectory() as tmp:
         page = Path(tmp) / "page.html"
         page.write_text(html)
@@ -211,8 +211,8 @@ def to_png(svg: Path, png: Path, size: tuple[int, int]):
 
 
 async def capture(network: DemoNetwork, out: Path):
-    app = tui.DurchblickApp(tui.Connection(connect=[network.endpoint], mode="client"),
-                            tui.Presets(out / ".presets.json"), discover_every=1.0)
+    app = tui.XblickApp(tui.Connection(connect=[network.endpoint], mode="client"),
+                        tui.Presets(out / ".presets.json"), discover_every=1.0)
     shots = []
 
     async def until(pilot, condition, timeout=20.0):
@@ -224,7 +224,7 @@ async def capture(network: DemoNetwork, out: Path):
 
     def save(name: str):
         path = out / f"{name}.svg"
-        path.write_text(app.export_screenshot(title=f"blick: {name}"))
+        path.write_text(app.export_screenshot(title=f"xblick: {name}"))
         shots.append(path)
 
     async with app.run_test(size=SIZE) as pilot:

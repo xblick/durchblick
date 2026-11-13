@@ -5,11 +5,11 @@ import numpy as np
 import pytest
 from test_camera import pattern, sessions, wait_until  # noqa: F401 - sessions is a fixture
 
-from blick import node, poses, tensors
-from blick.camera import CameraPublisher, Frame, ImageSubscriber
-from blick.diagnostics import DiagnosticsPublisher
-from blick.history import FrameHistory, StampedHistory
-from blick.msg import DiagnosticArray, Header, Time
+from xblick import node, poses, tensors
+from xblick.camera import CameraPublisher, Frame, ImageSubscriber
+from xblick.diagnostics import DiagnosticsPublisher
+from xblick.history import FrameHistory, StampedHistory
+from xblick.msg import DiagnosticArray, Header, Time
 
 
 def test_frame_history_keeps_frames_by_stamp(sessions):  # noqa: F811
@@ -91,7 +91,7 @@ def test_reporter(sessions, capsys):  # noqa: F811
     got = []
     subscriber = b.declare_subscriber("robot/x/diagnostics",
                                       lambda s: got.append(DiagnosticArray.deserialize(s.payload.to_bytes())))
-    report = node.Reporter(a, "robot/x", "nemo", "durchblick-nemo", log_prefix="robot/x: ", every=0.05,
+    report = node.Reporter(a, "robot/x", "nemo", "xblick-nemo", log_prefix="robot/x: ", every=0.05,
                            log_every=0.0)
     time.sleep(0.3)
     report.counts["frames"] += 3
@@ -103,7 +103,7 @@ def test_reporter(sessions, capsys):  # noqa: F811
     report.publish(level, message, {"frames/s": 3.0}, log_extra=", 12 ms a frame")
     wait_until(lambda: got)
     assert got[0].status[0].name == "nemo" and got[0].status[0].message == message
-    assert capsys.readouterr().out == f"durchblick-nemo: robot/x: {message}, 12 ms a frame\n"
+    assert capsys.readouterr().out == f"xblick-nemo: robot/x: {message}, 12 ms a frame\n"
     report.counts["frames"] += 1
     assert report.take()[0]["frames"] == 1  # only those since the last take
     assert node.state("0.00 frames/s", waiting="robot/x/color: no frame yet") == (
@@ -131,7 +131,7 @@ def test_pose_conversions_round_trip():
 def test_diagnostics_name_their_session(sessions):  # noqa: F811
     """Two sessions on one camera's diagnostics key: each sample says which session sent it (the attachment's zid),
     and a sample without an attachment (a publisher before 0.3.29) has no sender."""
-    from blick import diagnostics
+    from xblick import diagnostics
 
     a, b = sessions
     got = []
@@ -156,7 +156,7 @@ def test_local_argument():
     reason; without local, no --local (a node's own does not clash)."""
     import argparse
 
-    from blick.camera import LOCAL
+    from xblick.camera import LOCAL
 
     gpu = argparse.ArgumentParser()
     node.add_arguments(gpu, local=LOCAL)

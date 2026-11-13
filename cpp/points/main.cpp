@@ -1,6 +1,6 @@
-// durchblick-points: the point cloud node (point_cloud_node.hpp) as a program.
+// xblick-points: the point cloud node (point_cloud_node.hpp) as a program.
 //
-//   durchblick-points --depth robot/camera/depth [--color robot/camera/color] [--camera <camera>]
+//   xblick-points --depth robot/camera/depth [--color robot/camera/color] [--camera <camera>]
 //                     [--output <camera>/points] [--cuda-device 0] [--max-offset-ms 10] [--remote compressed|raw]
 //                     [--max-depth M] [--max-hz HZ] [--source robot] [--connect host[:port] ...]
 //                     [--range-step 0.001] [--jpeg-quality 95]   (cloud/compressed, for readers on other hosts)
@@ -17,8 +17,8 @@
 #include <iostream>
 
 #include "../tools/tools.hpp"
-#include "durchblick/camera.hpp"
-#include "durchblick/point_cloud_node.hpp"
+#include "xblick/camera.hpp"
+#include "xblick/point_cloud_node.hpp"
 
 namespace
 {
@@ -27,7 +27,7 @@ namespace
 
 int main(int argc, char** argv)
 {
-    using namespace durchblick;
+    using namespace xblick;
     tools::Args args(argc, argv);
     std::signal(SIGINT, [](int) { stop = 1; });
     std::signal(SIGTERM, [](int) { stop = 1; });
@@ -63,7 +63,7 @@ int main(int argc, char** argv)
         }
         zenoh::Session session = open_session({.connect = args.list("connect"), .listen = args.list("listen")});
         PointCloudNode node(session, options);
-        std::cerr << "durchblick-points: " << options.depth << (options.color.empty() ? "" : " + " + options.color)
+        std::cerr << "xblick-points: " << options.depth << (options.color.empty() ? "" : " + " + options.color)
                   << " -> " << node.output() << " on CUDA device " << options.cuda_device << ", "
                   << rate_text(options.max_hz) << std::endl;
         auto next_report = std::chrono::steady_clock::now() + std::chrono::seconds(1);
@@ -73,7 +73,7 @@ int main(int argc, char** argv)
             if (std::chrono::steady_clock::now() >= next_report)
             {
                 const DiagnosticStatus status = node.report();
-                std::cerr << "durchblick-points: " << status.message;
+                std::cerr << "xblick-points: " << status.message;
                 for (const KeyValue& kv : status.values)
                 {
                     std::cerr << ", " << kv.key << " " << kv.value;
@@ -85,7 +85,7 @@ int main(int argc, char** argv)
     }
     catch (const std::exception& e)
     {
-        std::cerr << "durchblick-points: " << e.what() << std::endl;
+        std::cerr << "xblick-points: " << e.what() << std::endl;
         return 1;
     }
     return 0;

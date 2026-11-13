@@ -4,8 +4,8 @@ path)."""
 import numpy as np
 import pytest
 
-import blick as db
-from blick import tensors
+import xblick as db
+from xblick import tensors
 
 torch = pytest.importorskip("torch")
 

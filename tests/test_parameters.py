@@ -8,10 +8,10 @@ from pathlib import Path
 import pytest
 from test_camera import sessions, wait_until  # noqa: F401 - sessions is a fixture
 
-from blick import node
-from blick.msg import ParameterType, ParameterValue
-from blick.parameters import (READ_ONLY_ACCESS, RESTART, ParameterClient, ParameterError, Parameters,
-                                   dump_params_file, find_nodes, parse_yaml, read_params_file)
+from xblick import node
+from xblick.msg import ParameterType, ParameterValue
+from xblick.parameters import (READ_ONLY_ACCESS, RESTART, ParameterClient, ParameterError, Parameters,
+                               dump_params_file, find_nodes, parse_yaml, read_params_file)
 
 NS, NAME = "robot/x", "boxer"
 
@@ -244,12 +244,12 @@ def test_params_file_node_names(tmp_path):
     assert read_params_file(tmp_path / "p.yaml", "/robot/x/camera") == {"a": 1, "b": 2, "c": 3}
 
 
-def test_durchblick_param(capsys, tmp_path):
-    """``blick param``: the nodes, a node's parameters described, changed (a refusal's reason), dumped."""
+def test_xblick_param(capsys, tmp_path):
+    """``xblick param``: the nodes, a node's parameters described, changed (a refusal's reason), dumped."""
     from test_camera import free_port
 
-    from blick import cli
-    from blick.session import open_session
+    from xblick import cli
+    from xblick.session import open_session
 
     port = free_port()
     a = open_session(listen=[f"127.0.0.1:{port}"])
@@ -310,10 +310,10 @@ def test_apply_all_in_declaration_order():
 def options_parser():
     import argparse
 
-    from blick import node
-    from blick.session import add_arguments
+    from xblick import node
+    from xblick.session import add_arguments
 
-    parser = argparse.ArgumentParser(prog="durchblick-test")
+    parser = argparse.ArgumentParser(prog="xblick-test")
     parser.add_argument("--camera", required=True, help="the camera's base")
     parser.add_argument("--threshold", type=float, default=0.5, help="the least score (default %(default)s)")
     parser.add_argument("--words", nargs="*", default=[], help="prompts")
@@ -369,7 +369,7 @@ def test_a_node_that_ends_with_an_exception_before_close_ends():
     import subprocess  # noqa: PLC0415
     import sys  # noqa: PLC0415
 
-    script = ("from blick.session import open_session\nfrom blick.parameters import Parameters\n"
+    script = ("from xblick.session import open_session\nfrom xblick.parameters import Parameters\n"
               "s = open_session(listen=['127.0.0.1:0'])\np = Parameters(s, 'probe', 'test')\np.declare('a', 1)\n"
               "raise KeyboardInterrupt\n")
     out = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, timeout=30)

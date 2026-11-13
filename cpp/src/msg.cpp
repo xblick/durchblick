@@ -1,12 +1,12 @@
-#include "durchblick/msg.hpp"
+#include "xblick/msg.hpp"
 
-#include "durchblick/rectify.hpp"
+#include "xblick/rectify.hpp"
 
 #include <bit>
 #include <cmath>
 #include <cstring>
 
-namespace durchblick
+namespace xblick
 {
     // The CDR writer and reader and the shared messages are in ros2_cdr_msgs.hpp.
 
@@ -956,4 +956,4 @@ namespace durchblick
         }
         return out;
     }
-}  // namespace durchblick
+}  // namespace xblick

@@ -8,14 +8,14 @@ import time
 import numpy as np
 import pytest
 
-from blick import _core, topics
-from blick import camera as camera_module
-from blick.camera import CameraPublisher, ImageSubscriber
-from blick.encodings import EncodingError
-from blick.history import PartnerHistory
-from blick.msg import CameraInfo
-from blick.session import close as close_session
-from blick.session import open_session, replies
+from xblick import _core, topics
+from xblick import camera as camera_module
+from xblick.camera import CameraPublisher, ImageSubscriber
+from xblick.encodings import EncodingError
+from xblick.history import PartnerHistory
+from xblick.msg import CameraInfo
+from xblick.session import close as close_session
+from xblick.session import open_session, replies
 
 BASE = "robot/camera/color"
 
@@ -140,7 +140,7 @@ def test_a_partner_read_too_late_is_lost_and_logged(sessions, caplog):
     frame = partner.at(t0 + 8 * period + 10_000_000)  # nearest: frame 8, 10 ms away
     assert frame is not None and np.array_equal(frame.image, pattern(8))
     assert partner.at(t0 + 9 * period + 10_000_000) is None  # 9, the newest, is before it: a nearer one may come
-    with caplog.at_level("WARNING", logger="blick"):
+    with caplog.at_level("WARNING", logger="xblick"):
         assert partner.at(t0 + 2 * period) is None
     assert partner.lost == 1 and "more ring slots" in caplog.text and "take a frame and its partners" in caplog.text
     assert partner.at(t0 + 12 * period) is None and partner.lost == 1  # no partner: not lost
@@ -291,7 +291,7 @@ def test_codec_is_checked_when_made(sessions):
 
 
 def test_invalid_topic_names():
-    from blick.topics import TopicError, stream_base
+    from xblick.topics import TopicError, stream_base
 
     with pytest.raises(TopicError):
         stream_base("robot", "head-camera", "color")
@@ -300,8 +300,8 @@ def test_invalid_topic_names():
 
 
 def test_static_transforms(sessions):
-    from blick.camera import StaticTransformPublisher, StaticTransformSubscriber
-    from blick.msg import Header, Quaternion, TFMessage, Time, Transform, TransformStamped, Vector3
+    from xblick.camera import StaticTransformPublisher, StaticTransformSubscriber
+    from xblick.msg import Header, Quaternion, TFMessage, Time, Transform, TransformStamped, Vector3
 
     a, b = sessions
     camera = BASE.rpartition("/")[0]
@@ -330,7 +330,7 @@ def test_local_auto_takes_the_cuda_ring_on_its_gpu(sessions, monkeypatch):  # no
     """local "auto" (the default): the publisher's CUDA ring when it is on the subscriber's GPU (by the GPU's UUID,
     in the info record from the start) or on another GPU that the process sees, else shared memory, saying why; "shm" and "cuda" as asked. (Only the choice:
     a CUDA ring cannot be read by the process that made it; test_rings and test_video read them.)"""
-    from blick import camera
+    from xblick import camera
 
     a, b = sessions
     publisher = CameraPublisher(a, BASE, encoding="rgb8", frame_id="cam", cuda_device=0)
@@ -367,7 +367,7 @@ def test_local_auto_takes_the_cuda_ring_on_its_gpu(sessions, monkeypatch):  # no
 
 
 def test_auto_on_a_third_host_ignores_a_relays_record(sessions, monkeypatch):
-    """A relay (durchblick-relay) offers only its own host's rings: on a third host auto takes the source's compressed
+    """A relay (xblick-relay) offers only its own host's rings: on a third host auto takes the source's compressed
     stream instead of refusing the stream because one record (the relay's) has no compressed form."""
     _, b = sessions
     source = {"v": 1, "kind": "image", "host": "source-host", "transports": ["raw", "compressed", "shm"],
@@ -643,7 +643,7 @@ def test_auto_closes_during_a_move(sessions, monkeypatch):  # noqa: F811
 
 def test_auto_asks_this_hosts_relay_for_a_stream_without_a_ring_here(sessions, monkeypatch):  # noqa: F811
     """A subscriber with auto holds the liveliness token <base>/want/<host>/<id> while the stream has no source with
-    a ring on its host (durchblick-relay brings the streams wanted on its host into rings there); a subscriber with a
+    a ring on its host (xblick-relay brings the streams wanted on its host into rings there); a subscriber with a
     transport of its own choice holds none."""
     a, b = sessions
 

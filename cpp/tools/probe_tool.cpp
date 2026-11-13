@@ -1,10 +1,10 @@
-// durchblick-cpp-probe: a C++ subscriber that prints one JSON line per frame (encoding, size, sequence number,
+// xblick-cpp-probe: a C++ subscriber that prints one JSON line per frame (encoding, size, sequence number,
 // checksum of the pixels), for checking C++ against Python and as an example of the C++ API.
 //
-//   durchblick-cpp-probe --connect host:7447 --base robot/test_camera/color --transport auto|raw|compressed|shm|cuda
+//   xblick-cpp-probe --connect host:7447 --base robot/test_camera/color --transport auto|raw|compressed|shm|cuda
 //                        [--view] [--frames 10] [--timeout 10] [--camera-info] [--points [--local cuda]]
 //                        [--max-hz 5]
-//   durchblick-cpp-probe --connect host:7447 --params <namespace>/<name> [--set NAME:=VALUE]
+//   xblick-cpp-probe --connect host:7447 --params <namespace>/<name> [--set NAME:=VALUE]
 //
 // --params: a node's parameters (parameters.hpp, ParameterClient): with --set that change first (a line with its
 // result), then a line per parameter (name, type, value, read_only, additional_constraints).
@@ -12,9 +12,9 @@
 #include <chrono>
 #include <map>
 
-#include "durchblick/camera.hpp"
-#include "durchblick/parameters.hpp"
-#include "durchblick/points.hpp"
+#include "xblick/camera.hpp"
+#include "xblick/parameters.hpp"
+#include "xblick/points.hpp"
 #include "tools.hpp"
 
 namespace
@@ -23,7 +23,7 @@ namespace
     std::string sum_of(const std::uint8_t* host, std::uint64_t device_ptr, const std::shared_ptr<const void>& owner,
                        bool copy, std::uint32_t height, std::uint32_t row, std::uint32_t step)
     {
-        using namespace durchblick;
+        using namespace xblick;
         if (device_ptr == 0)
         {
             return std::to_string(tools::checksum(host, height, row, step));
@@ -38,10 +38,10 @@ namespace
         return std::to_string(tools::checksum(bytes.data(), height, row, row));
     }
 
-    int probe_points(zenoh::Session& session, const durchblick::tools::Args& args, durchblick::Transport transport,
+    int probe_points(zenoh::Session& session, const xblick::tools::Args& args, xblick::Transport transport,
                      bool copy)
     {
-        using namespace durchblick;
+        using namespace xblick;
         CloudSubscriberOptions options;
         options.transport = transport;
         options.local = args.get("local", "shm") == "cuda" ? Transport::Cuda : Transport::Shm;
@@ -77,7 +77,7 @@ namespace
                       << (cloud->age_at_send_ns() ? std::to_string(*cloud->age_at_send_ns()) : "null") << "}"
                       << std::endl;
         }
-        std::cerr << "durchblick-cpp-probe: " << got << " clouds, stale " << clouds.stale() << std::endl;
+        std::cerr << "xblick-cpp-probe: " << got << " clouds, stale " << clouds.stale() << std::endl;
         return got == wanted ? 0 : 2;
     }
 
@@ -91,9 +91,9 @@ namespace
         return out + "\"";
     }
 
-    int probe_parameters(zenoh::Session& session, const durchblick::tools::Args& args)
+    int probe_parameters(zenoh::Session& session, const xblick::tools::Args& args)
     {
-        using namespace durchblick;
+        using namespace xblick;
         ParameterClient client(session, args.get("params", ""));
         if (args.flag("set"))
         {
@@ -124,7 +124,7 @@ namespace
 
 int main(int argc, char** argv)
 {
-    using namespace durchblick;
+    using namespace xblick;
     tools::Args args(argc, argv);
     try
     {
@@ -183,13 +183,13 @@ int main(int argc, char** argv)
                       << ",\"valid\":" << (frame->is_valid() ? "true" : "false") << ",\"camera_info\":" << info << "}"
                       << std::endl;
         }
-        std::cerr << "durchblick-cpp-probe: " << got << " frames, stale " << images.stale() << ", skipped for max-hz "
+        std::cerr << "xblick-cpp-probe: " << got << " frames, stale " << images.stale() << ", skipped for max-hz "
                   << images.skipped_max_hz() << std::endl;
         return got == frames ? 0 : 2;
     }
     catch (const std::exception& e)
     {
-        std::cerr << "durchblick-cpp-probe: " << e.what() << std::endl;
+        std::cerr << "xblick-cpp-probe: " << e.what() << std::endl;
         return 1;
     }
 }

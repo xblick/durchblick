@@ -1,4 +1,4 @@
-#include "durchblick/cuda_ring.hpp"
+#include "xblick/cuda_ring.hpp"
 
 #include <cuda.h>
 #include <dlfcn.h>
@@ -17,7 +17,7 @@
 #include <thread>
 #include <vector>
 
-namespace durchblick
+namespace xblick
 {
     namespace
     {
@@ -27,7 +27,7 @@ namespace durchblick
 
         constexpr int kDriverAbi = 12000;
 
-#define DURCHBLICK_CUDA_FUNCTIONS(X)                                                                                \
+#define XBLICK_CUDA_FUNCTIONS(X)                                                                                    \
     X(cuInit)                                                                                                        \
     X(cuGetErrorName)                                                                                                \
     X(cuGetErrorString)                                                                                              \
@@ -76,9 +76,9 @@ namespace durchblick
 
         struct Driver
         {
-#define DURCHBLICK_MEMBER(name) decltype(&::name) name = nullptr;
-            DURCHBLICK_CUDA_FUNCTIONS(DURCHBLICK_MEMBER)
-#undef DURCHBLICK_MEMBER
+#define XBLICK_MEMBER(name) decltype(&::name) name = nullptr;
+            XBLICK_CUDA_FUNCTIONS(XBLICK_MEMBER)
+#undef XBLICK_MEMBER
             std::string error;  // why the driver is not available
         };
 
@@ -98,7 +98,7 @@ namespace durchblick
                 d.error = "the CUDA driver has no cuGetProcAddress_v2 (needs a driver for CUDA 12 or newer)";
                 return d;
             }
-#define DURCHBLICK_LOOKUP(name)                                                                                       \
+#define XBLICK_LOOKUP(name)                                                                                           \
     {                                                                                                                 \
         void* fn = nullptr;                                                                                           \
         CUdriverProcAddressQueryResult status{};                                                                      \
@@ -109,8 +109,8 @@ namespace durchblick
         }                                                                                                             \
         d.name = reinterpret_cast<decltype(d.name)>(fn);                                                              \
     }
-            DURCHBLICK_CUDA_FUNCTIONS(DURCHBLICK_LOOKUP)
-#undef DURCHBLICK_LOOKUP
+            XBLICK_CUDA_FUNCTIONS(XBLICK_LOOKUP)
+#undef XBLICK_LOOKUP
             if (d.cuInit(0) != CUDA_SUCCESS)
             {
                 d = Driver{};
@@ -433,7 +433,7 @@ namespace durchblick
     CudaRingWriter::CudaRingWriter(int device, std::uint32_t slot_count, std::uint64_t slot_size)
         : device_(device),
           control_(RingKind::Cuda, slot_count, round_up(slot_size, 512), 0),
-          endpoint_(random_name("durchblick-")),
+          endpoint_(random_name("xblick-")),
           impl_(std::make_unique<Impl>(device))
     {
         Impl& m = *impl_;
@@ -955,4 +955,4 @@ namespace durchblick
         }
         return buffer;
     }
-}  // namespace durchblick
+}  // namespace xblick

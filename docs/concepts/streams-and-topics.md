@@ -29,7 +29,7 @@ for the rings.
 | `<stream>/image_raw/shm/<host>` | a descriptor for the host ring on that host | `shm` readers on that host |
 | `<stream>/image_raw/cuda/<host>/<gpu>` | a descriptor for the CUDA ring on that GPU | `cuda` readers on that host |
 | `<stream>/camera_info` | the calibration, with the same header as the frame | subscribers with `camera_info=True` |
-| `<stream>/info` | a record of the publisher: host, version, transports, encoding | `auto` subscribers, `blick list` |
+| `<stream>/info` | a record of the publisher: host, version, transports, encoding | `auto` subscribers, `xblick list` |
 
 A ring exists on one host, so its topic names the host, and a CUDA ring's topic also names the GPU. A descriptor
 therefore reaches only readers that can open the ring. [Transports](transports.md) explains how a subscriber
@@ -63,7 +63,7 @@ This rule has three useful consequences.
 
 - A node runs on any camera. You give it the camera's name, and its outputs follow.
 - Two cameras can run the same node without a conflict.
-- A viewer finds every result of a camera below one prefix. `blick rerun` uses this to show all results without
+- A viewer finds every result of a camera below one prefix. `xblick rerun` uses this to show all results without
   options.
 
 A result carries the stamp of the image that it was computed from. A consumer can therefore match a mask, a pose

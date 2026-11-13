@@ -1,10 +1,10 @@
-#include "durchblick/rvl.hpp"
+#include "xblick/rvl.hpp"
 
 #include <bit>
 #include <cstring>
 #include <string>
 
-namespace durchblick::rvl
+namespace xblick::rvl
 {
     static_assert(std::endian::native == std::endian::little, "RVL's words are written as the host has them");
 
@@ -193,4 +193,4 @@ namespace durchblick::rvl
             }
         }
     }
-}  // namespace durchblick::rvl
+}  // namespace xblick::rvl

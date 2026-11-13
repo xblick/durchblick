@@ -1,8 +1,8 @@
-# Publish xblick (the Python package blick) on PyPI: on a tag v<version> (the version of CMakeLists.txt) or by hand (workflow_dispatch). Builds the
+# Publish xblick on PyPI: on a tag v<version> (the version of CMakeLists.txt) or by hand (workflow_dispatch). Builds the
 # files the CI's job wheels builds (tools/build_wheels.sh: wheels for CPython 3.10 to 3.13, manylinux_2_28, and the
 # sdist) and uploads them with PyPI's trusted publishing: no stored token. PyPI's publisher for xblick names the owner
-# xblick, the repository durchblick, the workflow publish.yml and the environment pypi.
-# The extra xblick[relay] needs blick-relay on PyPI and a uv.lock made after that (docs/project/development.md).
+# xblick, the repository xblick, the workflow publish.yml and the environment pypi.
+# The extra xblick[relay] needs xblick-relay on PyPI and a uv.lock made after that (docs/project/development.md).
 name: publish
 
 on:
@@ -19,7 +19,7 @@ jobs:
       - name: a tag names the package version (CMakeLists.txt)
         if: github.ref_type == 'tag'
         run: |
-          version="$(sed -n 's/^project(durchblick VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)"
+          version="$(sed -n 's/^project(xblick VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)"
           if [ "${GITHUB_REF_NAME}" != "v${version}" ]; then
             echo "tag ${GITHUB_REF_NAME} does not name the package version ${version} (CMakeLists.txt)" >&2
             exit 1

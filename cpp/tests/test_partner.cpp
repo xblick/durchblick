@@ -9,7 +9,7 @@
 #include <thread>
 #include <vector>
 
-#include "durchblick/camera.hpp"
+#include "xblick/camera.hpp"
 
 namespace
 {
@@ -43,7 +43,7 @@ namespace
     // smallest step before the primary stamp is taken at once, with the measured and with an explicit offset.
     void pairing_rule()
     {
-        using durchblick::partner_of;
+        using xblick::partner_of;
         constexpr std::int64_t ms = 1'000'000;
         const std::vector<std::int64_t> steady{0, 40 * ms, 80 * ms, 120 * ms, 160 * ms};  // 25 Hz, newest 160 ms
         const std::vector<std::int64_t> one{160 * ms};
@@ -64,15 +64,15 @@ namespace
         expect(not partner_of(skipping, 16 * camera, measured), "skips camera frames: frame 16's own may still come");
         const std::vector<std::int64_t> jitter{0, 66'900'000, 133'100'000, 200'200'000, 266'400'000};  // 15 Hz
         expect(partner_of(jitter, 266'640'000, 5 * ms) == 266'400'000, "steady within a tenth: taken at once");
-        expect(durchblick::steady_step_ns(jitter) == 66'200'000 and not durchblick::steady_step_ns(skipping),
+        expect(xblick::steady_step_ns(jitter) == 66'200'000 and not xblick::steady_step_ns(skipping),
                "steady step: the smallest of a steady partner");
         expect(not partner_of(steady, 160 * ms + 1, 0), "offset 0: equal stamps only");
         expect(partner_of(steady, 160 * ms, 0) == 160 * ms and partner_of(steady, 80 * ms, 0) == 80 * ms,
                "offset 0: an equal stamp, at once");
-        expect(not durchblick::partner_period_ns({}) and not durchblick::partner_period_ns({5}) and
-                   not durchblick::partner_period_ns({5, 5}),
+        expect(not xblick::partner_period_ns({}) and not xblick::partner_period_ns({5}) and
+               not xblick::partner_period_ns({5, 5}),
                "period: none before two different stamps");
-        expect(durchblick::partner_period_ns(irregular) == 10 * ms and durchblick::partner_period_ns({30, 0, 10}) == 20,
+        expect(xblick::partner_period_ns(irregular) == 10 * ms and xblick::partner_period_ns({30, 0, 10}) == 20,
                "period: the median step (of two middle ones the larger)");
         bool refused = false;
         try
@@ -89,7 +89,7 @@ namespace
 
 int main()
 {
-    using namespace durchblick;
+    using namespace xblick;
     using namespace std::chrono_literals;
     pairing_rule();
     zenoh::Session session = open_session({.local_router = false});

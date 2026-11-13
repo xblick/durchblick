@@ -1,9 +1,9 @@
 # Python
 
-The Python API by example. Every example assumes `import blick as db` and an open session.
+The Python API by example. Every example assumes `import xblick as db` and an open session.
 
-Python and C++ share one implementation where it matters. The rings are C++ (`durchblick::core`), and Python
-reaches them through bindings (`blick._core`). The stream API exists in both languages with the same topics
+Python and C++ share one implementation where it matters. The rings are C++ (`xblick::core`), and Python
+reaches them through bindings (`xblick._core`). The stream API exists in both languages with the same topics
 and messages. `tests/test_cpp_interop.py` runs the two languages against each other with every transport in both
 directions. The [C++ reference](cpp-api.md) shows the same API in C++.
 
@@ -17,7 +17,7 @@ session = db.open_session(connect=["other-pc"])     # the router of another PC
 A script takes the connection options from its command line:
 
 ```python
-from blick import session as db_session
+from xblick import session as db_session
 db_session.add_arguments(parser)                    # --connect, --listen, --zenoh-mode, --config
 session = db_session.open_from_args(args)
 ```
@@ -102,7 +102,7 @@ gpu = db.ImageSubscriber(session, "robot/camera/color", transport="cuda")
 tensor = torch.as_tensor(gpu.latest(timeout=1.0).image, device="cuda")
 ```
 
-`blick.tensors` converts frames for you: `tensors.rgb(frame, "cuda")` returns an (H, W, 3) `uint8` tensor from
+`xblick.tensors` converts frames for you: `tensors.rgb(frame, "cuda")` returns an (H, W, 3) `uint8` tensor from
 any colour encoding, and `tensors.depth_metres(frame, "cuda")` returns depth in metres.
 
 ## Point clouds
@@ -158,7 +158,7 @@ no special case. The [topic reference](topics.md#controller) lists the keys and 
 a TCP) and joint targets (an arm's posture, a hand's closure):
 
 ```python
-from blick.controller import CommandPublisher
+from xblick.controller import CommandPublisher
 
 commands = CommandPublisher(session, "robot", "arms", root_frame="base_link")
 commands.send({"left_tcp": (position, quaternion_wxyz)}, {"left_shoulder_1": 0.1})
@@ -171,7 +171,7 @@ one it took, so an older command never follows a newer one. `send` stamps with t
 **Read the state.** `ControllerSubscriber` calls your functions in Zenoh's thread:
 
 ```python
-from blick.controller import ControllerSubscriber
+from xblick.controller import ControllerSubscriber
 
 def on_records(records, fields): ...      # every batch of records: count x len(fields)
 def on_status(status): ...                # DiagnosticStatus at the controller's status rate (for example 50 Hz)
@@ -193,7 +193,7 @@ another width, after a controller of the same name was created again, raises at 
 to it, serves it.
 
 ```python
-from blick.controller_manager import ControllerManager
+from xblick.controller_manager import ControllerManager
 
 manager = ControllerManager(session, "robot")
 config = manager.config_file("Impedance", "robot")       # the robot's configuration file, as a dict
@@ -215,9 +215,9 @@ The controller side, for a simulation that takes the controller's place, is `Com
 
 | Module | Content | Read |
 | --- | --- | --- |
-| `blick.node`, `history`, `tensors`, `rgbd` | helpers for nodes | [Writing nodes](../guides/writing-nodes.md), [Pairing streams](../guides/pairing-streams.md) |
-| `blick.parameters` | parameters of a node; `declare_options` makes a node's command-line options its parameters | [Parameters](parameters.md) |
-| `blick.poses` | poses of a camera or a robot at the stamp of an image, rotations and quaternions | |
-| `blick.rectify` | `rectify_map(info)`: the rectification map of a CameraInfo, as `cv2.initUndistortRectifyMap` gives it; `rectified_info(info)`: the CameraInfo of the rectified image | [C++](cpp-api.md#rectify-an-image) |
-| `blick.robot`, `sim`, `controller` | robot state, simulated worlds, the controller link | [Topics](topics.md) |
-| `blick.recording`, `video` | recording and playback | [Recording](../guides/recording.md) |
+| `xblick.node`, `history`, `tensors`, `rgbd` | helpers for nodes | [Writing nodes](../guides/writing-nodes.md), [Pairing streams](../guides/pairing-streams.md) |
+| `xblick.parameters` | parameters of a node; `declare_options` makes a node's command-line options its parameters | [Parameters](parameters.md) |
+| `xblick.poses` | poses of a camera or a robot at the stamp of an image, rotations and quaternions | |
+| `xblick.rectify` | `rectify_map(info)`: the rectification map of a CameraInfo, as `cv2.initUndistortRectifyMap` gives it; `rectified_info(info)`: the CameraInfo of the rectified image | [C++](cpp-api.md#rectify-an-image) |
+| `xblick.robot`, `sim`, `controller` | robot state, simulated worlds, the controller link | [Topics](topics.md) |
+| `xblick.recording`, `video` | recording and playback | [Recording](../guides/recording.md) |
