@@ -47,9 +47,9 @@ Extras and C++: [install](https://github.com/xblick/xblick/blob/main/docs/gettin
 
 ```bash
 xblick test-camera       # publish a moving test pattern
-xblick cam /dev/video0 --stream robot/webcam/color   # a webcam (needs xblick[cam], not yet tested on a device)
+xblick cam /dev/video0   # a webcam as cam/video0/color (needs xblick[cam], not yet tested on a device)
 xblick list              # show every stream
-xblick hz robot/test_camera/color
+xblick hz test/camera/color
 xblick rerun             # show every stream and result in the Rerun viewer
 ```
 
@@ -57,7 +57,7 @@ xblick rerun             # show every stream and result in the Rerun viewer
 import xblick as db
 
 session = db.open_session()
-images = db.ImageSubscriber(session, "robot/test_camera/color", transport="auto")
+images = db.ImageSubscriber(session, "test/camera/color", transport="auto")
 frame = images.latest(timeout=1.0)        # the newest frame as a NumPy array
 ```
 

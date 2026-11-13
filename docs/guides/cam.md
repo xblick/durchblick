@@ -11,18 +11,26 @@ needed. To play a video file as a camera, use [`xblick play`](video.md).
 
 ```bash
 pip install "xblick[cam]"
-xblick cam /dev/video0 --stream robot/webcam/color        # untested: no V4L2 device was at hand
+xblick cam /dev/video0        # untested: no V4L2 device was at hand
 ```
 
-The webcam is now the stream `robot/webcam/color`. Start any node on the camera `robot/webcam`.
+The webcam is now the stream `cam/video0/color`. Start any node on the camera `cam/video0`.
 
 ```bash
-# an IP camera, asked for 1280 x 720 at 25 frames per second (untested: no IP camera was at hand)
-xblick cam rtsp://192.0.2.20/stream1 --stream robot/door/color --size 1280x720 --fps 25
+# an IP camera, asked for 1280 x 720 at 25 frames per second, as door/camera/color (untested: no IP camera)
+xblick cam rtsp://192.0.2.20/stream1 --stream door/camera/color --size 1280x720 --fps 25
 
-# FFmpeg's test pattern as a camera, without any device
-xblick cam "testsrc=size=640x480:rate=30,realtime" --format lavfi --stream robot/test/color
+# FFmpeg's test pattern as a camera, without any device: cam/camera/color
+xblick cam "testsrc=size=640x480:rate=30,realtime" --format lavfi
 ```
+
+## Stream names
+
+Without `--stream`, the stream is named after the device node: `/dev/video0` becomes `cam/video0/color`. A URL or a
+source with `--format` has no device node and becomes `cam/camera/color`. A grey camera publishes on `.../mono`
+instead of `.../color`. `xblick cam` names the stream at the first frame, when it knows the format, and writes the
+name to its log. The camera, for example `cam/video0`, is the node of its parameters and diagnostics. `--stream`
+replaces the default.
 
 FFmpeg's filter `realtime` makes the test pattern deliver at its rate, as a camera does. Without it, the filter
 graph delivers frames as fast as it can.
@@ -32,7 +40,7 @@ graph delivers frames as fast as it can.
 Leave out the source to choose one of the cameras of this PC:
 
 ```bash
-xblick cam --stream robot/webcam/color
+xblick cam
 ```
 
 `xblick cam` lists the V4L2 devices that capture video, each with its path and name. Move with the arrow keys and
@@ -49,8 +57,8 @@ The kernel tells the two apart in the capabilities of each node (`VIDIOC_QUERYCA
 stays in the list with the note `capabilities unknown: Permission denied`. Add your user to the group `video` to
 open it.
 
-`xblick cam` checks `--stream` before it shows the list. Without a terminal, for example in a script or a service,
-it shows no list. It ends with an error that names the cameras, and you give the source.
+`xblick cam` checks a given `--stream` before it shows the list. Without a terminal, for example in a script or a
+service, it shows no list. It ends with an error that names the cameras, and you give the source.
 
 ## Sources
 
@@ -130,11 +138,11 @@ is removed from `/dev/shm`.
 ## Parameters and diagnostics
 
 The options of `xblick cam` are read-only [parameters](../reference/parameters.md) of the node `<camera>`, for
-example `robot/webcam`. They apply at the next start. `--param NAME:=VALUE` and `--params-file FILE` set them at the
+example `cam/video0`. They apply at the next start. `--param NAME:=VALUE` and `--params-file FILE` set them at the
 start, as for every node.
 
 ```bash
-xblick param --node robot/webcam
+xblick param --node cam/video0
 ```
 
 `<camera>/diagnostics` contains the status `cam` once per second.

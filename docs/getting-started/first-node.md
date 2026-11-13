@@ -17,7 +17,7 @@ from xblick import node, session as db_session
 from xblick.history import FrameHistory
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--camera", default="robot/test_camera")
+parser.add_argument("--camera", default="test/camera")
 parser.add_argument("--threshold", type=float, default=0.5, help="from this level on an image is bright")
 db_session.add_arguments(parser)                      # --connect, --listen, --zenoh-mode, --config
 node.Parameters.add_arguments(parser)                 # --param NAME:=VALUE, --params-file, ...
@@ -70,7 +70,7 @@ python brightness_node.py
 ```
 
 ```
-brightness: robot/test_camera/color: publisher found on this host (test), reading shm (this subscriber works on the CPU)
+brightness: test/camera/color: publisher found on this host (test), reading shm (this subscriber works on the CPU)
 brightness: 14.9 frames/s
 ```
 
@@ -99,7 +99,7 @@ returns OK, or a warning with the reason. Here the node warns while it waits for
 says what it waits for.
 
 **`declare_options`** makes every option a parameter of the node `<camera>/brightness`. `threshold` is live: change
-it while the node runs with `xblick param --node robot/test_camera/brightness --set threshold:=0.3`, or in the
+it while the node runs with `xblick param --node test/camera/brightness --set threshold:=0.3`, or in the
 terminal interface (`xblick`, tab Parameters). The other options are read-only and apply at the next start.
 [Parameters](../reference/parameters.md#a-nodes-options-as-parameters) explains the rules.
 

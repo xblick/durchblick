@@ -85,7 +85,7 @@ extra `xblick[cam]`. See the [guide](../guides/cam.md).
 | Option | Meaning |
 | --- | --- |
 | `source` | `/dev/videoN`, a URL, or with `--format` another FFmpeg input. Without it, choose one of the V4L2 cameras of this PC in a list (arrow keys, Enter). |
-| `--stream BASE` | the stream, `<camera>/<stream>`. Required. |
+| `--stream BASE` | the stream, `<camera>/<stream>`. The default is `cam/<device node>/color`, for example `cam/video0/color`, or `cam/camera/color` for a URL or a `--format` source. A grey camera gets `/mono` in place of `/color`. |
 | `--format FORMAT` | FFmpeg's input format, for example `lavfi`. The default is `video4linux2` for `/dev/...` and the protocol for a URL. |
 | `--size WxH`, `--fps FPS`, `--pixel-format FORMAT` | the mode to ask the camera for. The camera must deliver it. `--pixel-format` is for V4L2 only. |
 | `--camera-info FILE` | a ROS calibration file of the delivered size |
@@ -98,11 +98,11 @@ extra `xblick[cam]`. See the [guide](../guides/cam.md).
 
 ### `xblick test-camera`
 
-Publishes a moving test pattern on `robot/test_camera/color`.
+Publishes a moving test pattern on `test/camera/color`.
 
 | Option | Default |
 | --- | --- |
-| `--namespace`, `--camera`, `--stream` | `robot`, `test_camera`, `color` |
+| `--namespace`, `--camera`, `--stream` | `test`, `camera`, `color` |
 | `--size W H` | 640 480 |
 | `--fps` | 15 |
 | `--vfov` | the vertical field of view in degrees for the camera info |

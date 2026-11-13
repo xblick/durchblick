@@ -281,14 +281,15 @@ v4l2.devices = lambda: [v4l2.Device("/dev/video0", "Integrated Camera: Integrate
 class Started:
     def __init__(self, session, source, base, **options):
         print(f"STARTED {source} {base}", flush=True)
+        print(f"CAMERA {cam.camera_for(source, cam.input_format(source, None), base)}", flush=True)
     def run(self):
         pass
 cam.LiveCamera = Started
-sys.exit(cli.main(["cam", "--stream", "t/sel/color", "--listen", f"tcp/127.0.0.1:{sys.argv[1]}"]))
+sys.exit(cli.main(["cam", *sys.argv[2:], "--listen", f"tcp/127.0.0.1:{sys.argv[1]}"]))
 """
 
 
-def choose_in_a_pty(tmp_path, keys: bytes | None) -> tuple[int, str, bool]:
+def choose_in_a_pty(tmp_path, keys: bytes | None, options=("--stream", "t/sel/color")) -> tuple[int, str, bool]:
     """CHOOSER in a pseudo-terminal, ``keys`` typed once the list is shown (None: SIGTERM sent instead): (exit code,
     output, whether the terminal's mode is as before)."""
     import pty
@@ -299,8 +300,8 @@ def choose_in_a_pty(tmp_path, keys: bytes | None) -> tuple[int, str, bool]:
     script.write_text(CHOOSER)
     master, slave = pty.openpty()
     before = termios.tcgetattr(slave)
-    process = subprocess.Popen([sys.executable, str(script), str(free_port())], stdin=slave, stdout=slave,
-                               stderr=slave, close_fds=True)
+    process = subprocess.Popen([sys.executable, str(script), str(free_port()), *options], stdin=slave,
+                               stdout=slave, stderr=slave, close_fds=True)
     out = b""
     try:
         end = time.monotonic() + 30
@@ -338,8 +339,14 @@ def test_down_and_enter_chooses_the_second_camera(tmp_path):
     assert "  /dev/video2  USB Capture HDMI" in out and "/dev/video1" not in out  # the metadata node not offered
     assert "xblick cam: /dev/video2  USB Capture HDMI" in out
     assert "STARTED /dev/video2 t/sel/color" in out
-    assert code == 0 and restored and out.rstrip().endswith("STARTED /dev/video2 t/sel/color"), out
+    assert code == 0 and restored and out.rstrip().endswith("CAMERA t/sel"), out
     assert "\x1b[?25h" in out  # the cursor shown again
+
+
+def test_plain_xblick_cam_names_the_stream_after_the_device(tmp_path):
+    code, out, restored = choose_in_a_pty(tmp_path, b"\r", options=())
+    assert "STARTED /dev/video0 None" in out and out.rstrip().endswith("CAMERA cam/video0"), out
+    assert code == 0 and restored
 
 
 @pytest.mark.parametrize("key", [b"\x1b", b"q", None])
@@ -352,7 +359,8 @@ def test_esc_q_or_sigterm_starts_nothing(tmp_path, key):
 def test_without_a_terminal_the_source_must_be_given(tmp_path):
     script = tmp_path / "chooser.py"
     script.write_text(CHOOSER)
-    out = subprocess.run([sys.executable, str(script), str(free_port())], stdin=subprocess.DEVNULL,
+    out = subprocess.run([sys.executable, str(script), str(free_port()), "--stream", "t/sel/color"],
+                         stdin=subprocess.DEVNULL,
                          capture_output=True, text=True, timeout=30)
     assert out.returncode == 1 and "STARTED" not in out.stdout
     assert out.stderr == ("xblick cam: no source given, and no terminal to choose one in: give the source, one of "
@@ -388,3 +396,28 @@ def test_the_terminal_mode_is_restored_after_an_exception():
     finally:
         os.close(master)
         os.close(slave)
+
+
+def test_default_stream_names(sessions):  # noqa: F811
+    """No --stream: cam/<device node>/color for a V4L2 device, cam/camera/color for other sources, /mono for a grey
+    camera (known at the first frame); the parameters node is the camera."""
+    a, b = sessions
+    assert cam.camera_for("/dev/video0", cam.V4L2, None) == "cam/video0"
+    assert cam.camera_for("rtsp://192.0.2.20/stream1", None, None) == "cam/camera"
+    assert cam.camera_for("/dev/video0", cam.V4L2, "lab/door/color") == "lab/door"
+    with pytest.raises(cam.CamError, match="give --stream"):
+        cam.camera_for("/dev/v4l/by-id/usb-Chicony-video-index0", cam.V4L2, None)
+    for graph, stream, encoding in ((source(), "cam/camera/color", "rgb8"),
+                                    ("testsrc=size=320x240:rate=30,format=gray,realtime", "cam/camera/mono", "mono8")):
+        camera = cam.LiveCamera(a, graph, fmt="lavfi")
+        assert camera.camera == "cam/camera" and camera.base is None
+        thread, errors = run_in_thread(camera)
+        try:
+            wait_until(lambda: camera.frames > 0, timeout=10.0)
+            assert camera.base == stream and camera.frame_id == stream.replace("/", "_")
+            frame = ImageSubscriber(b, stream, transport="raw").latest(timeout=5.0)
+            assert frame is not None and frame.encoding == encoding
+        finally:
+            camera.stop()
+            thread.join(5.0)
+        assert not errors

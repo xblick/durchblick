@@ -1,7 +1,7 @@
 // xblick-cpp-camera: a C++ publisher of a test pattern (tools.hpp), for checking C++ against Python and as an
 // example of the C++ API.
 //
-//   xblick-cpp-camera --base robot/test_camera/color --encoding rgb8 --size 640 480
+//   xblick-cpp-camera --base test/camera/color --encoding rgb8 --size 640 480
 //                         [--fps 30] [--seconds 10] [--codec png] [--cuda-device 0 [--device-frames]] [--jpeg-frames]
 //                         [--points] [--diagnostics] [--transports shm,cuda] [--relayed-from HOST --origin-seq N]
 //
@@ -101,7 +101,7 @@ int main(int argc, char** argv)
                 cloud_options.rays = CloudRays{height, width, tools::ray_cloud_rays(width, height)};
                 cloud_options.color_codec = "png";
             }
-            PointCloudPublisher points(session, args.get("base", "robot/test_camera/points"), cloud_options);
+            PointCloudPublisher points(session, args.get("base", "test/camera/points"), cloud_options);
             std::shared_ptr<DeviceBuffer> device;
             if (device_frames)
             {
@@ -135,7 +135,7 @@ int main(int argc, char** argv)
             }
             return 0;
         }
-        const std::string base = args.get("base", "robot/test_camera/color");
+        const std::string base = args.get("base", "test/camera/color");
         std::atomic<double> rate{fps};
         std::atomic<std::int64_t> shift{0};
         std::atomic<bool> auto_shift{true};

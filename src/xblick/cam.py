@@ -32,7 +32,7 @@ from pathlib import Path
 import zenoh
 
 from .camera import CameraPublisher
-from . import v4l2
+from . import topics, v4l2
 from .codecs import JPEG, RVL
 from .node import Reporter, state
 from .video import VideoError, camera_info_for, camera_of, parse_size
@@ -73,6 +73,28 @@ def input_format(source: str, given: str | None) -> str | None:
         raise CamError(f"{source}: a file. xblick play plays video files")
     raise CamError(f"{source}: a V4L2 device (/dev/video0), a URL ({', '.join(s + '://' for s in URL_SCHEMES)}), "
                    "or another FFmpeg input with --format (e.g. --format lavfi testsrc)")
+
+
+MONO = ("mono8", "16UC1")  # published as these: the stream is <camera>/mono, else <camera>/color
+
+
+def camera_for(source: str, fmt: str | None, stream: str | None) -> str:
+    """The camera (``<camera>``, the node of the parameters and the diagnostics): that of ``--stream``, else
+    ``cam/<device node>`` for a V4L2 device (``/dev/video0``: ``cam/video0``), else ``cam/camera``."""
+    if stream is not None:
+        return camera_of(stream)
+    if fmt != V4L2:
+        return "cam/camera"
+    node = Path(source).name
+    try:
+        return topics.check_name(f"cam/{node}")
+    except topics.TopicError:
+        raise CamError(f"{source}: {node!r} is no valid name part ([A-Za-z_][A-Za-z0-9_]*): give --stream") from None
+
+
+def stream_for(camera: str, encoding: str) -> str:
+    """The default stream of a camera: ``<camera>/mono`` for a grey one (mono8, 16UC1), else ``<camera>/color``."""
+    return f"{camera}/{'mono' if encoding in MONO else 'color'}"
 
 
 def v4l2_devices() -> list[str]:
@@ -126,23 +148,24 @@ def check_mode(source: str, asked: Mode, delivered: Mode):
 
 
 class LiveCamera:
-    """One live camera published as the stream ``base`` (module docstring). :meth:`run` blocks until :meth:`stop`
-    or an error (CamError, raised in the calling thread)."""
+    """One live camera published as the stream ``base`` (module docstring); None: ``camera_for``'s camera and
+    ``stream_for``'s stream, named at the first frame (colour or grey). :meth:`run` blocks until :meth:`stop` or an
+    error (CamError, raised in the calling thread)."""
 
-    def __init__(self, session: zenoh.Session, source: str, base: str, *, fmt: str | None = None,
+    def __init__(self, session: zenoh.Session, source: str, base: str | None = None, *, fmt: str | None = None,
                  size: tuple[int, int] | None = None, fps: float | None = None, pixel_format: str | None = None,
                  camera_info: str | None = None, hfov: float | None = None, vfov: float | None = None,
                  frame_id: str | None = None, timeout: float = 5.0, prog: str = "xblick cam"):
         self.av = import_av()
         self.session, self.source, self.base, self.prog = session, source, base, prog
-        self.camera = camera_of(base)
         self.fmt = input_format(source, fmt)
+        self.camera = camera_for(source, self.fmt, base)
         self.asked = Mode(size, fps, pixel_format)
         self.options = device_options(self.fmt, size, fps, pixel_format)
         if not timeout > 0:
             raise CamError(f"--timeout {timeout:g}: above 0")
         self.timeout = timeout
-        self.frame_id = frame_id or base.replace("/", "_")
+        self.frame_id = frame_id  # None: the stream's name, "/" as "_", once it is known
         self.calibration, self.hfov, self.vfov = camera_info, hfov, vfov
         if self.fmt == V4L2 and not Path(source).exists():
             devices = v4l2_devices()
@@ -157,7 +180,7 @@ class LiveCamera:
         self._stopping = False
         self._done = threading.Event()
         self._ready = threading.Event()
-        self._thread = threading.Thread(target=self._capture, name=f"cam {base}", daemon=True)
+        self._thread = threading.Thread(target=self._capture, name=f"cam {source}", daemon=True)
 
     # -------------------------------------------------------------------------------------------- the thread
 
@@ -212,6 +235,8 @@ class LiveCamera:
 
     def _start_publisher(self, pixel_format: str):
         self._to, encoding = FORMATS.get(pixel_format, ("rgb24", "rgb8"))
+        self.base = self.base or stream_for(self.camera, encoding)
+        self.frame_id = self.frame_id or self.base.replace("/", "_")
         info, said = camera_info_for(self.delivered.size[0], self.delivered.size[1], self.frame_id,
                                      self.calibration, self.hfov, self.vfov)
         with self._lock:
@@ -354,8 +379,10 @@ def add_arguments(parser: argparse.ArgumentParser):
                         help="a V4L2 device (/dev/video0), a URL (rtsp://..., http://...), or with --format another "
                              "FFmpeg input (e.g. --format lavfi testsrc=size=640x480:rate=30); none: choose one of "
                              "this PC's V4L2 cameras in a list")
-    parser.add_argument("--stream", required=True, metavar="BASE",
-                        help="the stream base, <camera>/<stream>, e.g. robot/webcam/color")
+    parser.add_argument("--stream", default=None, metavar="BASE",
+                        help="the stream base, <camera>/<stream> (default: cam/<device node>/color, e.g. "
+                             "cam/video0/color, or cam/camera/color for a URL or --format source; /mono instead of "
+                             "/color for a grey camera)")
     parser.add_argument("--format", default=None, metavar="FORMAT",
                         help="FFmpeg's input format (default: video4linux2 for /dev/..., the protocol for a URL)")
     parser.add_argument("--size", type=size, default=None, metavar="WxH",

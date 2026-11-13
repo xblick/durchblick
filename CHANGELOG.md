@@ -7,17 +7,22 @@ Within 0.3.x, 0.3.59 changed the rings' keys and the info record's version (3): 
 or newer. 0.4.0 to 0.4.3 speak the protocol of 0.3.59 to 0.3.68: their programs and those of 0.3.68 work together.
 0.5.0 renamed every name on the wire and on disk: programs of 0.5 do not work with programs of 0.3 or 0.4.
 
-* **0.5.1** New command `xblick cam` with the extra `xblick[cam]` (PyAV): a live camera that FFmpeg opens, as a
-  V4L2 device, an RTSP or HTTP URL, or another FFmpeg input with `--format`, published as an ordinary camera stream
-  ([guide](docs/guides/cam.md)). Without a source it lists the V4L2 capture devices of the PC to choose from
-  with the arrow keys. A mode that the camera does not deliver, a missing device and a camera that stops
-  end it with one line. The stamps are the arrival on the PC. Fixes from the release test of 0.5.0: `xblick param`
-  as a peer behind a router timed out, because `find_nodes` and `ParameterClient` sent one query right after the
-  session opened. They now ask again until their timeout, in Python and C++. `xblick play rec/file.mcap` (a
-  relative path with a directory) looked for `rec/rec/file.mcap`. A timeout prints one line instead of a
-  traceback. `xblick list` says when it reached no router. The play node logs as `xblick play`. The docs say where
-  `zenohd` comes from and that the point cloud build needs `nvcc` or `-DCMAKE_CUDA_COMPILER`. Four CUDA tests no
-  longer leave rings in `/dev/shm`. The protocol is the one of 0.5.0: programs of 0.5.0 and 0.5.1 work together.
+* **0.5.1** **Changed default:** `xblick test-camera` publishes `test/camera/color`, no longer
+  `robot/test_camera/color`. `xblick-cpp-camera` and `xblick-cpp-probe` default to `test/camera/color` and
+  `test/camera/points`. A script that subscribes to the old name needs the new one, or the test camera started with
+  `--namespace robot --camera test_camera`. New command `xblick cam` with the extra `xblick[cam]` (PyAV): a live
+  camera that FFmpeg opens, as a V4L2 device, an RTSP or HTTP URL, or another FFmpeg input with `--format`, published
+  as an ordinary camera stream ([guide](docs/guides/cam.md)). Without a source it lists the V4L2 capture devices of
+  the PC to choose from with the arrow keys. Without `--stream` the stream is `cam/<device node>/color`
+  (`cam/video0/color`), or `cam/camera/color` for a URL, with `/mono` for a grey camera. A mode that the camera does
+  not deliver, a missing device and a camera that stops end it with one line. The stamps are the arrival on the PC.
+  Fixes from the release test of 0.5.0: `xblick param` as a peer behind a router timed out, because `find_nodes` and
+  `ParameterClient` sent one query right after the session opened. They now ask again until their timeout, in Python
+  and C++. `xblick play rec/file.mcap` (a relative path with a directory) looked for `rec/rec/file.mcap`. A timeout
+  prints one line instead of a traceback. `xblick list` says when it reached no router. The play node logs as `xblick
+  play`. The docs say where `zenohd` comes from and that the point cloud build needs `nvcc` or
+  `-DCMAKE_CUDA_COMPILER`. Four CUDA tests no longer leave rings in `/dev/shm`. The protocol is the one of 0.5.0:
+  programs of 0.5.0 and 0.5.1 work together.
 * **0.5.0** Every name in code, on the wire and on disk is `xblick`. Only the prose name of the project stays
   Durchblick. **Breaking for everything:** programs of 0.5 do not talk to programs of 0.3 or 0.4. Their own message
   types, info records, ring names and keys differ, and a 0.5 reader refuses a 0.4 info record (its version is 4

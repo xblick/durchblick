@@ -82,7 +82,7 @@ zenohd --no-multicast-scouting -l tcp/0.0.0.0:7447
 
 ```bash
 xblick test-camera &     # publishes a moving test pattern
-xblick list              # shows the stream robot/test_camera/color
+xblick list              # shows the stream test/camera/color
 ```
 
 `xblick list` prints one line per stream, with the encoding, the transports and the host. Continue with

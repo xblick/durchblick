@@ -108,7 +108,7 @@ Reference check: `tools/check_references.sh` (no internal or robot-framework nam
   `<camera>/diagnostics`.
 - Transports: `auto`, `compressed`, `raw`, `shm`, `cuda`. Nodes and the CLI use `auto`.
 - Image ring: 32 slots. Point cloud ring: 4 slots.
-- Test without a camera: `xblick test-camera` publishes `robot/test_camera/color` (640 x 480, 15 Hz).
+- Test without a camera: `xblick test-camera` publishes `test/camera/color` (640 x 480, 15 Hz).
   `xblick play <file.mcap> --loop` replays a recording.
 - Inspect: `xblick list`, `xblick hz <stream>`, `xblick diagnostics <namespace>`, `xblick rerun`, `xblick`
   (terminal interface).

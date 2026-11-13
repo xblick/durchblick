@@ -3,9 +3,9 @@
     xblick list --connect 192.0.2.10              # topics seen within 2 s, with rate, size and type
     xblick hz robot/camera/color --connect …  # frame rate, latency from capture, dropped frames (or clouds)
     xblick snapshot robot/camera/color out.png --connect …
-    xblick test-camera                            # a moving test pattern as robot/test_camera/color
-    xblick cam /dev/video0 --stream robot/webcam/color  # a live camera FFmpeg opens (cam.py, needs xblick[cam])
-    xblick cam --stream robot/webcam/color             # ... chosen from this PC's cameras with the arrow keys
+    xblick test-camera                            # a moving test pattern as test/camera/color
+    xblick cam /dev/video0                        # a live camera FFmpeg opens as cam/video0/color (needs xblick[cam])
+    xblick cam                                    # ... chosen from this PC's cameras with the arrow keys
     xblick rerun --connect …                      # every stream and node result in the Rerun viewer
     xblick diagnostics robot --connect …         # how the cameras' publishers are doing (<camera>/diagnostics)
     xblick mps --pipe-dir /tmp/xblick-mps         # NVIDIA MPS for the nodes on this PC's GPU (mps.py)
@@ -191,9 +191,12 @@ def _cam(args, parser) -> int:
 
     try:
         cam.import_av()  # at once, before the session
-        namespace, _, name = camera_of(args.stream).rpartition("/")  # checked before a camera is chosen
+        if args.stream is not None:
+            camera_of(args.stream)  # checked before a camera is chosen
         if args.source is None:
             args.source = cam.select_source()
+        camera = cam.camera_for(args.source, cam.input_format(args.source, args.format), args.stream)
+        namespace, _, name = camera.rpartition("/")
     except (ImportError, VideoError, cam.CamError) as error:
         raise SystemExit(f"xblick cam: {error}") from None
     with zsession.open_from_args(args) as z:
@@ -577,8 +580,8 @@ def build_parser(prog: str = "xblick") -> argparse.ArgumentParser:
         p.set_defaults(run=run)
 
     p = commands.add_parser("test-camera", help="publish a moving test pattern")
-    p.add_argument("--namespace", default="robot")
-    p.add_argument("--camera", default="test_camera")
+    p.add_argument("--namespace", default="test")
+    p.add_argument("--camera", default="camera")
     p.add_argument("--stream", default="color")
     p.add_argument("--frame-id", default="TestCamera")
     p.add_argument("--size", type=int, nargs=2, default=(640, 480), metavar=("W", "H"))

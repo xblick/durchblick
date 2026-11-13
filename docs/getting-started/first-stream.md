@@ -11,7 +11,7 @@ xblick test-camera
 ```
 
 The command publishes a moving test pattern with 640 x 480 pixels at 15 Hz. The name of the stream is
-`robot/test_camera/color`. The options `--namespace`, `--camera`, `--stream`, `--size` and `--fps` change the name
+`test/camera/color`. The options `--namespace`, `--camera`, `--stream`, `--size` and `--fps` change the name
 and the format. Leave the command running and open a second terminal.
 
 ## 2. Look at what is published
@@ -21,21 +21,21 @@ xblick list
 ```
 
 ```
-robot/test_camera/color    rgb8    raw,compressed,shm    source 'test'    host 7620b5c5    xblick 0.5.1
+test/camera/color    rgb8    raw,compressed,shm    source 'test'    host 7620b5c5    xblick 0.5.1
 ```
 
 The line shows the encoding of the stream and the [transports](../concepts/transports.md) that the publisher
 offers. `xblick list` only queries the publishers. The test camera does no work for it.
 
 ```bash
-xblick hz robot/test_camera/color
+xblick hz test/camera/color
 ```
 
 `hz` subscribes to the stream. It prints the frame rate, the age of the frames and the number of missing frames.
 The test camera starts to write its ring only now, because a publisher works only on request.
 
 ```bash
-xblick snapshot robot/test_camera/color frame.png
+xblick snapshot test/camera/color frame.png
 ```
 
 `snapshot` saves one frame as an image file.
@@ -46,7 +46,7 @@ xblick snapshot robot/test_camera/color frame.png
 import xblick as db
 
 session = db.open_session()                       # connects to the router of this PC
-images = db.ImageSubscriber(session, "robot/test_camera/color", transport="auto")
+images = db.ImageSubscriber(session, "test/camera/color", transport="auto")
 
 frame = images.latest(timeout=1.0)                # the newest frame, or None after 1 s
 print(frame.image.shape, frame.encoding, frame.age_s)

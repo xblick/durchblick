@@ -1,7 +1,7 @@
 // xblick-cpp-probe: a C++ subscriber that prints one JSON line per frame (encoding, size, sequence number,
 // checksum of the pixels), for checking C++ against Python and as an example of the C++ API.
 //
-//   xblick-cpp-probe --connect host:7447 --base robot/test_camera/color --transport auto|raw|compressed|shm|cuda
+//   xblick-cpp-probe --connect host:7447 --base test/camera/color --transport auto|raw|compressed|shm|cuda
 //                        [--view] [--frames 10] [--timeout 10] [--camera-info] [--points [--local cuda]]
 //                        [--max-hz 5]
 //   xblick-cpp-probe --connect host:7447 --params <namespace>/<name> [--set NAME:=VALUE]
@@ -47,7 +47,7 @@ namespace
         options.local = args.get("local", "shm") == "cuda" ? Transport::Cuda : Transport::Shm;
         options.copy = copy;
         options.max_hz = std::stod(args.get("max-hz", "0"));
-        PointCloudSubscriber clouds(session, args.get("base", "robot/test_camera/points"), options);
+        PointCloudSubscriber clouds(session, args.get("base", "test/camera/points"), options);
         const int wanted = std::stoi(args.get("frames", "10"));
         const auto deadline = std::chrono::steady_clock::now() +
                               std::chrono::duration<double>(std::stod(args.get("timeout", "10")));
@@ -150,7 +150,7 @@ int main(int argc, char** argv)
         options.copy = not args.flag("view");
         options.camera_info = args.flag("camera-info");
         options.max_hz = std::stod(args.get("max-hz", "0"));
-        ImageSubscriber images(session, args.get("base", "robot/test_camera/color"), options);
+        ImageSubscriber images(session, args.get("base", "test/camera/color"), options);
         const int frames = std::stoi(args.get("frames", "10"));
         const auto deadline = std::chrono::steady_clock::now() + std::chrono::duration<double>(std::stod(args.get("timeout", "10")));
         int got = 0;
