@@ -60,3 +60,8 @@ Complete lists for lookup.
 - [Alternatives](project/alternatives.md)
 - [Writing documentation](project/writing-docs.md)
 - [Changelog](../CHANGELOG.md)
+
+## Origin
+
+Durchblick was started at the Computer Vision for Human-Computer Interaction Lab (cv:hci) at KIT and is developed
+further in cooperation with the High Performance Humanoid Technologies Lab (H2T) at KIT.

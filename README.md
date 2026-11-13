@@ -140,3 +140,8 @@ programs of one setup speak the same protocol. We now released that version.
 The [changelog](https://github.com/xblick/xblick/blob/main/CHANGELOG.md) states which versions do. Programs of
 0.5 do not work with programs of 0.3 or 0.4. The nodes are tested in simulation and on recordings. Tests on robots
 are in progress.
+
+## Origin
+
+Durchblick was started at the Computer Vision for Human-Computer Interaction Lab (cv:hci) at KIT and is developed
+further in cooperation with the High Performance Humanoid Technologies Lab (H2T) at KIT.
