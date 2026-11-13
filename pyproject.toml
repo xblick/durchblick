@@ -64,6 +64,11 @@ video = [
     # xblick video (video.py): video files decoded by FFmpeg inside PyAV's wheels
     "av>=14",
 ]
+relay = [
+    # xblick relay (cli.py): xblick-relay, a C++ program of its own repository, as the wheel xblick-relay with
+    # libzenohc.so in it; its 0.4 line speaks this version's protocol
+    "xblick-relay>=0.4.0,<0.5",
+]
 
 [dependency-groups]
 # rosbags: an independent ROS 2 CDR implementation the tests compare our bytes with
