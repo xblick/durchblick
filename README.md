@@ -137,7 +137,7 @@ Coding agents read [AGENTS.md](https://github.com/xblick/xblick/blob/main/AGENTS
 
 ## Status
 
-Version 0.5.0. Durchblick is in active development, and a new minor version can change the protocol. All
+Version 0.5.1. Durchblick is in active development, and a new minor version can change the protocol. All
 programs of one setup speak the same protocol. We now released that version.
 The [changelog](https://github.com/xblick/xblick/blob/main/CHANGELOG.md) states which versions do. Programs of
 0.5 do not work with programs of 0.3 or 0.4. The nodes are tested in simulation and on recordings. Tests on robots
