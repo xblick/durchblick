@@ -63,5 +63,6 @@ Complete lists for lookup.
 
 ## Origin
 
-Durchblick was started at the Computer Vision for Human-Computer Interaction Lab (cv:hci) at KIT and is developed
-further in cooperation with the High Performance Humanoid Technologies Lab (H2T) at KIT.
+Durchblick was started at the
+[Computer Vision for Human-Computer Interaction Lab (cv:hci)](https://cvhci.iar.kit.edu) at KIT and is developed
+further in cooperation with the [High Performance Humanoid Technologies Lab (H2T)](https://h2t.iar.kit.edu) at KIT.
