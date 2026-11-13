@@ -29,10 +29,11 @@ XBLICK_CPP_BUILD=build/cpp uv run pytest tests/test_cpp_interop.py        # C++ 
 ## Build the point cloud node
 
 The point cloud node needs a CUDA toolkit with `nvcc`. It is not part of the wheel. Its end-to-end test needs a
-GPU.
+GPU. CMake looks for `nvcc` on `PATH`. If `nvcc` is not on `PATH`, name it with `-DCMAKE_CUDA_COMPILER`.
 
 ```bash
-cmake -S . -B build/points ... -DXBLICK_POINTS=ON -DCUDAToolkit_ROOT=<toolkit>
+cmake -S . -B build/points ... -DXBLICK_POINTS=ON -DCUDAToolkit_ROOT=<toolkit> \
+      -DCMAKE_CUDA_COMPILER=<toolkit>/bin/nvcc
 XBLICK_CPP_BUILD=build/points CUDA_VISIBLE_DEVICES=0 uv run pytest tests/test_point_cloud_node.py
 ```
 

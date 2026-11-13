@@ -35,6 +35,9 @@ pip install "xblick[rerun,record]"                      # wheels for Linux x86-6
 zenohd --no-multicast-scouting -l tcp/0.0.0.0:7447     # the router, once per PC
 ```
 
+The router `zenohd` is not part of the pip packages. It comes from
+[Eclipse Zenoh](https://github.com/eclipse-zenoh/zenoh/releases).
+
 To build from a checkout of this repository, run `pip install "./xblick[rerun,record]"`. The build needs CMake
 and a C++20 compiler.
 

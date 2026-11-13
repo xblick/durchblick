@@ -63,7 +63,13 @@ target_link_libraries(my_program PRIVATE xblick::xblick)
 
 ## The router
 
-Every PC runs one Zenoh router. Start it once per PC and leave it running:
+Every PC runs one Zenoh router. The pip packages do not contain it. `zenohd` is the router program of
+[Eclipse Zenoh](https://github.com/eclipse-zenoh/zenoh), and its
+[releases](https://github.com/eclipse-zenoh/zenoh/releases) have a standalone archive for each platform. For Linux on
+x86-64 and version 1.10.1, the archive is `zenoh-1.10.1-x86_64-unknown-linux-gnu-standalone.zip`. It contains the
+program `zenohd` and two plugins. Unpack it and put `zenohd` on your `PATH`.
+
+Start the router once per PC and leave it running:
 
 ```bash
 zenohd --no-multicast-scouting -l tcp/0.0.0.0:7447

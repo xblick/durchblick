@@ -36,6 +36,7 @@ This design has three consequences.
 ## Start a router
 
 Use `zenohd` 1.10, the Zenoh version of the Python and C++ packages.
+[Install](../getting-started/install.md#the-router) states where `zenohd` comes from.
 
 ```bash
 # on a single PC
