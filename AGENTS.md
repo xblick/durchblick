@@ -45,6 +45,7 @@ ruff check --line-length 120 src tests    # lint; ruff is not a project dependen
 
 C++ library, tools, point cloud node, C++ against Python: `docs/project/development.md`.
 CI: `.github/workflows/ci.yml` (reference check, Python 3.10 and 3.12, C++ tests, interop, manylinux wheels).
+PyPI files: `tools/build_wheels.sh <out> <work>` in quay.io/pypa/manylinux_2_28_x86_64 (CI job wheels, `.github/workflows/publish.yml`: tag v<version>, trusted publishing, environment pypi).
 Reference check: `tools/check_references.sh` (no internal or robot-framework names outside its allowlist).
 
 ## Rules

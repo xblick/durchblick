@@ -4,8 +4,15 @@
 
 Readers and publishers of one setup run the same minor version (0.3.x): the info record's version changed with 0.3.0.
 Within 0.3.x, 0.3.59 changed the rings' keys and the info record's version (3): every program of a setup runs 0.3.59
-or newer. 0.4.0 and 0.4.1 speak the protocol of 0.3.59 to 0.3.68: their programs and those of 0.3.68 work together.
+or newer. 0.4.0 to 0.4.2 speak the protocol of 0.3.59 to 0.3.68: their programs and those of 0.3.68 work together.
 
+* **0.4.2** `blick relay [arguments]` starts the relay program `durchblick-relay` with the arguments as they stand
+  (it replaces the `blick` process). It looks for the program in the installed package `blick-relay` first, then on
+  `PATH`, and fails with a message that names `pip install "blick[relay]"` and the CMake build when neither has it.
+  The extra `blick[relay]` installs `blick-relay` 0.3.1 or a newer 0.3 version, a wheel with the program and
+  `libzenohc.so`. The first version on PyPI: wheels for CPython 3.10 to 3.13 (manylinux_2_28, x86-64) and the sdist,
+  built by `tools/build_wheels.sh` and published by `.github/workflows/publish.yml`. The wheels carry the licences of
+  nanobind and robin-map, which `blick._core` contains (`NOTICE`). Compatible with 0.4.1, 0.4.0 and 0.3.68.
 * **0.4.1** Fix: a subscriber with `transport="auto"` that moved to another transport could hand out a frame
   twice, or an older one after a newer. Such a move happens from the network to a relay's ring and back. The
   subscriber compared the stamps of the two routes only until the new one delivered its first sample. It also

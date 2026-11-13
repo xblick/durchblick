@@ -182,6 +182,29 @@ Runs NVIDIA's MPS control daemon for the nodes on the GPU of this PC. See
 | `--log-dir DIR` | the log of the daemon. The default is `<pipe-dir>/log`. |
 | `--name NAME` | its name on Zenoh, `durchblick/mps/<name>`. The default is the host name. |
 
+## Relay
+
+### `blick relay [arguments]`
+
+Starts the program `durchblick-relay` with the arguments as they stand. The relay brings the streams that nodes on
+this PC read from other PCs into the rings of this PC. See [relays](../concepts/transports.md#relays).
+`blick relay --help` prints the relay's options.
+
+```bash
+pip install "blick[relay]"
+blick relay --stream robot/camera/color
+```
+
+The command looks for the program in this order and nowhere else.
+
+| Order | Place | Comes from |
+| --- | --- | --- |
+| 1 | the installed package `blick-relay` | `pip install "blick[relay]"` |
+| 2 | `durchblick-relay` on `PATH` | a CMake build of [durchblick-relay](https://github.com/xblick/durchblick-relay) |
+
+If neither exists, the command fails and names both ways to install the relay. If the package is installed without
+its program, the command fails as well. It does not try `PATH` then.
+
 ## Point clouds
 
 ### `durchblick-points`

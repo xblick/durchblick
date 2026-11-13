@@ -88,8 +88,6 @@ jobs:
   wheels:
     runs-on: ubuntu-24.04
     container: quay.io/pypa/manylinux_2_28_x86_64
-    env:
-      PYTHONS: cp310-cp310 cp311-cp311 cp312-cp312 cp313-cp313
     steps:
       - uses: actions/checkout@v4
       - name: a tag names the package version (CMakeLists.txt)
@@ -100,25 +98,9 @@ jobs:
             echo "tag ${GITHUB_REF_NAME} does not name the package version ${version} (CMakeLists.txt)" >&2
             exit 1
           fi
-      - name: build, repair and import the wheels
-        run: |
-          rm -rf dist wheelhouse
-          mkdir -p dist
-          for tag in $PYTHONS; do
-            "/opt/python/${tag}/bin/python" -m pip wheel --quiet --no-deps . -w wheelhouse
-          done
-          for wheel in wheelhouse/*.whl; do
-            auditwheel repair "$wheel" -w dist > /dev/null
-          done
-          /opt/python/cp312-cp312/bin/python -m pip install --quiet build
-          /opt/python/cp312-cp312/bin/python -m build --sdist --outdir dist . > /dev/null
-          for tag in $PYTHONS; do
-            env="$(mktemp -d)"
-            "/opt/python/${tag}/bin/python" -m venv "$env"
-            "$env/bin/pip" install --quiet --find-links dist --only-binary blick blick
-            (cd / && "$env/bin/python" -c "import blick, blick._core as c; print('${tag}', blick.__version__, c.host_id()[:8])")
-          done
-          ls -l dist
+      # the same files as the workflow publish builds (tools/build_wheels.sh)
+      - name: build, repair and import the wheels, build the sdist
+        run: tools/build_wheels.sh dist "$RUNNER_TEMP/wheels"
       - uses: actions/upload-artifact@v4
         with:
           name: wheels

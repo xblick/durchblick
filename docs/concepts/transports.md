@@ -230,7 +230,7 @@ its own host. A relay never relays a stream that is already relayed.
 
 ## Status and limits
 
-- You start the relay of a PC yourself, for example beside the PC's router.
+- You start the relay of a PC yourself with `blick relay`, for example beside the PC's router.
 - Only a subscriber with `auto` asks the relay. For a subscriber with a fixed transport, name the stream with the
   relay's `--stream` option.
 - The relay handles image streams. A point cloud from another PC arrives [compressed](#compressed-point-clouds)

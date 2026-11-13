@@ -77,16 +77,23 @@ pipeline runs:
 - the C++ library with its tests,
 - a project that uses the installed package,
 - C++ against Python,
-- manylinux wheels for Python 3.10 to 3.13.
+- manylinux wheels for Python 3.10 to 3.13 and the sdist, built by `tools/build_wheels.sh`.
 
 The reference check fails on names of internal systems, hosts and paths in any tracked text file. An exception goes
 into `tools/reference_allowlist.txt`, as a whole file or as a file and a text that the line contains.
+
+`tools/build_wheels.sh <out dir> <work dir>` builds the files for PyPI in the image
+`quay.io/pypa/manylinux_2_28_x86_64`. It builds a wheel for each Python from 3.10 to 3.13 and repairs it with
+auditwheel. It also builds the sdist and imports each wheel in a new environment.
 
 To release a version:
 
 1. Set the version in `CMakeLists.txt` (`project(durchblick VERSION x.y.z)`). Python reads it from there.
 2. Add the entry to `CHANGELOG.md` and update the status in `README.md`.
 3. Merge, then tag `vx.y.z`. The pipeline checks that the tag names the version and builds the wheels.
+4. The tag also starts `.github/workflows/publish.yml`. It builds the same files and uploads them to PyPI with
+   trusted publishing. PyPI's publisher for `blick` names the owner `xblick`, the repository `durchblick`, the
+   workflow `publish.yml` and the environment `pypi`.
 
 Node repositories pin a version of `blick`. After a release that a node needs, raise its pin and run `uv lock`.
 

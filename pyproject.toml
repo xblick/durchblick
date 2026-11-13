@@ -10,10 +10,28 @@ dynamic = ["version"]  # from CMakeLists.txt, project(VERSION)
 description = "Camera streams and perception results over Zenoh, with ROS 2 message types (sensor_msgs) on the wire."
 readme = "README.md"
 license = "Apache-2.0"
-license-files = ["LICENSE", "NOTICE"]
+license-files = ["LICENSE", "NOTICE", "licenses/*"]  # licenses/: what the wheels contain of others (NOTICE)
 authors = [{ name = "David Schneider" }]
 # 3.10: some teleoperation environments still use it
 requires-python = ">=3.10"
+keywords = ["camera", "image streams", "zenoh", "shared memory", "cuda", "ros2", "robotics", "middleware", "perception"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: GPU :: NVIDIA CUDA",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: C++",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Multimedia :: Video",
+    "Topic :: Scientific/Engineering :: Image Processing",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: System :: Networking",
+]
 dependencies = [
     "eclipse-zenoh>=1.10,<2",
     "numpy>=1.24",
@@ -25,6 +43,13 @@ dependencies = [
 
 [project.scripts]
 blick = "blick.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/xblick/durchblick"
+Repository = "https://github.com/xblick/durchblick"
+Documentation = "https://github.com/xblick/durchblick/tree/main/docs"
+Changelog = "https://github.com/xblick/durchblick/blob/main/CHANGELOG.md"
+Issues = "https://github.com/xblick/durchblick/issues"
 
 [project.optional-dependencies]
 rerun = [
@@ -69,6 +94,10 @@ metadata.version.input = "CMakeLists.txt"
 metadata.version.regex = 'project\(durchblick VERSION (?P<value>[0-9.]+)'
 wheel.packages = ["src/blick"]
 build-dir = "build/{wheel_tag}"
+# the sdist: the sources, tests and the text of the documentation; not its screenshots, the CI, the agent skills and
+# uv.lock (development only; relocking then leaves the built sdist valid)
+# (.claude/skills links to .agents/skills, which the sdist would carry twice)
+sdist.exclude = ["docs/media", ".agents", ".claude", ".github", "uv.lock"]
 
 [tool.scikit-build.cmake.define]
 # cuda.h of the pip package nvidia-cuda-runtime in the build environment

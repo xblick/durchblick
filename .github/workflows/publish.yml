@@ -1,0 +1,46 @@
+# Publish blick on PyPI: on a tag v<version> (the version of CMakeLists.txt) or by hand (workflow_dispatch). Builds the
+# files the CI's job wheels builds (tools/build_wheels.sh: wheels for CPython 3.10 to 3.13, manylinux_2_28, and the
+# sdist) and uploads them with PyPI's trusted publishing: no stored token. PyPI's publisher for blick names the owner
+# xblick, the repository durchblick, the workflow publish.yml and the environment pypi.
+name: publish
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    container: quay.io/pypa/manylinux_2_28_x86_64
+    steps:
+      - uses: actions/checkout@v4
+      - name: a tag names the package version (CMakeLists.txt)
+        if: github.ref_type == 'tag'
+        run: |
+          version="$(sed -n 's/^project(durchblick VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)"
+          if [ "${GITHUB_REF_NAME}" != "v${version}" ]; then
+            echo "tag ${GITHUB_REF_NAME} does not name the package version ${version} (CMakeLists.txt)" >&2
+            exit 1
+          fi
+      - name: wheels and sdist
+        run: tools/build_wheels.sh dist "$RUNNER_TEMP/wheels"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  pypi:
+    needs: build
+    runs-on: ubuntu-24.04
+    environment:
+      name: pypi
+      url: https://pypi.org/p/blick
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1

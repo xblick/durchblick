@@ -15,7 +15,7 @@
 # The Python wheel builds only durchblick::core and the module (Python has its own Zenoh).
 cmake_minimum_required(VERSION 3.24)
 # the one place of the package version: pyproject.toml reads it from here, C++ gets it as durchblick/version.hpp
-project(durchblick VERSION 0.4.1 LANGUAGES CXX)
+project(durchblick VERSION 0.4.2 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

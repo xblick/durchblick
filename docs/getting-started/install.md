@@ -16,7 +16,14 @@ every PC needs.
 
 ## Python
 
-Build and install the package from source. The build needs CMake and a C++20 compiler. It needs no CUDA toolkit.
+Install the package from PyPI. Its wheels are for Linux on x86-64 with glibc 2.28 or newer and Python 3.10 to 3.13.
+
+```bash
+pip install "blick[rerun,record]"
+```
+
+To build the package from source, use a checkout. The build needs CMake and a C++20 compiler. It needs no CUDA
+toolkit.
 
 ```bash
 git clone https://github.com/xblick/durchblick.git
@@ -31,7 +38,8 @@ Optional features have extras:
 | `blick[record]` | `blick record` and `blick play` for MCAP files |
 | `blick[video]` | videos as camera streams in `blick play` |
 
-In a uv project, depend on the repository at a release tag or a commit. uv then builds the package from source:
+In a uv project, add the package with `uv add blick`. To use a commit that is not released, depend on the
+repository at that commit. uv then builds the package from source:
 
 ```toml
 [tool.uv.sources]
@@ -75,7 +83,3 @@ blick list               # shows the stream robot/test_camera/color
 ## Other ways to install
 
 To work on Durchblick itself, see [development](../project/development.md).
-
-## Status and limits
-
-- Prebuilt wheels do not exist yet. They are planned for the GitHub releases.
