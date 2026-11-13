@@ -95,6 +95,9 @@ To release a version:
    trusted publishing. PyPI's publisher for `blick` names the owner `xblick`, the repository `durchblick`, the
    workflow `publish.yml` and the environment `pypi`.
 
+The extra `blick[relay]` names the package `blick-relay`. `uv lock` resolves every extra, so it fails while no
+index has that package. Publish `blick-relay` first, then run `uv lock` here and release `blick`.
+
 Node repositories pin a version of `blick`. After a release that a node needs, raise its pin and run `uv lock`.
 
 ## Layout

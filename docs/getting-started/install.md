@@ -37,6 +37,7 @@ Optional features have extras:
 | `blick[rerun]` | the viewer `blick rerun` |
 | `blick[record]` | `blick record` and `blick play` for MCAP files |
 | `blick[video]` | videos as camera streams in `blick play` |
+| `blick[relay]` | the [relay](../concepts/transports.md#relays) program, started by `blick relay` |
 
 In a uv project, add the package with `uv add blick`. To use a commit that is not released, depend on the
 repository at that commit. uv then builds the package from source:
