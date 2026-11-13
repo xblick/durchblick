@@ -1070,7 +1070,7 @@ def test_rates_and_drops(sessions):  # noqa: F811
 
 def test_the_viewer_next_to_python_without_path(monkeypatch):
     """The viewer is rerun-sdk's next to this Python even without PATH (a venv not activated)."""
-    pytest.importorskip("rerun")  # the extra blick[rerun] brings the viewer; CI installs without extras
+    pytest.importorskip("rerun")  # the extra xblick[rerun] brings the viewer; CI installs without extras
     monkeypatch.setenv("PATH", "")
     found = rerun_bridge.viewer_executable()
     assert found == str(Path(sys.executable).parent / "rerun")

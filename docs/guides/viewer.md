@@ -4,7 +4,7 @@
 viewer for multimodal data. It places everything on the capture time of the frames.
 
 ```bash
-pip install "blick[rerun]"
+pip install "xblick[rerun]"
 blick rerun
 ```
 

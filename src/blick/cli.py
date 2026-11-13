@@ -15,7 +15,7 @@
     blick play episode.mcap --pace step           # in lockstep: blick recorder step [--frames N]
     blick param --nodes                           # the nodes with parameters (parameters.py)
     blick param --node robot/camera --get   # their values; --describe, --set NAME:=VALUE [--atomically]
-    blick relay --stream robot/camera/color       # durchblick-relay with these arguments (needs blick[relay])
+    blick relay --stream robot/camera/color       # durchblick-relay with these arguments (needs xblick[relay])
     blick                                              # without a command: the terminal interface (tui.py)
 
 ``blick`` is the same command.
@@ -376,7 +376,7 @@ def _play(args) -> int:
 def _add_video_arguments(p):
     """blick play's (and blick recorder play's) options for videos and image sequences (video.py)."""
     v = p.add_argument_group("videos", "files that are not MCAP (a video FFmpeg reads, an image directory or glob; "
-                                       "needs blick[video]): played at once, one stream each, on one clock")
+                                       "needs xblick[video]): played at once, one stream each, on one clock")
     v.add_argument("--stream", action="append", metavar="BASE",
                    help="the stream base of a video, e.g. robot/rc_visard/left (repeat: one per video, in their "
                         "order)")
@@ -483,7 +483,7 @@ RELAY = "durchblick-relay"  # the relay program (github.com/xblick/durchblick-re
 def relay_program() -> str:
     """The relay program that ``blick relay`` starts, looked for in this order and nowhere else:
 
-    1. the installed package blick-relay (``pip install blick[relay]``): its ``blick_relay.binary()``;
+    1. the installed package blick-relay (``pip install xblick[relay]``): its ``blick_relay.binary()``;
     2. ``durchblick-relay`` on PATH (a CMake build of the relay repository).
 
     An installed blick-relay without its program raises; the lookup does not go on to PATH then."""
@@ -492,7 +492,7 @@ def relay_program() -> str:
     found = shutil.which(RELAY)
     if found is None:
         raise FileNotFoundError(f"{RELAY} not found: neither the package blick-relay is installed nor {RELAY} on "
-                                f"PATH. Install it with: pip install 'blick[relay]'. Or build it with CMake from "
+                                f"PATH. Install it with: pip install 'xblick[relay]'. Or build it with CMake from "
                                 f"https://github.com/xblick/durchblick-relay and put its bin directory on PATH.")
     return found
 
@@ -559,7 +559,7 @@ def build_parser(prog: str = "blick") -> argparse.ArgumentParser:
     zsession.add_arguments(p)
     p.set_defaults(run=_diagnostics)
 
-    p = commands.add_parser("rerun", help="show camera streams in the Rerun viewer (needs blick[rerun])",
+    p = commands.add_parser("rerun", help="show camera streams in the Rerun viewer (needs xblick[rerun])",
                             description=rerun_bridge.__doc__,
                             formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("streams", nargs="*",
@@ -625,7 +625,7 @@ def build_parser(prog: str = "blick") -> argparse.ArgumentParser:
                                            a.zenoh_mode))
 
     p = commands.add_parser("record", help="the record and play node, recording the topics into MCAP files from its "
-                                           "start (needs blick[record]); plays too when told to",
+                                           "start (needs xblick[record]); plays too when told to",
                             description=recording.__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--dir", required=True, help="where the files go (${VAR} and ~ expanded)")
     p.add_argument("--name", default="recorder", help="the recorder's name: its files' and its control topics' "
@@ -688,7 +688,7 @@ def build_parser(prog: str = "blick") -> argparse.ArgumentParser:
         q.set_defaults(run=_recorder)
 
     p = commands.add_parser("play", help="the record and play node, playing MCAP recordings (needs "
-                                         "blick[record]) or videos (blick[video]) at its start; runs until "
+                                         "xblick[record]) or videos (xblick[video]) at its start; runs until "
                                          "Ctrl-C or SIGTERM, as blick record")
     p.add_argument("files", nargs="+", help="blick record's files, played one after another; or videos (any "
                                             "file that is not MCAP, an image directory or glob), played at once")
@@ -717,7 +717,7 @@ def build_parser(prog: str = "blick") -> argparse.ArgumentParser:
     # main() hands `blick relay ...` to the relay before this parser: argparse cannot pass options such as --help or
     # --stream through. The entry here lists the command in `blick --help`.
     p = commands.add_parser("relay", add_help=False,
-                            help=f"start {RELAY} with the arguments that follow (needs blick[relay] or {RELAY} on "
+                            help=f"start {RELAY} with the arguments that follow (needs xblick[relay] or {RELAY} on "
                                  f"PATH); blick relay --help: its options")
     p.add_argument("arguments", nargs=argparse.REMAINDER)
     p.set_defaults(run=lambda a: _relay(a.arguments))

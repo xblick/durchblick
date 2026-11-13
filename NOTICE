@@ -24,6 +24,6 @@ This repository contains or follows material of others:
   Proceedings of the ACM International Conference on Interactive Surfaces and Spaces (ISS), 2017. Its byte layout
   follows the "rvl" format of ROS's compressed_depth_image_transport.
 
-- The wheels of the Python package blick contain the module blick._core, built with nanobind (wjakob/nanobind) and
+- The wheels of the Python package xblick (module blick) contain the module blick._core, built with nanobind (wjakob/nanobind) and
   the hash map robin-map (Tessil/robin-map) that nanobind compiles in. nanobind is under the BSD 3-Clause licence
   (licenses/nanobind-LICENSE), robin-map under the MIT licence (licenses/robin-map-LICENSE).

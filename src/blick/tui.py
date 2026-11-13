@@ -1359,7 +1359,7 @@ class DurchblickApp(App):
             self.notify("blick rerun runs already: stop it first", severity="error")
             return
         if importlib.util.find_spec("rerun") is None:
-            self.notify("blick rerun needs the extra: pip install 'blick[rerun]'", severity="error",
+            self.notify("blick rerun needs the extra: pip install 'xblick[rerun]'", severity="error",
                         timeout=10)
             return
         try:

@@ -91,7 +91,7 @@ Run `blick list` again. Your stream appears beside the test camera.
 ## 5. Look at everything
 
 ```bash
-pip install "blick[rerun]"
+pip install "xblick[rerun]"
 blick rerun
 ```
 

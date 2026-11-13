@@ -37,7 +37,7 @@ one: `.agents/skills/README.md`.
 
 ```bash
 uv sync --all-extras                      # builds the C++ core (scikit-build-core, C++20); rebuilds when cpp/ changes
-uv sync --reinstall-package blick         # force the rebuild
+uv sync --reinstall-package xblick         # force the rebuild
 CUDA_VISIBLE_DEVICES=0 uv run pytest -q   # ~5 min, ~633 tests (2026-11-13); CUDA tests skip without a GPU
 uv run pytest -q tests/test_recording.py  # one file
 ruff check --line-length 120 src tests    # lint; ruff is not a project dependency

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The files for PyPI: the wheels of blick for CPython 3.10 to 3.13, repaired by auditwheel (manylinux_2_28_x86_64),
+# The files for PyPI: the wheels of xblick (the Python package blick) for CPython 3.10 to 3.13, repaired by auditwheel (manylinux_2_28_x86_64),
 # and the sdist. The CI's job wheels and the workflow publish run it; it runs in quay.io/pypa/manylinux_2_28_x86_64:
 #
 #   tools/build_wheels.sh <out dir> <work dir>
@@ -42,7 +42,7 @@ done
 "$WORK/tools/bin/pip" install --quiet build
 "$WORK/tools/bin/python" -m build --sdist --outdir "$OUT" "$ROOT" > /dev/null
 # the sdist carries sources only: an output directory inside the checkout must not get into it
-if tar tzf "$OUT"/blick-*.tar.gz | grep -q "\.whl$"; then
+if tar tzf "$OUT"/xblick-*.tar.gz | grep -q "\.whl$"; then
   echo "the sdist contains wheels (an output directory inside the checkout that pyproject.toml does not exclude)" >&2
   exit 1
 fi
@@ -51,7 +51,7 @@ fi
 for tag in $PYTHONS; do
   env="$WORK/check-${tag}"
   "/opt/python/${tag}/bin/python" -m venv "$env"
-  "$env/bin/pip" install --quiet --find-links "$OUT" --only-binary blick blick
+  "$env/bin/pip" install --quiet --find-links "$OUT" --only-binary xblick xblick
   (cd / && "$env/bin/python" -c "import blick, blick._core as c; print('${tag}', blick.__version__, c.host_id()[:8])")
 done
 ls -l "$OUT"

@@ -4,7 +4,7 @@
 the stream of a camera node, so every node and tool works on it. You can therefore try a node without a camera
 and without a recording.
 
-Videos need the extra `blick[video]`. It contains PyAV with FFmpeg inside its wheels, so no system FFmpeg is
+Videos need the extra `xblick[video]`. It contains PyAV with FFmpeg inside its wheels, so no system FFmpeg is
 needed.
 
 ## Quick start

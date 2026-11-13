@@ -14,7 +14,7 @@ The package builds with scikit-build-core. `cuda.h` comes from the pip package `
 needs no CUDA toolkit. Python 3.10 or newer is required.
 
 `uv sync` rebuilds the C++ core when a file in `cpp/` changed. An editable install in another project does not.
-There, run `uv sync --reinstall-package blick` after a change in `cpp/`.
+There, run `uv sync --reinstall-package xblick` after a change in `cpp/`.
 
 ## Build the C++ library
 
@@ -95,7 +95,7 @@ To release a version:
    trusted publishing. PyPI's publisher for `blick` names the owner `xblick`, the repository `durchblick`, the
    workflow `publish.yml` and the environment `pypi`.
 
-The extra `blick[relay]` names the package `blick-relay`. `uv lock` resolves every extra, so it fails while no
+The extra `xblick[relay]` names the package `blick-relay`. `uv lock` resolves every extra, so it fails while no
 index has the version it asks for. A new minor version of `blick-relay`: publish it first, then run `uv lock` here
 and release `blick`.
 

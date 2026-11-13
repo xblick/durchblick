@@ -4,7 +4,7 @@
 again on the same topics, with its pace and its stamps. Nodes work on a playback as they work on a robot, so a
 recording repeats a situation for a node, a test or a comparison.
 
-Both commands need the extra `blick[record]`. MCAP is the storage format of rosbag2. The files open in
+Both commands need the extra `xblick[record]`. MCAP is the storage format of rosbag2. The files open in
 `ros2 bag`, Foxglove and Rerun.
 
 ## Quick start

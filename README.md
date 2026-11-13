@@ -31,7 +31,7 @@ frames in GPU memory. C++ programs need CMake and a C++20 compiler.
 ## Install
 
 ```bash
-pip install "blick[rerun,record]"                      # wheels for Linux x86-64 with glibc 2.28 or newer
+pip install "xblick[rerun,record]"                      # wheels for Linux x86-64 with glibc 2.28 or newer
 zenohd --no-multicast-scouting -l tcp/0.0.0.0:7447     # the router, once per PC
 ```
 

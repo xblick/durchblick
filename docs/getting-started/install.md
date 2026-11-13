@@ -19,7 +19,7 @@ every PC needs.
 Install the package from PyPI. Its wheels are for Linux on x86-64 with glibc 2.28 or newer and Python 3.10 to 3.13.
 
 ```bash
-pip install "blick[rerun,record]"
+pip install "xblick[rerun,record]"
 ```
 
 To build the package from source, use a checkout. The build needs CMake and a C++20 compiler. It needs no CUDA
@@ -34,10 +34,10 @@ Optional features have extras:
 
 | Extra | Adds |
 | --- | --- |
-| `blick[rerun]` | the viewer `blick rerun` |
-| `blick[record]` | `blick record` and `blick play` for MCAP files |
-| `blick[video]` | videos as camera streams in `blick play` |
-| `blick[relay]` | the [relay](../concepts/transports.md#relays) program, started by `blick relay` |
+| `xblick[rerun]` | the viewer `blick rerun` |
+| `xblick[record]` | `blick record` and `blick play` for MCAP files |
+| `xblick[video]` | videos as camera streams in `blick play` |
+| `xblick[relay]` | the [relay](../concepts/transports.md#relays) program, started by `blick relay` |
 
 In a uv project, add the package with `uv add blick`. To use a commit that is not released, depend on the
 repository at that commit. uv then builds the package from source:

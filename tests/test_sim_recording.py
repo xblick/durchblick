@@ -17,7 +17,7 @@ from blick.robot import RobotStatePublisher
 from blick.session import open_session, replies
 from blick.sim import Rate, SimPublisher
 
-mcap_reader = pytest.importorskip("mcap.reader")  # the extra blick[record]
+mcap_reader = pytest.importorskip("mcap.reader")  # the extra xblick[record]
 
 ROBOT = "robot"
 CAMERA = f"{ROBOT}/azurekinect"

@@ -126,7 +126,7 @@ def import_mcap():
     except ModuleNotFoundError as error:
         if error.name != "mcap":
             raise
-        raise SystemExit("blick record and play need the mcap package: pip install 'blick[record]'") from error
+        raise SystemExit("blick record and play need the mcap package: pip install 'xblick[record]'") from error
     return mcap
 
 

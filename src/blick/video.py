@@ -9,7 +9,7 @@ divided by the rate, plus its stream's offset (``--offset-ms``), and it is sent 
 streams start again together once the longest has ended, the stamps moved on by that length: they keep growing.
 Pausing holds the clock (the stamps after it go on from the wall time of the resume).
 
-Decoding is PyAV's (FFmpeg inside its wheels), the extra ``blick[video]``; image sequences (a directory or a
+Decoding is PyAV's (FFmpeg inside its wheels), the extra ``xblick[video]``; image sequences (a directory or a
 glob of PNG/JPEG files) are read with Pillow. A colour video becomes ``rgb8``, a grey one ``mono8``, a 16-bit grey one
 (e.g. FFV1 ``gray16le`` in Matroska: depth in mm) ``16UC1``.
 """
@@ -48,7 +48,7 @@ def import_av():
     try:
         import av
     except ImportError:
-        raise ImportError("playing videos needs PyAV: install blick[video] (pip install 'blick[video]', "
+        raise ImportError("playing videos needs PyAV: install xblick[video] (pip install 'xblick[video]', "
                           "or uv sync --extra video)") from None
     return av
 

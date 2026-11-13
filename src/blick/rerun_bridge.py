@@ -72,7 +72,7 @@ e.g. durchblick-vslam's ``robot/camera/vslam/tf``, or ``<camera>/tf`` to compare
 The viewer has no way to tell the bridge which streams it shows: the bridge subscribes to every stream it bridges for
 as long as it runs, and their publishers render and encode for it all the time (a publisher that renders only while
 somebody subscribes, like the teleoperation server's head camera, renders while the bridge runs). Needs the extra
-``rerun`` (``pip install 'blick[rerun]'``).
+``rerun`` (``pip install 'xblick[rerun]'``).
 """
 
 from __future__ import annotations
@@ -137,7 +137,7 @@ def import_rerun():
     except ModuleNotFoundError as error:
         if error.name != "rerun":
             raise
-        raise SystemExit("blick rerun needs the Rerun SDK: pip install 'blick[rerun]'") from error
+        raise SystemExit("blick rerun needs the Rerun SDK: pip install 'xblick[rerun]'") from error
     return rerun
 
 
@@ -151,7 +151,7 @@ def viewer_executable() -> str:
     if found:
         return found
     raise SystemExit(f"blick rerun: no Rerun viewer, neither {beside} (rerun-sdk installs it next to Python: "
-                     "blick[rerun]) nor 'rerun' on PATH")
+                     "xblick[rerun]) nor 'rerun' on PATH")
 
 
 AGES_LEGEND = ("age at send: capture to sent, on the sender's clock; age at receive: capture to arrival here, "

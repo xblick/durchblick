@@ -16,7 +16,7 @@ from blick.camera import ImageSubscriber
 from blick.history import FrameHistory, PartnerHistory
 from blick.parameters import ParameterClient
 
-av = pytest.importorskip("av")  # the extra blick[video]
+av = pytest.importorskip("av")  # the extra xblick[video]
 
 W, H = 64, 48
 MS = 1_000_000

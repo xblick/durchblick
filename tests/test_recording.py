@@ -22,7 +22,7 @@ from blick.msg import (BoundingBox3D, CameraInfo, CompressedImage, Detection3D, 
 from blick.msgdefs import MSGDEFS
 from blick.parameters import ParameterClient
 
-mcap_reader = pytest.importorskip("mcap.reader")  # the extra blick[record]
+mcap_reader = pytest.importorskip("mcap.reader")  # the extra xblick[record]
 
 CAMERA = "robot/camera"
 

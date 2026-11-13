@@ -5,7 +5,7 @@ requires = ["scikit-build-core>=0.11", "nanobind>=2.4", "nvidia-cuda-runtime>=13
 build-backend = "scikit_build_core.build"
 
 [project]
-name = "blick"
+name = "xblick"
 dynamic = ["version"]  # from CMakeLists.txt, project(VERSION)
 description = "Camera streams and perception results over Zenoh, with ROS 2 message types (sensor_msgs) on the wire."
 readme = "README.md"

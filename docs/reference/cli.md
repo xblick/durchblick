@@ -60,7 +60,7 @@ Prints the state of every program that publishes for a camera, once per second.
 ### `blick rerun [streams ...]`
 
 Shows streams and node results in the Rerun viewer. Without arguments it shows everything that it finds. Needs the
-extra `blick[rerun]`. See the [viewer guide](../guides/viewer.md).
+extra `xblick[rerun]`. See the [viewer guide](../guides/viewer.md).
 
 | Option | Meaning |
 | --- | --- |
@@ -115,7 +115,7 @@ Reads and changes the parameters of a node. See [parameters](parameters.md).
 ## Record and play
 
 See the [recording guide](../guides/recording.md) and the [video guide](../guides/video.md). Both commands need the
-extra `blick[record]`. Videos need `blick[video]`.
+extra `xblick[record]`. Videos need `xblick[video]`.
 
 ### `blick record`
 
@@ -191,7 +191,7 @@ this PC read from other PCs into the rings of this PC. See [relays](../concepts/
 `blick relay --help` prints the relay's options.
 
 ```bash
-pip install "blick[relay]"
+pip install "xblick[relay]"
 blick relay --stream robot/camera/color
 ```
 
@@ -199,7 +199,7 @@ The command looks for the program in this order and nowhere else.
 
 | Order | Place | Comes from |
 | --- | --- | --- |
-| 1 | the installed package `blick-relay` | `pip install "blick[relay]"` |
+| 1 | the installed package `blick-relay` | `pip install "xblick[relay]"` |
 | 2 | `durchblick-relay` on `PATH` | a CMake build of [durchblick-relay](https://github.com/xblick/durchblick-relay) |
 
 If neither exists, the command fails and names both ways to install the relay. If the package is installed without
