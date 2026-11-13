@@ -5,3 +5,8 @@
 README.md:ArmarX integration: `durchblick_armarx`
 # history: entries before 0.4.0 name the integration and robots as they were
 CHANGELOG.md
+# Origin: the links to the two labs
+README.md:(https://cvhci.iar.kit.edu)
+README.md:(https://h2t.iar.kit.edu)
+docs/README.md:(https://cvhci.iar.kit.edu)
+docs/README.md:(https://h2t.iar.kit.edu)
