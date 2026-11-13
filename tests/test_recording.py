@@ -6,7 +6,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from test_camera import pattern, sessions, wait_until  # noqa: F401 - sessions is a fixture
+from test_camera import pattern, sessions, stop_child, wait_until  # noqa: F401 - sessions is a fixture
 from test_points import free_port
 
 from xblick import _core, recording
@@ -310,13 +310,16 @@ def test_split(sessions, tmp_path):  # noqa: F811
     scene.close()
 
 
-def _play_on_gpu(port, path, ready):
-    """Child (a CUDA ring cannot be opened by the process that made it): the node playing ``path`` with a CUDA ring."""
+def _play_on_gpu(port, path, ready, stop):
+    """Child (a CUDA ring cannot be opened by the process that made it): the node playing ``path`` with a CUDA ring,
+    until ``stop``."""
     session = open_session(listen=[f"127.0.0.1:{port}"])
     node = recording.Recorder(session, Path(path).parent, name="gpu")
     node.play([path], prefix="gpu", rate=0.5, loop=True, cuda_device=0)
     ready.set()
-    time.sleep(60)
+    stop.wait(60)
+    node.close()
+    session.close()
 
 
 @pytest.mark.skipif(_core.cuda_device_count() == 0, reason="no CUDA device")
@@ -330,8 +333,8 @@ def test_played_streams_in_a_cuda_ring(sessions, tmp_path):  # noqa: F811
     node.close()
     ctx = mp.get_context("spawn")
     port = free_port()
-    ready = ctx.Event()
-    child = ctx.Process(target=_play_on_gpu, args=(port, str(node.files[0]), ready), daemon=True)
+    ready, stop = ctx.Event(), ctx.Event()
+    child = ctx.Process(target=_play_on_gpu, args=(port, str(node.files[0]), ready, stop), daemon=True)
     child.start()
     try:
         assert ready.wait(60)
@@ -345,8 +348,7 @@ def test_played_streams_in_a_cuda_ring(sessions, tmp_path):  # noqa: F811
         images.close()
         session.close()
     finally:
-        child.kill()
-        child.join()
+        stop_child(child, stop)
 
 
 def test_playback_controls_as_parameters(sessions, tmp_path):  # noqa: F811

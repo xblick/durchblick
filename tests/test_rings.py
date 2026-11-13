@@ -11,7 +11,7 @@ import time
 
 import numpy as np
 import pytest
-from test_camera import wait_until
+from test_camera import stop_child, wait_until
 
 import xblick
 from xblick import _core
@@ -226,15 +226,16 @@ def _publish_host_frames(port, base, n, ready):
     session.close()
 
 
-def _republish_device_frames(port_in, port_out, base_in, base_out, ready):
-    """Child: receive frames on the cuda transport and publish the device arrays themselves (GPU input)."""
+def _republish_device_frames(port_in, port_out, base_in, base_out, ready, stop):
+    """Child: receive frames on the cuda transport and publish the device arrays themselves (GPU input), until
+    ``stop``."""
     s_in = open_session(connect=[f"127.0.0.1:{port_in}"])
     s_out = open_session(listen=[f"127.0.0.1:{port_out}"])
     sub = ImageSubscriber(s_in, base_in, "cuda")
     pub = CameraPublisher(s_out, base_out, encoding="rgb8", frame_id="cam", cuda_device=0)
     ready.set()
     end = time.monotonic() + 30
-    while time.monotonic() < end:
+    while time.monotonic() < end and not stop.is_set():
         frame = sub.latest(timeout=0.1)
         if frame is not None and pub.subscribed:
             pub.publish(frame.image)  # a CudaImage: __cuda_array_interface__
@@ -248,12 +249,12 @@ def test_cuda_transport_from_host_and_from_device():
     ctx = mp.get_context("spawn")
     port_a, port_b = free_port(), free_port()
     n = ctx.Value("i", 5)
-    ready_a, ready_b = ctx.Event(), ctx.Event()
+    ready_a, ready_b, stop = ctx.Event(), ctx.Event(), ctx.Event()
     first = ctx.Process(target=_publish_host_frames, args=(port_a, "t/a/color", n, ready_a), daemon=True)
     first.start()
     assert ready_a.wait(60)
-    second = ctx.Process(target=_republish_device_frames, args=(port_a, port_b, "t/a/color", "t/b/color", ready_b),
-                         daemon=True)
+    second = ctx.Process(target=_republish_device_frames,
+                         args=(port_a, port_b, "t/a/color", "t/b/color", ready_b, stop), daemon=True)
     second.start()
     assert ready_b.wait(60)
     session = open_session(connect=[f"127.0.0.1:{port_b}"])
@@ -273,9 +274,8 @@ def test_cuda_transport_from_host_and_from_device():
     finally:
         n.value = 0
         session.close()
-        second.terminate()
+        stop_child(second, stop)
         first.join(10)
-        second.join(10)
 
 
 needs_two_gpus = pytest.mark.skipif(_core.cuda_device_count() < 2, reason="needs two CUDA devices")
@@ -391,11 +391,11 @@ class _TorchLike:
         self.__cuda_array_interface__ = {"shape": shape, "typestr": "|u1", "data": (ptr, False), "version": 2}
 
 
-def _publish_late_device_frames(port, base, mode, ready):
+def _publish_late_device_frames(port, base, mode, ready, stop):
     """Child: frames whose value (their number, 1, 2, ...) is written on a non-blocking stream after a few ms of other
     work there, published at once from the host, and overwritten with 255 on that stream as soon as publish returns
     (PyTorch's allocator giving their memory to the next frame). mode "unknown": publish is not told the stream;
-    "stream": it is; "legacy" (a control, not a test): it is told the legacy default stream, wrongly."""
+    "stream": it is; "legacy" (a control, not a test): it is told the legacy default stream, wrongly. Until ``stop``."""
     driver = _Driver()
     shape = (480, 640)
     nbytes = shape[0] * shape[1]
@@ -404,7 +404,7 @@ def _publish_late_device_frames(port, base, mode, ready):
     pub = CameraPublisher(session, base, encoding="mono8", frame_id="cam", cuda_device=0)
     ready.set()
     end, i = time.monotonic() + 30, 0
-    while time.monotonic() < end:
+    while time.monotonic() < end and not stop.is_set():
         if not pub.subscribed:
             time.sleep(0.02)
             continue
@@ -424,8 +424,9 @@ def late_device_frames(mode, frames=20):
     """The frames _publish_late_device_frames gave: (number, its pixels' values) each."""
     ctx = mp.get_context("spawn")
     port = free_port()
-    ready = ctx.Event()
-    child = ctx.Process(target=_publish_late_device_frames, args=(port, "t/late/color", mode, ready), daemon=True)
+    ready, stop = ctx.Event(), ctx.Event()
+    child = ctx.Process(target=_publish_late_device_frames, args=(port, "t/late/color", mode, ready, stop),
+                        daemon=True)
     child.start()
     assert ready.wait(60)
     session = open_session(connect=[f"127.0.0.1:{port}"])
@@ -437,8 +438,7 @@ def late_device_frames(mode, frames=20):
             got.append((frame.seq, set(np.unique(frame.image.numpy()).tolist())))
     finally:
         session.close()
-        child.terminate()
-        child.join(10)
+        stop_child(child, stop)
     return got
 
 

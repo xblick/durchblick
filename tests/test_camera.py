@@ -44,6 +44,17 @@ def wait_until(condition, timeout=5.0):
         time.sleep(0.01)
 
 
+def stop_child(child, stop, timeout=30.0):
+    """Ends a test's child process as a program ends: ``stop`` set, the child closes its publishers (their rings go
+    with them) and returns. A child killed instead leaves its rings in /dev/shm. Fails if it does not end."""
+    stop.set()
+    child.join(timeout)
+    if child.is_alive():
+        child.kill()
+        child.join()
+        raise AssertionError(f"{child.name} did not end within {timeout:g} s of its stop")
+
+
 def pattern(seed=0, h=48, w=64):
     y, x = np.mgrid[0:h, 0:w]
     return np.stack([(x + seed) % 256, y * 4 % 256, np.full_like(x, seed % 256)], -1).astype(np.uint8)

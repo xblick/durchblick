@@ -107,6 +107,15 @@ def open_from_args(args, prefix: str = "") -> Session:
                         config_file=getattr(args, f"{key}config"))
 
 
+def alone(session) -> str:
+    """Why a session that found nothing may have found nothing: it reached no Zenoh router and no other session.
+    Empty when it reached one."""
+    if list(session.info.routers_zid()) or list(session.info.peers_zid()):
+        return ""
+    return ("this session reached no Zenoh router and no other session: start zenohd on this PC (a session "
+            f"without --connect looks for it at {ROUTER}), or name the router or session with --connect")
+
+
 # ---------------------------------------------------------------------------------------------- queries
 
 log = logging.getLogger("xblick")

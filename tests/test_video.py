@@ -9,7 +9,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from test_camera import free_port, sessions, wait_until  # noqa: F401 - sessions is a fixture
+from test_camera import free_port, sessions, stop_child, wait_until  # noqa: F401 - sessions is a fixture
 
 from xblick import _core, recording
 from xblick.camera import ImageSubscriber
@@ -192,15 +192,18 @@ def test_video_controls_as_parameters(sessions, videos, tmp_path):  # noqa: F811
         recorder.close()
 
 
-def _play_videos_on_gpu(port, files, ready):
-    """Child (a CUDA ring cannot be opened by the process that made it): two videos played with a CUDA ring each."""
+def _play_videos_on_gpu(port, files, ready, stop):
+    """Child (a CUDA ring cannot be opened by the process that made it): two videos played with a CUDA ring each,
+    until ``stop``."""
     from xblick.session import open_session
 
     session = open_session(listen=[f"127.0.0.1:{port}"])
     node = recording.Recorder(session, Path(files[0]).parent, name="video_gpu")
     node.play(files, streams=["t/gpu/color", "t/gpu/depth"], loop=True, cuda_device=0)
     ready.set()
-    time.sleep(60)
+    stop.wait(60)
+    node.close()
+    session.close()
 
 
 @pytest.mark.skipif(_core.cuda_device_count() == 0, reason="no CUDA device")
@@ -215,8 +218,8 @@ def test_videos_in_cuda_rings(videos, tmp_path):
 
     ctx = mp.get_context("spawn")
     port = free_port()
-    ready = ctx.Event()
-    child = ctx.Process(target=_play_videos_on_gpu, args=(port, [str(v) for v in videos], ready), daemon=True)
+    ready, stop = ctx.Event(), ctx.Event()
+    child = ctx.Process(target=_play_videos_on_gpu, args=(port, [str(v) for v in videos], ready, stop), daemon=True)
     child.start()
     try:
         assert ready.wait(60)
@@ -247,8 +250,7 @@ def test_videos_in_cuda_rings(videos, tmp_path):
         for c in (color, depth, session):
             c.close()
     finally:
-        child.kill()
-        child.join()
+        stop_child(child, stop)
 
 
 def test_play_takes_a_relative_path_with_a_directory(videos, tmp_path, monkeypatch, capsys):

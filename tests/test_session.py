@@ -171,3 +171,18 @@ def test_open_session_closes_within_its_timeout(monkeypatch, caplog):
         assert session.close(stuck, timeout=0.2) is False
     assert time.monotonic() - started < 1.0 and "did not close within" in caplog.text
     real.close()
+
+
+def test_a_command_that_finds_nothing_says_why_in_one_line(capsys):
+    """xblick list without a router names the missing router; a node that does not answer is one line, no
+    traceback."""
+    from test_camera import free_port
+
+    from xblick import cli
+
+    nobody = f"tcp/127.0.0.1:{free_port()}"  # no router or session listens there
+    assert cli.main(["list", "--connect", nobody, "--seconds", "0.3"]) == 1
+    err = capsys.readouterr().err
+    assert "no stream answered within 0.3 s; this session reached no Zenoh router" in err
+    assert cli.main(["param", "--node", "t/nobody", "--connect", nobody, "--timeout", "0.3"]) == 1
+    assert capsys.readouterr().err == "xblick param: no answer from t/nobody/list_parameters within 0.3 s\n"

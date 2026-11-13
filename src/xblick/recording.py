@@ -236,12 +236,13 @@ def glob_any(pattern: str) -> bool:
 class Recorder:
     """The record and play node (module docstring): records the topics into ``directory`` (:meth:`record`), plays
     recordings (:meth:`play`); controlled by its methods or over Zenoh. Errors of its threads are raised by
-    :meth:`check`."""
+    :meth:`check`. ``prog``: the command its log lines start with (``xblick record`` or ``xblick play``)."""
 
     def __init__(self, session: zenoh.Session, directory: Path, name: str = "recorder", namespace: str = "*",
                  prefix: str = "", points: bool = False, split: float = 600.0, compression: str = "lz4",
-                 look_every: float = 5.0, queue_size: int = 20000):
+                 look_every: float = 5.0, queue_size: int = 20000, prog: str = "xblick record"):
         self.session = session
+        self.prog = prog
         self.directory = Path(directory)
         self.directory.mkdir(parents=True, exist_ok=True)
         self.name = name
@@ -418,11 +419,11 @@ class Recorder:
                       "play": lambda: self.play(**options).status(), "step": lambda: self.step(**options)}[command]()
             return {"v": REPLY_VERSION, "ok": True, "command": command, "result": result}
         except RecordingError as error:
-            print(f"xblick record: {command} failed: {error}", flush=True)
+            print(f"{self.prog}: {command} failed: {error}", flush=True)
             return {"v": REPLY_VERSION, "ok": False, "command": command, "error": str(error), "result": error.result}
         except (ValueError, RuntimeError, OSError, json.JSONDecodeError, TypeError) as error:
             self.refused = f"{type(error).__name__}: {error}"
-            print(f"xblick record: refused: {self.refused}", flush=True)
+            print(f"{self.prog}: refused: {self.refused}", flush=True)
             return {"v": REPLY_VERSION, "ok": False, "command": command, "refused": self.refused}
 
     def check(self):
@@ -752,7 +753,7 @@ class Recorder:
             with self._player_lock:
                 self._player, self._player_thread = player, thread
             thread.start()
-        print(f"xblick record: playing {', '.join(given)}" + (" (loop)" if loop else "")
+        print(f"{self.prog}: playing {', '.join(given)}" + (" (loop)" if loop else "")
               + (f", paced by {pace}" + (f" {clock}" if clock else "") if pace != "wall" else ""), flush=True)
         return player
 
@@ -771,7 +772,7 @@ class Recorder:
             self._error = player.error  # raised by check()
         if self._take_player(player) is player:  # ended by itself: the node is idle again
             player.close()
-            print(f"xblick record: played {player.sent} messages", flush=True)
+            print(f"{self.prog}: played {player.sent} messages", flush=True)
         self.parameters.refresh()  # its end in a ParameterEvent at once
 
     def wait_played(self, timeout: float | None = None) -> bool:
@@ -810,7 +811,7 @@ class Recorder:
         player.end()
         thread.join()
         player.close()
-        print(f"xblick record: playback stopped, {player.sent} messages", flush=True)
+        print(f"{self.prog}: playback stopped, {player.sent} messages", flush=True)
         return player.status()
 
     def close(self):
@@ -894,7 +895,7 @@ class Recorder:
                         if "compressed" not in record.get("transports", ("compressed",)):
                             if base not in self._skipped:
                                 self._skipped.add(base)
-                                print(f"xblick record: {base} has no compressed form: not recorded", flush=True)
+                                print(f"{self.prog}: {base} has no compressed form: not recorded", flush=True)
                             continue
                         self._subscribe(topics.compressed(base), record)
                         self._subscribe(topics.camera_info(base), None)
@@ -920,7 +921,7 @@ class Recorder:
             self._file = f
             self.files.append(f.path)
             self._recorded.append(f.path)
-        print(f"xblick record: recording to {f.path}", flush=True)
+        print(f"{self.prog}: recording to {f.path}", flush=True)
         # what is published once: the cameras' fixed transforms, asked for so that every file has them
         for pattern in self.keys or self.patterns:
             if pattern.endswith(topics.TF_STATIC):
@@ -933,7 +934,7 @@ class Recorder:
 
     def _close(self, f: _File):
         f.finish()
-        print(f"xblick record: {f.path} complete, {f.messages} messages, {f.bytes / 1e6:.1f} MB", flush=True)
+        print(f"{self.prog}: {f.path} complete, {f.messages} messages, {f.bytes / 1e6:.1f} MB", flush=True)
 
     def _write(self, f: _File):
         """Thread: the queue into the files (``f`` the first), a new one after split seconds (not into a file asked

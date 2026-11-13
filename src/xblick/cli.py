@@ -17,8 +17,6 @@
     xblick param --node robot/camera --get  # their values; --describe, --set NAME:=VALUE [--atomically]
     xblick relay --stream robot/camera/color      # xblick-relay with these arguments (needs xblick[relay])
     xblick                                             # without a command: the terminal interface (tui.py)
-
-``xblick`` is the same command.
 """
 
 from __future__ import annotations
@@ -51,8 +49,9 @@ def _list(args) -> int:
         time.sleep(args.seconds)
         meter.close()
         traffic = meter.snapshot()
+        alone = zsession.alone(z)
     if not traffic:
-        print(f"nothing received within {args.seconds:g} s", file=sys.stderr)
+        print(f"nothing received within {args.seconds:g} s" + (f"; {alone}" if alone else ""), file=sys.stderr)
         return 1
     for key in sorted(traffic):
         t = traffic[key]
@@ -63,8 +62,9 @@ def _list(args) -> int:
 def _list_streams(args) -> int:
     with zsession.open_from_args(args) as z:
         found = find_streams(z, args.prefix, args.seconds)
+        alone = zsession.alone(z)
     if not found:
-        print(f"no stream answered within {args.seconds:g} s", file=sys.stderr)
+        print(f"no stream answered within {args.seconds:g} s" + (f"; {alone}" if alone else ""), file=sys.stderr)
         return 1
     for base, r in found:
         if r.get("kind") == "image":
@@ -298,7 +298,7 @@ def _record(args) -> int:
             while True:
                 time.sleep(args.report)
                 recorder.check()
-                _report(recorder.status())
+                _report(recorder.status(), "xblick record")
         except KeyboardInterrupt:
             pass
         finally:
@@ -307,15 +307,15 @@ def _record(args) -> int:
     return 0
 
 
-def _report(s: dict):
+def _report(s: dict, prog: str):
+    """The record and play node's status line; ``prog`` the command that started it."""
     if s["state"] == "recording":
-        print(f"xblick record: recording {s['file']}, {s['messages']} messages, {s['bytes'] / 1e6:.1f} MB, "
+        print(f"{prog}: recording {s['file']}, {s['messages']} messages, {s['bytes'] / 1e6:.1f} MB, "
               f"{s['topics']} topics, {s['dropped']} dropped", flush=True)
     elif s["play"] is not None:
-        print(f"xblick record: {s['state']} at {s['play']['position_s']:.1f} s, {s['play']['sent']} messages",
-              flush=True)
+        print(f"{prog}: {s['state']} at {s['play']['position_s']:.1f} s, {s['play']['sent']} messages", flush=True)
     else:
-        print("xblick record: idle", flush=True)
+        print(f"{prog}: idle", flush=True)
 
 
 def _recorder(args) -> int:
@@ -349,7 +349,7 @@ def _play(args) -> int:
     files = [expand_path(f).absolute() for f in args.files]
     directory = expand_path(args.dir) if args.dir else files[0].resolve().parent
     with zsession.open_from_args(args) as z:
-        recorder = recording.Recorder(z, directory, name=args.name)
+        recorder = recording.Recorder(z, directory, name=args.name, prog="xblick play")
         try:
             try:
                 player = recorder.play(files, rate=args.rate, loop=args.loop, prefix=args.prefix,
@@ -366,7 +366,7 @@ def _play(args) -> int:
                     if args.exit and recorder.state == "idle":
                         break
                     time.sleep(args.report)  # nothing playing: the next report then
-                _report(recorder.status())
+                _report(recorder.status(), "xblick play")
         except KeyboardInterrupt:
             pass
         finally:
@@ -740,7 +740,11 @@ def main(argv=None) -> int:
         return tui.run(_interface_connection(argv, prog))
     args = parse(argv, prog)
     _interrupt_on_sigterm()
-    return args.run(args)
+    try:
+        return args.run(args)
+    except TimeoutError as error:  # a node or stream that did not answer: one line, not a traceback
+        print(f"{prog} {args.command}: {error}", file=sys.stderr)
+        return 1
 
 
 INTERFACE_OPTIONS = ("--connect", "--listen", "--zenoh-mode", "--config")  # without a command: the interface's
