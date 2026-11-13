@@ -4,6 +4,7 @@
     xblick hz robot/camera/color --connect …  # frame rate, latency from capture, dropped frames (or clouds)
     xblick snapshot robot/camera/color out.png --connect …
     xblick test-camera                            # a moving test pattern as robot/test_camera/color
+    xblick cam /dev/video0 --stream robot/webcam/color  # a live camera FFmpeg opens (cam.py, needs xblick[cam])
     xblick rerun --connect …                      # every stream and node result in the Rerun viewer
     xblick diagnostics robot --connect …         # how the cameras' publishers are doing (<camera>/diagnostics)
     xblick mps --pipe-dir /tmp/xblick-mps         # NVIDIA MPS for the nodes on this PC's GPU (mps.py)
@@ -33,7 +34,7 @@ from pathlib import Path
 
 import numpy as np
 
-from . import diagnostics, mps, recording, rerun_bridge, survey, topics
+from . import cam, diagnostics, mps, recording, rerun_bridge, survey, topics
 from . import session as zsession
 from .camera import CameraPublisher, ImageSubscriber, find_streams, query_info
 from .msg import CameraInfo
@@ -179,6 +180,35 @@ def _test_camera(args) -> int:
         except KeyboardInterrupt:
             pass
         publisher.close()
+    return 0
+
+
+def _cam(args, parser) -> int:
+    """``xblick cam``: a live camera as a stream (cam.py), its options the parameters of the node <camera>."""
+    from .parameters import ParameterError, Parameters
+    from .video import VideoError, camera_of
+
+    try:
+        cam.import_av()  # at once, before the session
+        namespace, _, name = camera_of(args.stream).rpartition("/")
+    except (ImportError, VideoError) as error:
+        raise SystemExit(f"xblick cam: {error}") from None
+    with zsession.open_from_args(args) as z:
+        params = Parameters(z, name, namespace)
+        try:
+            params.configure(args)
+            params.declare_options(parser, args)
+            params.check_overrides()
+            camera = cam.LiveCamera(z, args.source, args.stream, fmt=args.format, size=args.size, fps=args.fps,
+                                    pixel_format=args.pixel_format, camera_info=args.camera_info, hfov=args.hfov,
+                                    vfov=args.vfov, frame_id=args.frame_id, timeout=args.timeout)
+            camera.run()
+        except (cam.CamError, VideoError, ParameterError) as error:
+            raise SystemExit(f"xblick cam: {error}") from None
+        except KeyboardInterrupt:
+            pass
+        finally:
+            params.close()
     return 0
 
 
@@ -553,6 +583,16 @@ def build_parser(prog: str = "xblick") -> argparse.ArgumentParser:
     p.add_argument("--fps", type=float, default=15.0)
     zsession.add_arguments(p)
     p.set_defaults(run=_test_camera)
+
+    p = commands.add_parser("cam", help="publish a live camera that FFmpeg opens: a V4L2 device, an RTSP or HTTP URL "
+                                        "(needs xblick[cam])", description=cam.__doc__,
+                            formatter_class=argparse.RawDescriptionHelpFormatter)
+    cam.add_arguments(p)
+    from .parameters import Parameters
+
+    Parameters.add_arguments(p)
+    zsession.add_arguments(p)
+    p.set_defaults(run=lambda a, parser=p: _cam(a, parser))
 
     p = commands.add_parser("diagnostics", help="how the cameras' publishers are doing (<camera>/diagnostics)")
     p.add_argument("prefix", nargs="?", default="", help="only cameras below this prefix, e.g. robot")

@@ -34,6 +34,7 @@ Instructions for one task each.
 - [Sharing a GPU between nodes](guides/sharing-a-gpu.md)
 - [Recording and playback](guides/recording.md)
 - [Videos as camera streams](guides/video.md)
+- [Live cameras](guides/cam.md): webcams, capture cards and IP cameras with `xblick cam`
 - [Point clouds](guides/point-clouds.md)
 - [Viewer](guides/viewer.md)
 - [Terminal interface](guides/tui.md)

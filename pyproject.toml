@@ -64,6 +64,10 @@ video = [
     # xblick video (video.py): video files decoded by FFmpeg inside PyAV's wheels
     "av>=14",
 ]
+cam = [
+    # xblick cam (cam.py): live cameras (V4L2 devices, RTSP and HTTP streams) opened by FFmpeg inside PyAV's wheels
+    "av>=14",
+]
 relay = [
     # xblick relay (cli.py): xblick-relay, a C++ program of its own repository, as the wheel xblick-relay with
     # libzenohc.so in it; its 0.4 line speaks this version's protocol

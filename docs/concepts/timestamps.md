@@ -40,7 +40,7 @@ We checked all nodes against this table on 2026-11-05.
 | `seq` | attachment | the publisher | the count of the publisher's frames. It is the same on all topics of one frame. |
 | `publish_called_ns` | attachment | the publisher, when your code calls `publish()` | the same for all samples of one frame |
 | `publish_ns` | attachment | the publisher, directly before it puts the sample | when this sample left the publisher. Each transport of a frame has its own value. |
-| `source` | attachment | the publisher | `sim`, `robot`, `test` or `video` |
+| `source` | attachment | the publisher | `sim`, `robot`, `test`, `video` or `cam` |
 | `zid` | attachment of diagnostics samples | `DiagnosticsPublisher` | the id of the Zenoh session, because several sessions publish on one `<camera>/diagnostics` |
 | `receive_ns` | only in the subscriber | the reader, when the sample arrives | the reader's wall clock at arrival |
 

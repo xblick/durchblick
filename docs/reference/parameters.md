@@ -298,6 +298,7 @@ request and response of each service (`ListParametersRequest` to `SetParametersA
 ## Examples in the tools
 
 - `xblick-cpp-camera --params` declares a few parameters as an example, as the node `<camera>/cpp_camera`.
+- `xblick cam` declares its options as read-only parameters of the node `<camera>`.
 - `xblick-cpp-probe --params <node> [--set NAME:=VALUE]` reads and sets them from C++.
 
 ## Status and limits

@@ -1426,6 +1426,11 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+cam = [
+    { name = "av", version = "17.1.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "av", version = "18.1.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.11.*'" },
+    { name = "av", version = "19.0.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+]
 record = [
     { name = "mcap" },
 ]
@@ -1451,6 +1456,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "av", marker = "extra == 'cam'", specifier = ">=14" },
     { name = "av", marker = "extra == 'video'", specifier = ">=14" },
     { name = "eclipse-zenoh", specifier = ">=1.10,<2" },
     { name = "mcap", marker = "extra == 'record'", specifier = ">=1.6,<2" },
@@ -1460,7 +1466,7 @@ requires-dist = [
     { name = "textual", specifier = ">=8.2,<9" },
     { name = "xblick-relay", marker = "extra == 'relay'", specifier = ">=0.4.0,<0.5" },
 ]
-provides-extras = ["rerun", "record", "video", "relay"]
+provides-extras = ["rerun", "record", "video", "cam", "relay"]
 
 [package.metadata.requires-dev]
 dev = [

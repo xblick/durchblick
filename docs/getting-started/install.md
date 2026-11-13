@@ -37,6 +37,7 @@ Optional features have extras:
 | `xblick[rerun]` | the viewer `xblick rerun` |
 | `xblick[record]` | `xblick record` and `xblick play` for MCAP files |
 | `xblick[video]` | videos as camera streams in `xblick play` |
+| `xblick[cam]` | live cameras that FFmpeg opens, as camera streams: `xblick cam` |
 | `xblick[relay]` | the [relay](../concepts/transports.md#relays) program, started by `xblick relay` |
 
 In a uv project, add the package with `uv add xblick`. To use a commit that is not released, depend on the

@@ -75,6 +75,25 @@ extra `xblick[rerun]`. See the [viewer guide](../guides/viewer.md).
 | `--save FILE` | write an `.rrd` recording |
 | `--report S` | seconds between the status lines |
 
+## Cameras
+
+### `xblick cam <source>`
+
+Publishes a live camera that FFmpeg opens: a V4L2 device such as `/dev/video0`, or an RTSP or HTTP URL. Needs the
+extra `xblick[cam]`. See the [guide](../guides/cam.md).
+
+| Option | Meaning |
+| --- | --- |
+| `source` | `/dev/videoN`, a URL, or with `--format` another FFmpeg input |
+| `--stream BASE` | the stream, `<camera>/<stream>`. Required. |
+| `--format FORMAT` | FFmpeg's input format, for example `lavfi`. The default is `video4linux2` for `/dev/...` and the protocol for a URL. |
+| `--size WxH`, `--fps FPS`, `--pixel-format FORMAT` | the mode to ask the camera for. The camera must deliver it. `--pixel-format` is for V4L2 only. |
+| `--camera-info FILE` | a ROS calibration file of the delivered size |
+| `--hfov DEG`, `--vfov DEG` | without `--camera-info`: the field of view of the assumed pinhole camera (default 60 degrees horizontal) |
+| `--frame-id ID` | the frame id. The default is the stream with `_` in place of `/`. |
+| `--timeout S` | end with an error when no frame comes for this long (default 5) |
+| `--param`, `--params-file`, `--dump-params`, `--params-read-only` | the options as parameters of the node `<camera>` |
+
 ## Test
 
 ### `xblick test-camera`

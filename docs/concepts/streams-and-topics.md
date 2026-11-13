@@ -76,8 +76,8 @@ A robot publishes its state below its namespace: `<robot>/joint_states`, `<robot
 and `sim/clock`.
 
 A simulation publishes exactly the topics of the robot that it simulates. A consumer therefore needs no second code
-path for the simulation. Each sample states in its metadata where it came from: `source` is `sim`, `robot`, `test`
-or `video`.
+path for the simulation. Each sample states in its metadata where it came from: `source` is `sim`, `robot`, `test`,
+`video` or `cam`.
 
 ## Related pages
 
