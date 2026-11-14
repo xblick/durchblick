@@ -1,11 +1,16 @@
 """A peer that connects only to other PCs and listens on loopback only (session.across_pcs): the rule, the notice at
 the start of a command, a node and a C++ program, and the cause in the "nothing found" messages.
 
-192.0.2.10 and 2001:db8::1 are documentation addresses: never this PC, and a connection to them never succeeds. A
-peer session opens at once with such an endpoint (Zenoh goes on trying in the background), so the processes here end
-by themselves; each one is bounded by a timeout all the same."""
+192.0.2.10 and 2001:db8::1 are documentation addresses: never this PC, and a connection to them never succeeds. How
+long Zenoh takes with such an endpoint depends on the network: where the packets are rejected, a peer opens and closes
+at once; where they are dropped (as on CI's runners), a peer opens after 0.5 s and its close waits for the pending
+connection (up to 10 s, Zenoh's transport/unicast/open_timeout), and a client fails after 10 s. The tests here
+therefore never wait for such a session: a process is read up to its first line on stderr (the notice comes before
+the session opens) and then ended, and the commands' texts are checked in this process with a session that reaches
+nobody (``nowhere``)."""
 
 import os
+import select
 import socket
 import subprocess
 import sys
@@ -13,7 +18,7 @@ from pathlib import Path
 
 import pytest
 
-from xblick import session
+from xblick import cli, session
 from xblick.session import across_pcs, across_pcs_text, loopback, this_pc
 
 OTHER = "tcp/192.0.2.10:7447"
@@ -108,20 +113,52 @@ def xblick(*arguments: str) -> subprocess.CompletedProcess:
     return run([sys.executable, "-m", "xblick.cli", *arguments])
 
 
-def test_a_command_says_it_once_at_the_start_and_when_it_found_nothing():
-    done = xblick("list", "--connect", "192.0.2.10", "--seconds", "0.3")
-    lines = done.stderr.splitlines()
-    assert done.returncode == 1 and lines[0] == f"xblick list: {NOTICE}", done.stderr
+def first_line(command: list[str]) -> str:
+    """The first line that a process writes to stderr. The process is then ended (SIGTERM to its PID, SIGKILL if it
+    does not end), so that nothing waits for a session to another host."""
+    process = subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+    try:
+        ready, _, _ = select.select([process.stderr], [], [], TIMEOUT_S)
+        assert ready, f"no line on stderr within {TIMEOUT_S} s: {command}"
+        return process.stderr.readline().rstrip("\n")
+    finally:
+        process.terminate()
+        try:
+            process.communicate(timeout=10)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.communicate()
+
+
+@pytest.fixture
+def nowhere(monkeypatch):
+    """zenoh.open gives a session that reaches nobody, whatever the options: the rule and the texts still come from
+    the options, and nothing depends on how the network treats 192.0.2.10. The commands run in this process."""
+    real = session.zenoh.open
+    monkeypatch.setattr(session.zenoh, "open", lambda config: real(session.make_config(local_router=False)))
+    monkeypatch.setattr(cli, "end_on_signals", lambda: None)
+
+
+def test_a_command_says_it_once_at_the_start():
+    assert first_line([sys.executable, "-m", "xblick.cli", "list", "--connect", "192.0.2.10"]) == \
+        f"xblick list: {NOTICE}"
+
+
+def test_a_command_says_it_at_the_start_and_when_it_found_nothing(nowhere, capsys):
+    assert cli.main(["list", "--connect", "192.0.2.10", "--seconds", "0.3"]) == 1
+    lines = capsys.readouterr().err.splitlines()
+    assert lines[0] == f"xblick list: {NOTICE}", lines
     assert lines[-1] == f"no stream answered within 0.3 s; this session is {NOTICE}"
     assert sum(NOTICE in line for line in lines) == 2  # the start line and the "nothing found" line, nothing else
-    traffic = xblick("list", "--traffic", "--connect", "192.0.2.10", "--seconds", "0.3")
-    assert traffic.stderr.splitlines()[-1] == f"nothing received within 0.3 s; this session is {NOTICE}"
+    cli.main(["list", "--traffic", "--connect", "192.0.2.10", "--seconds", "0.3"])
+    assert capsys.readouterr().err.splitlines()[-1] == f"nothing received within 0.3 s; this session is {NOTICE}"
 
 
 @pytest.mark.parametrize("options", [["--zenoh-mode", "client"], ["--listen", "0.0.0.0:0"]])
-def test_a_command_does_not_say_it_when_the_rule_does_not_hold(options):
-    done = xblick("list", "--connect", "192.0.2.10", "--seconds", "0.3", *options)
-    assert "connecting as a peer" not in done.stdout + done.stderr
+def test_a_command_does_not_say_it_when_the_rule_does_not_hold(nowhere, capsys, options):
+    cli.main(["list", "--connect", "192.0.2.10", "--seconds", "0.3", *options])
+    captured = capsys.readouterr()
+    assert "connecting as a peer" not in captured.out + captured.err
 
 
 def test_a_command_to_this_pc_does_not_say_it():
@@ -146,16 +183,13 @@ with session.open_from_args(args):
 
 
 def test_a_node_says_it_without_a_change_of_its_own(tmp_path):
+    """The node's own code opens its session with open_from_args and nothing else: the notice is its first line."""
     script = tmp_path / "xblick-testnode"
     script.write_text(NODE)
-    done = run([sys.executable, str(script), "--connect", "192.0.2.10"])
-    assert done.returncode == 0 and done.stdout.strip() == "opened", done.stderr
-    assert done.stderr.splitlines()[0] == f"xblick-testnode: {NOTICE}"
-    done = run([sys.executable, str(script), "--connect", "192.0.2.10", "--zenoh-mode", "client"])
-    assert "connecting as a peer" not in done.stderr
+    assert first_line([sys.executable, str(script), "--connect", "192.0.2.10"]) == f"xblick-testnode: {NOTICE}"
 
 
-def test_the_view_names_it_when_no_publisher_answers():
+def test_the_view_names_it_when_no_publisher_answers(nowhere):
     from xblick import view
 
     with session.open_session(connect=["192.0.2.10"]) as z:
@@ -169,8 +203,10 @@ def test_the_view_names_it_when_no_publisher_answers():
 @pytest.mark.skipif(not os.environ.get("XBLICK_CPP_BUILD"), reason="XBLICK_CPP_BUILD (the C++ build directory) is not set")
 def test_a_cpp_program_says_it_by_the_same_rule():
     probe = str(Path(os.environ["XBLICK_CPP_BUILD"]) / "xblick-cpp-probe")
-    done = run([probe, "--connect", "192.0.2.10", "--base", "t/across/color", "--frames", "1", "--timeout", "0.5"])
-    assert done.stderr.splitlines()[0] == f"xblick-cpp-probe: {NOTICE}", done.stderr
-    done = run([probe, "--connect", "192.0.2.10", "--listen", "0.0.0.0:0", "--base", "t/across/color", "--frames", "1",
-                "--timeout", "0.5"])
-    assert "connecting as a peer" not in done.stderr
+    line = first_line([probe, "--connect", "192.0.2.10", "--base", "t/across/color", "--frames", "1", "--timeout",
+                       "0.5"])
+    assert line == f"xblick-cpp-probe: {NOTICE}"
+    line = first_line([probe, "--connect", "192.0.2.10", "--listen", "0.0.0.0:0", "--base", "t/across/color", "--frames",
+                       "1", "--timeout", "0.5"])
+    assert "connecting as a peer" not in line  # its first line comes after the probe's timeout
+
