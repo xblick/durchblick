@@ -98,8 +98,10 @@ def test_values_at_the_start(sessions, tmp_path):  # noqa: F811
         with pytest.raises(ParameterError, match=error):
             declare_all(params)
         params.close()
+    params = Parameters(a, "n2", NS)
     with pytest.raises(ParameterError, match="NAME:=VALUE"):
-        Parameters(a, "n2", NS).configure(parser.parse_args(["--param", "threshold=0.5"]))
+        params.configure(parser.parse_args(["--param", "threshold=0.5"]))
+    params.close()
 
 
 def test_services_and_events_over_zenoh(sessions):  # noqa: F811

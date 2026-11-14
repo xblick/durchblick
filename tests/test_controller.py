@@ -187,6 +187,7 @@ def test_records_typed_state_hands_and_diagnostics(sessions):
         r.close()
     client.close()
     state.close()
+    parameters.close()
 
 
 def test_subscriber_refuses_records_of_another_layout(sessions):
@@ -203,3 +204,4 @@ def test_subscriber_refuses_records_of_another_layout(sessions):
         client.check()
     client.close()
     state.close()
+    parameters.close()

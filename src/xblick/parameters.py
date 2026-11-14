@@ -58,6 +58,7 @@ SERVICES = {P.LIST_PARAMETERS: (ListParametersRequest, ListParametersResponse),
 READ_ONLY_ACCESS = "parameters are read only on this node (--params-read-only)"
 RESTART = "read-only: applies at the next start"
 SERVE_PERIOD_S = 0.01  # how often the services look for queries: a parameter call waits at most this much longer
+_CLOSED = object()  # Parameters._next: a queryable's channel closed with its session
 # options declare_options leaves out: argparse's, the parameters' own, the Zenoh connection's (session.add_arguments)
 OWN_OPTIONS = {"help", "param", "params_file", "dump_params", "params_read_only", "connect", "listen", "zenoh_mode",
                "config"}
@@ -461,12 +462,26 @@ class Parameters:
     # ---------------------------------------------------------------------------------------------- the services
 
     def _serve(self, period: float = SERVE_PERIOD_S):
-        """The services' queries, answered as they come (looked for every ``period`` seconds), until close()."""
+        """The services' queries, answered as they come (looked for every ``period`` seconds), until close(), or
+        until the session closed (its queryables' channels close with it: a node that closed its session first)."""
         while not self._stop.is_set():
             for service, queryable in self._queryables:
-                while (query := queryable.try_recv()) is not None:
+                while (query := self._next(queryable)) is not None:
+                    if query is _CLOSED:
+                        return
                     self._answer(service, query)
             self._stop.wait(period)
+
+    @staticmethod
+    def _next(queryable):
+        """The queryable's next query, None when there is none now, _CLOSED when its channel closed (its session
+        closed; Zenoh says so by ZError "channel is empty and closed", the only error of try_recv)."""
+        try:
+            return queryable.try_recv()
+        except zenoh.ZError as error:
+            if "closed" in str(error):
+                return _CLOSED
+            raise
 
     def _answer(self, service: str, query: zenoh.Query):
         request_type, _ = SERVICES[service]
