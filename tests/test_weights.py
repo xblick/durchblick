@@ -231,7 +231,10 @@ def test_without_a_network_download_only_ends_with_one_line(home, store, server,
     assert store.download_only(ws) == 1
     err = capsys.readouterr().err.strip().splitlines()
     assert len(err) == 1 and "cannot download from 127.0.0.1" in err[0] and "connect this PC" in err[0]
+    assert "run xblick-test --download-only on one that is" in err[0]
     assert all(not path.exists() for path in stand_in) and not list(home.rglob("*.part"))
+    assert store.download_only(ws, options=["--model", "s", "--dir", "a b"]) == 1  # the node's selecting options
+    assert "run xblick-test --download-only --model s --dir 'a b' on one that is" in capsys.readouterr().err
 
 
 def test_missing_code_from_the_setup_ends_with_one_line(home, stand_in, no_network, capsys):
@@ -362,6 +365,11 @@ def test_no_download_ends_naming_the_missing_files(home, store, stand_in, no_net
         store.ensure(ws, download=False)
     assert all(path.name in str(error.value) for path in files) and "xblick-test --download-only" in str(error.value)
     assert not any(path.exists() for path in files)
+    with pytest.raises(weights.WeightsError) as error:
+        store.ensure(ws, download=False, options=["--model", "s"])  # the printed command fetches these files
+    assert "download them with xblick-test --download-only --model s or tools/setup.sh" in str(error.value)
+    with pytest.raises(TypeError, match="a list of command-line words"):
+        store.ensure(ws, download=False, options="--model s")
 
 
 def test_a_source_of_the_nodes_own_gets_the_store(home, store):

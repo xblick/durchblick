@@ -166,7 +166,9 @@ These rules hold for every node, so that a user who knows one node knows how all
   Convenience that chooses for the user belongs into the `xblick` command, not into a node.
 - **Weights are downloaded at the start**, with `xblick.weights`: a node keeps its list of files and its terms notice,
   prints the notice before a download, and offers `--download-only` (for setup scripts) and `--no-download` (for
-  machines that must not download).
+  machines that must not download). The node passes the options that select its weights to `ensure` and
+  `download_only`, for example `options=["--model", args.model]`. A line about missing weights then names the
+  command that downloads exactly these files.
 - **A queryable replies and drops the query at once.** A node that serves a command or a parameter replies in the
   query's callback and ends it. It does long work outside the callback and keeps no query object. A node that keeps
   the query after its reply makes Zenoh send a late "Timeout" reply as well, and a caller takes that for a second

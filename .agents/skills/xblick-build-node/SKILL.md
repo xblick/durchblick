@@ -46,7 +46,8 @@ Follow the pattern of the existing node repositories:
 - `tools/setup.sh`, which builds `.venv` and fetches the checkpoints, so that a workspace build step can call it,
 - one console script `xblick-<name>`, named after the model, not the task (`xblick-yolox`, not `xblick-detect`),
 - the weights in `weights.py` as a list of `xblick.weights.Weight` and a `xblick.weights.Store` with the model's
-  terms notice: downloaded at the start, `--download-only` for `tools/setup.sh`, `--no-download`,
+  terms notice: downloaded at the start, `--download-only` for `tools/setup.sh`, `--no-download`; `ensure` and
+  `download_only` get the options that select the weights (`options=["--model", args.model]`),
 - README, `docs/`, AGENTS.md and a one-line CLAUDE.md as
   [Writing documentation](../../../docs/project/writing-docs.md#a-node-repository) describes.
 
