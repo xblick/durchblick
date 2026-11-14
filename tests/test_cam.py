@@ -19,7 +19,7 @@ from test_camera import free_port, sessions, wait_until  # noqa: F401 - sessions
 from xblick import _core, cam, topics
 from xblick.camera import ImageSubscriber, query_info
 from xblick.history import FrameHistory
-from xblick.msg import ShmImage
+from xblick.msg import CompressedImage, ShmImage
 from xblick.parameters import ParameterClient, find_nodes
 
 av = pytest.importorskip("av")  # the extra xblick[cam]
@@ -561,3 +561,135 @@ def test_ffmpeg_options_are_checked_and_passed(sessions):  # noqa: F811
         camera.stop()
         thread.join(5.0)
     assert not errors
+
+
+# ----------------------------------------------------------------------------------------- MJPEG pass-through
+
+def jpeg_of(image, subsampling=1, quality=85):
+    """A JPEG as libjpeg (Pillow) writes it: the standard Huffman tables (no optimize), 4:2:2 (subsampling 1) as UVC
+    cameras send."""
+    import io
+
+    from PIL import Image
+
+    out = io.BytesIO()
+    Image.fromarray(image).save(out, "JPEG", quality=quality, subsampling=subsampling, optimize=False)
+    return out.getvalue()
+
+
+def without_dht(jpeg: bytes) -> bytes:
+    """The JPEG without its DHT segments, as a UVC camera sends a frame."""
+    out, i = bytearray(jpeg[:2]), 2
+    while True:
+        marker, length = jpeg[i + 1], struct.unpack(">H", jpeg[i + 2:i + 4])[0]
+        if marker == 0xDA:
+            return bytes(out + jpeg[i:])
+        if marker != 0xC4:
+            out += jpeg[i:i + 2 + length]
+        i += 2 + length
+
+
+def decoded(jpeg: bytes) -> np.ndarray:
+    import io
+
+    from PIL import Image
+
+    return np.asarray(Image.open(io.BytesIO(jpeg)).convert("RGB"))
+
+
+def pattern_image(i=0, h=120, w=160):
+    y, x = np.mgrid[0:h, 0:w]
+    return np.stack([(x * 2 + i * 7) % 256, (y * 2) % 256, (x + y + i) % 256], -1).astype(np.uint8)
+
+
+def test_huffman_tables_of_the_standard():
+    """The inserted tables are those libjpeg writes (T.81 Annex K.3); a frame with tables passes byte-identical; a
+    frame without them (a UVC camera's) decodes, with them inserted, to the pixels of the original (Pillow, an
+    independent decoder); an AVI1 header stays; what is no JPEG is refused."""
+    from xblick import mjpeg
+
+    original = jpeg_of(pattern_image())
+    assert mjpeg.with_huffman_tables(original) is original  # (1) unchanged, byte for byte
+    stripped = without_dht(original)
+    assert b"\xff\xc4" not in stripped[:mjpeg.scan_start(stripped)[0]]
+    fixed = mjpeg.with_huffman_tables(stripped)
+    np.testing.assert_array_equal(decoded(fixed), decoded(original))  # (2) pixel-equal
+    # the DHT segment libjpeg wrote holds the same four tables as the standard one
+    sos, _ = mjpeg.scan_start(original)
+    dht = b"".join(original[i:i + 2 + struct.unpack(">H", original[i + 2:i + 4])[0]]
+                   for i in range(2, sos) if original[i:i + 2] == b"\xff\xc4")
+    def tables(segments):
+        found, i = {}, 0
+        while i < len(segments):
+            length = struct.unpack(">H", segments[i + 2:i + 4])[0]
+            body, i = segments[i + 4:i + 2 + length], i + 2 + length
+            j = 0
+            while j < len(body):
+                n = sum(body[j + 1:j + 17])
+                found[body[j]] = body[j + 1:j + 17 + n]
+                j += 17 + n
+        return found
+    assert tables(dht) == tables(mjpeg.STANDARD_DHT) and len(tables(dht)) == 4
+    # an AVI1 APP0 (Motion JPEG in AVI) in place of JFIF's: kept, the frame decodes
+    app0 = 2 + struct.unpack(">H", stripped[4:6])[0] + 2
+    avi1 = stripped[:2] + b"\xff\xe0\x00\x10AVI1" + bytes(10) + stripped[app0:]  # length 16: 2 + 4 + 10
+    np.testing.assert_array_equal(decoded(mjpeg.with_huffman_tables(avi1)), decoded(original))
+    for bad in (b"", b"\x00\x01\x02\x03", original[:40]):
+        with pytest.raises(mjpeg.NotJpeg):
+            mjpeg.with_huffman_tables(bad)
+
+
+def test_mjpeg_passthrough_end_to_end(sessions, tmp_path):  # noqa: F811
+    """(3) An MJPEG camera of frames without Huffman tables (concatenated JPEGs, FFmpeg's mjpeg format, over HTTP):
+    a compressed subscriber gets each frame's JPEG exactly as with_huffman_tables makes it of the camera's frame,
+    byte for byte. The check of the pixels: the received JPEG decoded as xblick cam decodes the camera's frame
+    (FFmpeg, to rgb24) is the frame on the ring, exactly (same stamp). Decoded by Pillow (libjpeg-turbo) it differs
+    from that by a mean below 2 levels: the two decoders upsample 4:2:2 chroma and convert colour differently (up to
+    about 60 levels at sharp colour edges), as they do for a JPEG that xblick cam encodes itself."""
+    from xblick import mjpeg
+
+    frames = [without_dht(jpeg_of(pattern_image(i))) for i in range(30)]
+    (tmp_path / "cam.mjpeg").write_bytes(b"".join(frames))
+    expected = {mjpeg.with_huffman_tables(f) for f in frames}
+    server = HttpCamera(tmp_path)
+    a, b = sessions
+    got, ring = [], []
+    compressed = b.declare_subscriber("cam/camera/color/image_raw/compressed",
+                                      lambda s: got.append(CompressedImage.deserialize(s.payload.to_bytes())))
+    shm = ImageSubscriber(b, "cam/camera/color", transport="shm")
+    camera = cam.LiveCamera(a, server.url("cam.mjpeg"), fmt="mjpeg", mjpeg="passthrough", reconnect=0.5,
+                            options={"framerate": "10"})
+    thread, errors = run_in_thread(camera)
+    try:
+        wait_until(lambda: len(got) >= 30, timeout=20.0)
+        end = time.monotonic() + 10
+        while len(ring) < 5 and time.monotonic() < end:
+            frame = shm.latest(timeout=0.5)
+            if frame is not None:
+                ring.append(frame)
+    finally:
+        camera.stop()
+        thread.join(5.0)
+        compressed.undeclare()
+        shm.close()
+        server.stop()
+    assert not errors
+    assert all(bytes(m.data) in expected for m in got)  # the camera's JPEGs, byte for byte
+    assert {m.format for m in got} == {"rgb8; jpeg compressed bgr8"}
+    by_stamp = {m.header.stamp.to_ns(): m for m in got}
+    pairs = [(f, by_stamp[f.stamp_ns]) for f in ring if f.stamp_ns in by_stamp]
+    assert pairs
+    for frame, message in pairs:
+        import io
+
+        with av.open(io.BytesIO(bytes(message.data)), format="mjpeg") as one:
+            ffmpeg = next(one.decode(video=0)).to_ndarray(format="rgb24")
+        np.testing.assert_array_equal(ffmpeg, frame.image)
+        assert np.abs(decoded(bytes(message.data)).astype(int) - frame.image.astype(int)).mean() < 2.0
+
+
+def test_passthrough_refuses_a_camera_without_mjpeg(sessions):  # noqa: F811
+    a, _ = sessions
+    with pytest.raises(cam.CamError, match="--mjpeg passthrough: the camera delivers 320x240 rgb24 at 30 frames/s "
+                                           r"\(rgb8\), not MJPEG"):
+        cam.LiveCamera(a, source(), fmt="lavfi", mjpeg="passthrough").run()

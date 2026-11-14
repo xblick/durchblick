@@ -153,6 +153,36 @@ xblick cam rtsp://192.0.2.20/stream1 --reconnect 5        # untested: no IP came
 Ctrl-C or SIGTERM ends the command within a second, also while FFmpeg waits for the camera and while the command
 waits to open it again. The ring of the stream is removed from `/dev/shm`.
 
+## MJPEG cameras
+
+Many USB cameras deliver MJPEG: each frame is a JPEG file. By default, `xblick cam` decodes the frame and encodes
+the decoded image again for the transport `compressed`. With `--mjpeg passthrough`, the transport `compressed`
+carries the camera's own JPEG unchanged. The rings still get the decoded frame. This saves the second encoding and
+its loss of quality.
+
+```bash
+xblick cam /dev/video0 --pixel-format mjpeg --mjpeg passthrough      # untested: no camera was at hand
+```
+
+- Many cameras leave the Huffman tables out of their frames, as the USB video class allows. Such a frame uses the
+  standard tables of the JPEG standard (ITU-T T.81, Annex K.3). `xblick cam` inserts these tables before the
+  frame's scan, as FFmpeg's bitstream filter `mjpeg2jpeg` does. It changes nothing else of the frame.
+- A camera that does not deliver MJPEG ends the command with an error. A frame that is no JPEG ends it too, because
+  the command never switches to encoding by itself.
+- The stream keeps its encoding, for example `rgb8`. Each message's format names JPEG, as for an encoded frame.
+
+`passthrough` is not the default, because it was not tested with a real camera. These receivers were tested with
+4:2:2 frames that a test camera sent without Huffman tables:
+
+| Receiver | Result |
+| --- | --- |
+| Python subscriber (Pillow, libjpeg-turbo) | decodes |
+| C++ subscriber (libjpeg) | decodes, the same pixels as Pillow in 10 of 10 frames |
+| xblick-relay with `--cpu` | decodes, the same pixels as Pillow |
+| xblick-relay with nvJPEG | decodes; pixels differ from Pillow's by a mean of about 1 level, as its chroma upsampling differs |
+
+Frames with restart markers were not tested.
+
 ## FFmpeg options
 
 `--option KEY=VALUE` passes an input option to FFmpeg. Repeat it for more options. Use it for what `xblick cam` has
@@ -205,5 +235,7 @@ xblick param --node cam/video0
 - The command publishes the first video stream of a source.
 - `--reconnect` was tested with an HTTP server that ended its stream, refused connections and came back, and with a
   file of another size after the return. It was not tested with an unplugged USB camera.
+- `--mjpeg passthrough` was tested with a test camera over HTTP (FFmpeg's `mjpeg` format, 4:2:2 frames without
+  Huffman tables) and the receivers in the table above. No real MJPEG camera was tested.
 - `--option` refuses options of a protocol below another one (the `tcp` under `rtsp`) and FFmpeg's generic URL
   options such as `rw_timeout`, because FFmpeg's public API does not tell whether they exist.

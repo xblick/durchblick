@@ -208,7 +208,8 @@ def _cam(args, parser) -> int:
             camera = cam.LiveCamera(z, args.source, args.stream, fmt=args.format, size=args.size, fps=args.fps,
                                     pixel_format=args.pixel_format, camera_info=args.camera_info, hfov=args.hfov,
                                     vfov=args.vfov, frame_id=args.frame_id, timeout=args.timeout,
-                                    reconnect=args.reconnect, options=cam.parse_options(args.option))
+                                    reconnect=args.reconnect, options=cam.parse_options(args.option),
+                                    mjpeg=args.mjpeg)
             camera.run()
         except (cam.CamError, VideoError, ParameterError, cam.ffopts.OptionError) as error:
             raise SystemExit(f"xblick cam: {error}") from None

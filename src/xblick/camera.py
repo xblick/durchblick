@@ -290,12 +290,15 @@ class CameraPublisher:
         self._send_info(header, attachment, sent)
         return sent
 
-    def publish_compressed(self, message: CompressedImage) -> list[str]:
-        """Publish one frame that is compressed already (a recording's ``image_raw/compressed``), with its header (stamp
-        and frame): compressed subscribers get it as it is (not encoded a second time), raw, shm and cuda ones the
-        image decoded once (only if there are any). Returns the topics it went to."""
+    def publish_compressed(self, message: CompressedImage, image: np.ndarray | None = None) -> list[str]:
+        """Publish one frame that is compressed already (a recording's ``image_raw/compressed``, a camera's JPEG),
+        with its header (stamp and frame): compressed subscribers get it as it is (not encoded a second time), raw,
+        shm and cuda ones the image decoded once (only if there are any). ``image``: the frame decoded already (a
+        host array of the stream's encoding), taken for them instead. Returns the topics it went to."""
         if self._compressed is None:
             raise ValueError(f"{self.base}: a publisher without codec takes no compressed frames")
+        if image is not None:
+            check_array(image, self.encoding)
         self.seq += 1
         attachment = FrameAttachment(self.seq, self.source)
         want = {p: p.matching_status.matching for p in self._image_publishers()}
@@ -303,10 +306,12 @@ class CameraPublisher:
         if want[self._compressed]:
             self._put(self._compressed, message.serialize(), attachment, sent)
         if want[self._raw] or want[self._shm] or (self._cuda is not None and want[self._cuda]):
-            pixels, encoding = decompress(message)
-            if encoding != self.encoding:
-                raise ProtocolError(f"{self.base}: a compressed frame of {encoding}, the stream is {self.encoding}")
-            self._send(pixels, False, message.header, attachment, want, sent, encode=False)
+            if image is None:
+                image, encoding = decompress(message)
+                if encoding != self.encoding:
+                    raise ProtocolError(f"{self.base}: a compressed frame of {encoding}, the stream is "
+                                        f"{self.encoding}")
+            self._send(image, False, message.header, attachment, want, sent, encode=False)
         self._send_info(message.header, attachment, sent)
         return sent
 

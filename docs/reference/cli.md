@@ -93,6 +93,7 @@ extra `xblick[cam]`. See the [guide](../guides/cam.md).
 | `--frame-id ID` | the frame id. The default is the stream with `_` in place of `/`. |
 | `--timeout S` | end with an error when no frame comes for this long (default 5). With `--reconnect`: open the camera again. |
 | `--reconnect [SECONDS]` | open a camera that stops or cannot be opened again every SECONDS (default 2), also at the start. It must come back with its first mode. |
+| `--mjpeg reencode\|passthrough` | an MJPEG camera's frames on the transport `compressed`: the decoded frame encoded again (default), or the camera's own JPEG with the standard Huffman tables inserted where a frame has none |
 | `--option KEY=VALUE` | an FFmpeg input option, for example `rtsp_transport=tcp` (repeat for more). An option FFmpeg does not have for this source is refused. |
 | `--param`, `--params-file`, `--dump-params`, `--params-read-only` | the options as parameters of the node `<camera>` |
 

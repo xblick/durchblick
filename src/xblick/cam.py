@@ -34,15 +34,17 @@ from pathlib import Path
 import zenoh
 
 from .camera import CameraPublisher
-from . import ffopts, topics, v4l2
+from . import ffopts, mjpeg, topics, v4l2
 from .codecs import JPEG, RVL
 from .diagnostics import DiagnosticsPublisher
+from .msg import CompressedImage, Header, Time
 from .node import Reporter, state
 from .video import VideoError, camera_info_for, camera_of, parse_size
 
 SOURCE = "cam"  # the info record's source
 V4L2 = "video4linux2"
 URL_SCHEMES = ("rtsp", "rtsps", "rtmp", "http", "https", "udp", "tcp", "srt")
+MJPEG_MODES = ("reencode", "passthrough")  # --mjpeg
 RECONNECT_S = 2.0  # --reconnect without a value: seconds between attempts
 RATE_TOLERANCE = 0.01  # relative: a rate asked for and the one delivered agree within this
 # decoded frame format -> (format to convert to, the stream's encoding): as video.VideoFile; everything else rgb24
@@ -174,7 +176,7 @@ class LiveCamera:
                  size: tuple[int, int] | None = None, fps: float | None = None, pixel_format: str | None = None,
                  camera_info: str | None = None, hfov: float | None = None, vfov: float | None = None,
                  frame_id: str | None = None, timeout: float = 5.0, reconnect: float | None = None,
-                 options: dict | None = None, prog: str = "xblick cam"):
+                 options: dict | None = None, mjpeg: str = "reencode", prog: str = "xblick cam"):
         self.av = import_av()
         self.session, self.source, self.base, self.prog = session, source, base, prog
         self.fmt = input_format(source, fmt)
@@ -192,6 +194,9 @@ class LiveCamera:
         if reconnect is not None and not reconnect > 0:
             raise CamError(f"--reconnect {reconnect:g}: above 0")
         self.timeout, self.reconnect = timeout, reconnect
+        if mjpeg not in MJPEG_MODES:
+            raise CamError(f"--mjpeg {mjpeg}: one of {', '.join(MJPEG_MODES)}")
+        self.passthrough = mjpeg == "passthrough"
         self.frame_id = frame_id  # None: the stream's name, "/" as "_", once it is known
         self.calibration, self.hfov, self.vfov = camera_info, hfov, vfov
         if self.fmt == V4L2 and not Path(source).exists() and reconnect is None:
@@ -250,10 +255,23 @@ class LiveCamera:
                                        f"{self.delivered.size[0]}x{self.delivered.size[1]} to "
                                        f"{frame.width}x{frame.height}")
                     image = frame.to_ndarray(format=self._to)
+                    jpeg = None
+                    if self.passthrough:  # the camera's JPEG as it came (with the standard tables if it had none)
+                        try:
+                            jpeg = mjpeg.with_huffman_tables(bytes(packet))
+                        except mjpeg.NotJpeg as error:
+                            attempt.fatal = True
+                            raise CamError(f"{self.source}: frame {self.frames + 1}: {error}; it cannot be passed "
+                                           "on (--mjpeg reencode encodes the decoded frame)") from None
                     with self._lock:
                         if self._stopping or self._attempt is not attempt:
                             return
-                        self.publisher.publish(image, stamp_ns=arrived)
+                        if jpeg is None:
+                            self.publisher.publish(image, stamp_ns=arrived)
+                        else:
+                            header = Header(stamp=Time.from_ns(arrived), frame_id=self.frame_id)
+                            self.publisher.publish_compressed(
+                                CompressedImage(header=header, format=self._jpeg_format, data=jpeg), image=image)
                         attempt.frames += 1
                         self.frames += 1
                         self.decode_s += time.monotonic() - started
@@ -275,9 +293,14 @@ class LiveCamera:
         if self.delivered is None:
             try:
                 check_mode(self.source, self.asked, mode)
+                if self.passthrough and (mode.pixel_format != "mjpeg" or encoding not in ("rgb8", "mono8")):
+                    raise CamError(f"{self.source}: --mjpeg passthrough: the camera delivers {mode.text()} "
+                                   f"({encoding}), not MJPEG frames of 8-bit colour or grey")
             except CamError:
                 attempt.fatal = True
                 raise
+            # the CompressedImage format of a passed-on frame, as codecs.compress writes it for the encoding
+            self._jpeg_format = f"{encoding}; jpeg compressed {'mono8' if encoding == 'mono8' else 'bgr8'}"
             self.delivered, self._to = mode, to
             self._start_publisher(encoding)
             return
@@ -299,7 +322,8 @@ class LiveCamera:
                                              camera_info=info, source=SOURCE,
                                              codec=RVL if encoding == "16UC1" else JPEG)
         self.encoding = encoding
-        print(f"{self.prog}: {self.source} -> {self.base}: {self.delivered.text()}, published as {encoding}; "
+        jpeg = "; JPEG: the camera's own" if self.passthrough else ""
+        print(f"{self.prog}: {self.source} -> {self.base}: {self.delivered.text()}, published as {encoding}{jpeg}; "
               f"{said}", flush=True)
         self._ready.set()
 
@@ -522,6 +546,10 @@ def add_arguments(parser: argparse.ArgumentParser):
                         help="a camera that stops, or cannot be opened (also at the start), is opened again every "
                              f"SECONDS (default {RECONNECT_S:g}); it must come back with the same mode (default: a "
                              "camera that stops ends the command)")
+    parser.add_argument("--mjpeg", choices=MJPEG_MODES, default="reencode",
+                        help="an MJPEG camera's frames for the compressed transport: reencode (default) the decoded "
+                             "frame, or passthrough the camera's JPEG as it came (standard Huffman tables inserted "
+                             "where a frame has none; not tested on a real camera)")
     parser.add_argument("--option", action="append", default=None, metavar="KEY=VALUE",
                         help="an FFmpeg input option, e.g. rtsp_transport=tcp (repeat for more); one FFmpeg does not "
                              "have for this source is refused")
