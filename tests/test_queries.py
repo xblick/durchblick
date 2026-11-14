@@ -494,8 +494,9 @@ def test_the_command_line_says_which_case_it_was(network, capsys):
 
 # ------------------------------------------------------------------- the check for a second node: what it catches
 # The check before a command (session.count) is best effort: it catches two nodes that both answer the read, and a
-# node that has not finished the read at its timeout (the "Timeout" reply that the caller's session adds). It does not catch a second node that drops the read, that
-# appears after it, or a second torque_step server without parameters: those get the command (pinned below).
+# node that has not finished the read at its timeout (the "Timeout" reply that the caller's session adds). It does
+# not catch a second node that drops the read, that appears after it, or a second torque_step server without
+# parameters: those get the command (pinned below).
 
 def busy(params, name="x"):
     """Keeps a Parameters node busy for 3 s: a local set whose writer blocks, so that its services answer late."""
@@ -671,7 +672,8 @@ def test_one_slow_node_is_not_taken_for_a_second(network):
 def test_a_node_that_holds_the_query_after_its_reply(network):
     """The receiver rule, pinned: a single manager that replies at once and then keeps working inside the query's
     callback keeps the query open until its timeout, and the caller's session adds the "Timeout" reply; the check
-    takes it for a possible second node and sends nothing ("a second node, or the answering node still holding the query"). Its switch ran 0 times."""
+    takes it for a possible second node and sends nothing ("a second node, or the answering node still holding the
+    query"). Its switch ran 0 times."""
     def reply_then_hold(payload):
         def handle(query):
             query.reply(query.key_expr, payload)

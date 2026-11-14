@@ -209,8 +209,8 @@ def test_a_cpp_program_says_it_by_the_same_rule():
     line = first_line([probe, "--connect", "192.0.2.10", "--base", "t/across/color", "--frames", "1", "--timeout",
                        "0.5"])
     assert line == f"xblick-cpp-probe: {NOTICE}"
-    line = first_line([probe, "--connect", "192.0.2.10", "--listen", "0.0.0.0:0", "--base", "t/across/color", "--frames",
-                       "1", "--timeout", "0.5"])
+    line = first_line([probe, "--connect", "192.0.2.10", "--listen", "0.0.0.0:0", "--base", "t/across/color",
+                       "--frames", "1", "--timeout", "0.5"])
     assert "connecting as a peer" not in line  # its first line comes after the probe's timeout
 
 
@@ -253,7 +253,8 @@ def test_other_open_errors_are_zenohs_text_in_one_line():
     assert isinstance(error.value, session.zenoh.ZError)
 
 
-@pytest.mark.skipif(not os.environ.get("XBLICK_CPP_BUILD"), reason="XBLICK_CPP_BUILD (the C++ build directory) is not set")
+@pytest.mark.skipif(not os.environ.get("XBLICK_CPP_BUILD"),
+                    reason="XBLICK_CPP_BUILD (the C++ build directory) is not set")
 def test_a_cpp_client_that_reaches_nothing_ends_with_one_line():
     probe = str(Path(os.environ["XBLICK_CPP_BUILD"]) / "xblick-cpp-probe")
     port = closed_port()
