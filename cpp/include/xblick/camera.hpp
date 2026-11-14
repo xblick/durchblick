@@ -58,11 +58,29 @@ namespace xblick
         // Python's session.py; false: such a session reaches nobody. A peer with connect and no listen listens on a
         // free loopback port as well (peers behind a router reach each other only directly).
         bool local_router = true;
+        // The program's name. Set (Options::session_options sets it): open_session says on stderr, as
+        // "<program>: ...", when the options make a peer that connects only to other PCs (across_pcs).
+        std::string program;
     };
 
     // tcp/<host>:<port>; a full locator (containing '/') is returned unchanged.
     std::string endpoint(const std::string& host, std::uint16_t port = 7447);
     zenoh::Session open_session(const SessionOptions& options);
+
+    // A peer that connects only to other PCs and listens on loopback only (Python's session.across_pcs): its connect
+    // endpoints (as endpoint() writes them), else none. Behind a Zenoh 1.10 router peers reach each other only
+    // directly, so the programs on the other PCs usually cannot reach it; they can when they listen on network
+    // addresses, which these options do not show. None in client mode, with a config file, with a connect endpoint
+    // on this PC (this_pc) or with a listen endpoint on a network address (not loopback()).
+    std::vector<std::string> across_pcs(const SessionOptions& options);
+    // Why such a session usually finds nothing, and the three ways out (client mode, a router on this PC, --listen on
+    // the network), with its endpoints (Python's across_pcs_text).
+    std::string across_pcs_text(const std::vector<std::string>& endpoints);
+    // `host` is this PC: localhost, or it resolves to a loopback, the unspecified (0.0.0.0, ::) or an address a socket
+    // can bind to (one of this PC's interfaces; nothing is sent). A name that does not resolve is not this PC.
+    bool this_pc(const std::string& host);
+    // `host` is localhost or resolves to loopback addresses only.
+    bool loopback(const std::string& host);
 
     // The replies to a query (session.get, with `payload` if given) once Zenoh finalized it, or at a deadline of its
     // timeout and max(500 ms, timeout) more if it does not: Zenoh does not always finalize a query by its timeout (seen

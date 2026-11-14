@@ -44,7 +44,7 @@ from . import topics
 from .camera import find_streams, wait_for_info
 from .codecs import JPEG, decompress, parse_format
 from .msg import CompressedImage
-from .session import alone as session_alone
+from .session import why_nothing
 from .overlay import DEPTH_FAR_MM, DEPTH_NEAR_MM, depth_colours
 
 PORT = 8090  # the default port (fixed)
@@ -141,9 +141,9 @@ class View:
         records = wait_for_info(self.session, base, seconds)
         if not records:
             found = [b for b, r in find_streams(self.session, "", seconds) if r.get("kind") == "image"]
-            alone = "" if found else session_alone(self.session)
+            why = "" if found else why_nothing(self.session)
             raise ViewError(f"{base}: no publisher answers within {seconds:g} s; image streams found: "
-                            + (", ".join(found) or "none") + (f" ({alone})" if alone else ""))
+                            + (", ".join(found) or "none") + (f" ({why})" if why else ""))
         record = records[0]
         if record.get("kind") == "points":
             raise ViewError(f"{base}: a point cloud stream; xblick view shows images only (xblick rerun shows clouds)")

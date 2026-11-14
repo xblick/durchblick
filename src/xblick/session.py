@@ -11,11 +11,15 @@ configuration file replaces everything (``config_file``).
 
 from __future__ import annotations
 
+import ipaddress
 import json
 import logging
+import socket
+import sys
 import threading
 import time
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
+from pathlib import Path
 
 import zenoh
 
@@ -84,7 +88,101 @@ def make_config(connect: Sequence[str] = (), listen: Sequence[str] = (), mode: s
 def open_session(connect: Sequence[str] = (), listen: Sequence[str] = (), mode: str = "peer",
                  multicast_scouting: bool = False, config_file: str | None = None,
                  local_router: bool = True) -> Session:
-    return Session(zenoh.open(make_config(connect, listen, mode, multicast_scouting, config_file, local_router)))
+    """A session (``make_config``). It keeps the endpoints of ``across_pcs`` for ``why_nothing``."""
+    config = make_config(connect, listen, mode, multicast_scouting, config_file, local_router)
+    return Session(zenoh.open(config), across_pcs(connect, listen, mode, config_file))
+
+
+# ---------------------------------------------------------------------------------------------- across PCs
+
+IP_PROTOCOLS = ("tcp", "udp", "tls", "quic", "ws")
+
+
+def host_of(locator: str) -> str | None:
+    """The host of an endpoint (after ``endpoint``), IPv6 without brackets; None for a locator without a host
+    (``unixsock-stream/<path>``, ``serial/...``)."""
+    protocol, _, rest = endpoint(locator).partition("#")[0].partition("/")
+    if protocol not in IP_PROTOCOLS:
+        return None
+    if rest.startswith("["):
+        return rest[1:rest.index("]")]
+    return rest.rpartition(":")[0]
+
+
+def _addresses(host: str) -> list[tuple]:
+    """(family, sockaddr) of each address ``host`` resolves to; none when it does not resolve."""
+    try:
+        return [(family, sockaddr) for family, _, _, _, sockaddr in socket.getaddrinfo(host, None,
+                                                                                      type=socket.SOCK_STREAM)]
+    except (socket.gaierror, UnicodeError):
+        return []
+
+
+def _named_loopback(host: str) -> bool:
+    return host.lower() == "localhost" or host.lower().endswith(".localhost")
+
+
+def this_pc(host: str) -> bool:
+    """True when ``host`` is this PC: ``localhost``, or a name or address that resolves to a loopback address, the
+    unspecified address (0.0.0.0, ::) or an address of one of this PC's interfaces. An address is this PC's when a
+    socket can bind to it, which sends nothing over the network. A name that does not resolve is not this PC."""
+    if _named_loopback(host):
+        return True
+    for family, sockaddr in _addresses(host):
+        ip = ipaddress.ip_address(sockaddr[0].split("%")[0])
+        if ip.is_loopback or ip.is_unspecified:
+            return True
+        with socket.socket(family, socket.SOCK_STREAM) as s:
+            try:
+                s.bind((sockaddr[0], 0, *sockaddr[2:]))
+                return True
+            except OSError:
+                pass
+    return False
+
+
+def loopback(host: str) -> bool:
+    """True when ``host`` is ``localhost`` or every address it resolves to is a loopback address: a session that
+    listens there is reachable from this PC only."""
+    if _named_loopback(host):
+        return True
+    addresses = _addresses(host)
+    return bool(addresses) and all(ipaddress.ip_address(a[0].split("%")[0]).is_loopback for _, a in addresses)
+
+
+def across_pcs(connect: Sequence[str], listen: Sequence[str], mode: str, config_file: str | None = None,
+               local: Callable[[str], bool] = this_pc, loopback_only: Callable[[str], bool] = loopback) -> list[str]:
+    """The ``connect`` endpoints (as ``endpoint`` writes them) when the session is a peer that connects only to other
+    PCs and listens on loopback only, else none. Behind a Zenoh 1.10 router peers reach each other only directly, so
+    the programs on the other PCs usually cannot reach this one. They can when they listen on network addresses, which
+    the options of this session do not show. Decided from the options alone: no option with this PC's own router (a
+    ``connect`` endpoint on this PC, ``local``), no ``listen`` on a network address (``loopback_only``), no config
+    file, peer mode. A locator without a host (``unixsock-stream/...``) counts as this PC."""
+    if config_file or mode != "peer" or not connect:
+        return []
+    endpoints = [endpoint(e) for e in connect]
+    hosts = [host_of(e) for e in endpoints]
+    if any(h is None or local(h) for h in hosts):
+        return []
+    if any(h is not None and not loopback_only(h) for h in map(host_of, listen)):
+        return []
+    return endpoints
+
+
+def across_pcs_text(endpoints: Sequence[str], prefix: str = "") -> str:
+    """Why such a session (``across_pcs``) usually finds nothing, and the three ways out, with its endpoints: client
+    mode, a router on this PC, or listening on the network (the peers there learn its address through their router and
+    connect to it)."""
+    given = " ".join(endpoints)
+    return (f"connecting as a peer to another PC ({given}): programs there usually cannot reach this one, which "
+            f"listens on loopback only. Use --{prefix}zenoh-mode client, or start a router on this PC with: xblick "
+            f"router --connect {given}, and this program without --{prefix}connect, or make this program reachable from there "
+            f"with --{prefix}listen tcp/0.0.0.0:0 (any program on the network can then connect to it)")
+
+
+def program_name() -> str:
+    """The program's name for its messages: the name it was started by (a node's console script)."""
+    return Path(sys.argv[0]).name if sys.argv and sys.argv[0] else "python"
 
 
 def add_arguments(parser, prefix: str = ""):
@@ -105,13 +203,35 @@ def add_arguments(parser, prefix: str = ""):
                         help="a Zenoh JSON5 configuration file instead of the endpoints")
 
 
-def open_from_args(args, prefix: str = "") -> Session:
+def open_from_args(args, prefix: str = "", prog: str | None = None) -> Session:
+    """The session of a script's options (``add_arguments``). A peer that connects only to other PCs and listens on
+    loopback only (``across_pcs``) is said on stderr first, as ``<prog>: ...`` (default: ``program_name()``). Only a
+    notice: the session opens as given."""
     key = prefix.replace("-", "_")
     mode = getattr(args, f"{key}zenoh_mode")
-    if getattr(args, f"{key}config") and mode != "peer":
+    connect, listen, config_file = getattr(args, f"{key}connect"), getattr(args, f"{key}listen"), getattr(
+        args, f"{key}config")
+    if config_file and mode != "peer":
         raise ValueError("give the mode in the Zenoh config file, not --zenoh-mode")
-    return open_session(connect=getattr(args, f"{key}connect"), listen=getattr(args, f"{key}listen"), mode=mode,
-                        config_file=getattr(args, f"{key}config"))
+    say_across_pcs(connect, listen, mode, config_file, prog or program_name(), prefix)
+    return open_session(connect=connect, listen=listen, mode=mode, config_file=config_file)
+
+
+def say_across_pcs(connect: Sequence[str], listen: Sequence[str], mode: str, config_file: str | None, prog: str,
+                   prefix: str = "") -> bool:
+    """The notice of ``across_pcs`` on stderr, one line, when it applies. True when said."""
+    endpoints = across_pcs(connect, listen, mode, config_file)
+    if endpoints:
+        print(f"{prog}: {across_pcs_text(endpoints, prefix)}", file=sys.stderr, flush=True)
+    return bool(endpoints)
+
+
+def why_nothing(session) -> str:
+    """Why a session that found nothing may have found nothing: it is a peer that connects only to other PCs
+    (``across_pcs``, kept by ``open_session``), or it reached no router and no other session (``alone``). Empty when
+    neither holds."""
+    endpoints = getattr(session, "across_pcs", ())
+    return f"this session is {across_pcs_text(endpoints)}" if endpoints else alone(session)
 
 
 def alone(session) -> str:
@@ -324,12 +444,14 @@ def close(session, timeout: float = CLOSE_TIMEOUT_S) -> bool:
 class Session:
     """A zenoh.Session (``open_session``, ``open_from_args``) whose close, also at the end of a ``with`` block, waits
     at most CLOSE_TIMEOUT_S (``close``). Everything else is the session's own: attributes go to it, and
-    ``isinstance(s, zenoh.Session)`` holds (zenoh.Session cannot be subclassed)."""
+    ``isinstance(s, zenoh.Session)`` holds (zenoh.Session cannot be subclassed). ``across_pcs``: the endpoints of
+    ``across_pcs`` for its options, or none."""
 
-    __slots__ = ("_session",)
+    __slots__ = ("_session", "across_pcs")
 
-    def __init__(self, session: zenoh.Session):
+    def __init__(self, session: zenoh.Session, across_pcs: Sequence[str] = ()):
         object.__setattr__(self, "_session", session)
+        object.__setattr__(self, "across_pcs", list(across_pcs))
 
     def __getattr__(self, name):
         return getattr(self._session, name)

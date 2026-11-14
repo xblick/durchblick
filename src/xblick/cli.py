@@ -1,7 +1,8 @@
 """``xblick`` command line: look at what is published, measure a stream, save a frame, publish a test pattern.
 
     xblick router                                 # the Zenoh router every PC needs, instead of zenohd (router.py)
-    xblick list --connect 192.0.2.10              # topics seen within 2 s, with rate, size and type
+    xblick list                                   # the streams found within 2 s (--traffic: every topic)
+    xblick list --connect 192.0.2.10 --zenoh-mode client  # ... of another PC, from a PC without a router
     xblick hz test/camera/color --connect …  # frame rate, latency from capture, dropped frames (or clouds)
     xblick snapshot test/camera/color out.png --connect …
     xblick test-camera                            # a moving test pattern as test/camera/color
@@ -48,14 +49,14 @@ from .points import PointCloudSubscriber
 def _list(args) -> int:
     if not args.traffic:
         return _list_streams(args)
-    with zsession.open_from_args(args) as z:
+    with zsession.open_from_args(args, prog=f"xblick {args.command}") as z:
         meter = survey.TrafficMeter(z, args.prefix.rstrip("/") + "/**" if args.prefix else "**")
         time.sleep(args.seconds)
         meter.close()
         traffic = meter.snapshot()
-        alone = zsession.alone(z)
+        why = zsession.why_nothing(z)
     if not traffic:
-        print(f"nothing received within {args.seconds:g} s" + (f"; {alone}" if alone else ""), file=sys.stderr)
+        print(f"nothing received within {args.seconds:g} s" + (f"; {why}" if why else ""), file=sys.stderr)
         return 1
     for key in sorted(traffic):
         t = traffic[key]
@@ -64,11 +65,11 @@ def _list(args) -> int:
 
 
 def _list_streams(args) -> int:
-    with zsession.open_from_args(args) as z:
+    with zsession.open_from_args(args, prog=f"xblick {args.command}") as z:
         found = find_streams(z, args.prefix, args.seconds)
-        alone = zsession.alone(z)
+        why = zsession.why_nothing(z)
     if not found:
-        print(f"no stream answered within {args.seconds:g} s" + (f"; {alone}" if alone else ""), file=sys.stderr)
+        print(f"no stream answered within {args.seconds:g} s" + (f"; {why}" if why else ""), file=sys.stderr)
         return 1
     for base, r in found:
         if r.get("kind") == "image":
@@ -90,7 +91,7 @@ def _is_cloud(z, base: str) -> bool:
 
 
 def _hz(args) -> int:
-    with zsession.open_from_args(args) as z:
+    with zsession.open_from_args(args, prog=f"xblick {args.command}") as z:
         if _is_cloud(z, args.stream):
             subscriber = PointCloudSubscriber(z, args.stream, transport=args.transport)
         else:
@@ -132,7 +133,7 @@ def _hz(args) -> int:
 def _snapshot(args) -> int:
     from PIL import Image as PILImage
 
-    with zsession.open_from_args(args) as z:
+    with zsession.open_from_args(args, prog=f"xblick {args.command}") as z:
         subscriber = ImageSubscriber(z, args.stream, transport=args.transport)
         frame = subscriber.latest(timeout=args.timeout)
         subscriber.close()
@@ -178,7 +179,7 @@ def _test_camera(args) -> int:
     w, h = args.size
     f = 0.5 * h / np.tan(np.radians(args.vfov) / 2)
     info = CameraInfo.pinhole(w, h, f, f, (w - 1) / 2, (h - 1) / 2, frame_id=args.frame_id)
-    with zsession.open_from_args(args) as z:
+    with zsession.open_from_args(args, prog=f"xblick {args.command}") as z:
         _say_if_alone(z, "xblick test-camera")
         publisher = CameraPublisher(z, base, encoding="rgb8", frame_id=args.frame_id, camera_info=info,
                                     source="test")
@@ -212,7 +213,7 @@ def _cam(args, parser) -> int:
         namespace, _, name = camera.rpartition("/")
     except (ImportError, VideoError, cam.CamError) as error:
         raise SystemExit(f"xblick cam: {error}") from None
-    with zsession.open_from_args(args) as z:
+    with zsession.open_from_args(args, prog=f"xblick {args.command}") as z:
         _say_if_alone(z, "xblick cam")
         params = Parameters(z, name, namespace)
         try:
@@ -252,7 +253,7 @@ def _diagnostics(args) -> int:
                 line += "".join(f"\n    {kv.key}: {kv.value}" for kv in status.values)
             lines.append(line)
 
-    with zsession.open_from_args(args) as z:
+    with zsession.open_from_args(args, prog=f"xblick {args.command}") as z:
         subscriber = z.declare_subscriber(key, on_sample)
         start = time.monotonic()
         try:
@@ -283,12 +284,13 @@ def _bridged(found: list[tuple[str, dict]]) -> dict[str, list[str]]:
 
 def _rerun(args) -> int:
     rr = rerun_bridge.import_rerun()
-    with zsession.open_from_args(args) as z:
+    with zsession.open_from_args(args, prog=f"xblick {args.command}") as z:
         discover = not (args.streams or args.points)
         if discover:
             found = _bridged(find_streams(z, args.prefix, args.seconds))
             if not found["bases"] + found["clouds"]:
-                print(f"no stream answered within {args.seconds:g} s", file=sys.stderr)
+                why = zsession.why_nothing(z)
+                print(f"no stream answered within {args.seconds:g} s" + (f"; {why}" if why else ""), file=sys.stderr)
                 return 1
         else:
             found = {"bases": args.streams, "clouds": args.points or [], "detections": [], "segmentations": []}
@@ -339,7 +341,7 @@ def _rerun(args) -> int:
 
 def _record(args) -> int:
     recording.import_mcap()  # at once, not at the first record command
-    with zsession.open_from_args(args) as z:
+    with zsession.open_from_args(args, prog=f"xblick {args.command}") as z:
         recorder = recording.Recorder(z, expand_path(args.dir), name=args.name, namespace=args.namespace,
                                       prefix=args.prefix, points=args.points, split=args.split_minutes * 60.0,
                                       compression=args.compression)
@@ -371,7 +373,7 @@ def _report(s: dict, prog: str):
 
 
 def _recorder(args) -> int:
-    with zsession.open_from_args(args) as z:
+    with zsession.open_from_args(args, prog=f"xblick {args.command}") as z:
         if args.command_ == "status":
             result = recording.query_status(z, args.name)
         else:
@@ -400,7 +402,7 @@ def _play(args) -> int:
     # relative file as relative to the node's directory (files given over Zenoh)
     files = [expand_path(f).absolute() for f in args.files]
     directory = expand_path(args.dir) if args.dir else files[0].resolve().parent
-    with zsession.open_from_args(args) as z:
+    with zsession.open_from_args(args, prog=f"xblick {args.command}") as z:
         recorder = recording.Recorder(z, directory, name=args.name, prog="xblick play")
         try:
             try:
@@ -469,7 +471,7 @@ def _param(args) -> int:
     from . import parameters
     from .msg import ParameterType
 
-    with zsession.open_from_args(args) as z:
+    with zsession.open_from_args(args, prog=f"xblick {args.command}") as z:
         if args.nodes:
             found = parameters.find_nodes(z, args.timeout)
             if not found:
@@ -804,7 +806,7 @@ def build_parser(prog: str = "xblick") -> argparse.ArgumentParser:
 
 
 def _view(args) -> int:
-    session = zsession.open_from_args(args)
+    session = zsession.open_from_args(args, prog=f"xblick {args.command}")
     try:
         player = "browser" if args.browser else "none" if args.no_player else "vlc"
         return view.run(session, args.streams, args.http, player, seconds=args.seconds)

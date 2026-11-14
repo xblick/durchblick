@@ -15,14 +15,15 @@ every 5 s, so a node that starts later appears too. It starts a viewer on this m
 ## Common calls
 
 ```bash
-xblick rerun --connect sim-host                        # everything from another host
+xblick rerun --connect sim-host --zenoh-mode client    # everything from another host
 xblick rerun --prefix test/camera               # the streams and results of one camera
-xblick rerun --serve --connect sim-host                # a viewer connects with: rerun --connect <printed URL>
-xblick rerun --connect-viewer rerun+http://laptop:9876/proxy --connect sim-host  # to a running viewer
-xblick rerun test/camera/color --save head.rrd --connect sim-host         # write a recording file
+xblick rerun --serve                                   # a viewer connects with: rerun --connect <printed URL>
+xblick rerun --connect-viewer rerun+http://laptop:9876/proxy  # to a running viewer
+xblick rerun test/camera/color --save head.rrd         # write a recording file
 ```
 
-Put the streams before `--connect`, because `--connect` accepts several endpoints. The
+Put the streams before `--connect`, because `--connect` accepts several endpoints. On a PC without a router of its
+own, connect to another host as a client, as in the first line. The
 [command line reference](../reference/cli.md#xblick-rerun-streams-) lists all options.
 
 ## What it draws

@@ -9,6 +9,7 @@
 // --params: a node's parameters (parameters.hpp, ParameterClient): with --set that change first (a line with its
 // result), then a line per parameter (name, type, value, read_only, additional_constraints).
 // --points: a point cloud stream (points.hpp); a line per cloud with its fields instead of the encoding.
+// --connect, --listen, --zenoh-mode peer|client: the Zenoh session (SessionOptions); none of them: the PC's router.
 #include <chrono>
 #include <csignal>
 #include <map>
@@ -132,7 +133,8 @@ int main(int argc, char** argv)
     tools::Args args(argc, argv);
     try
     {
-        zenoh::Session session = open_session({.connect = args.list("connect"), .listen = args.list("listen")});
+        zenoh::Session session = open_session({.connect = args.list("connect"), .listen = args.list("listen"),
+                                                   .mode = args.get("zenoh-mode", "peer"), .program = "xblick-cpp-probe"});
         const std::string name = args.get("transport", "auto");
         const std::map<std::string, Transport> transports = {{"auto", Transport::Auto}, {"raw", Transport::Raw},
                                                              {"compressed", Transport::Compressed},

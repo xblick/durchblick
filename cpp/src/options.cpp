@@ -478,6 +478,7 @@ namespace xblick
         s.listen = list("listen");
         s.mode = text("zenoh-mode");
         s.config_file = text("zenoh-config");
+        s.program = program_;
         return s;
     }
 

@@ -1,10 +1,18 @@
 #include "xblick/camera.hpp"
 
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <unistd.h>
+
 #include <algorithm>
 #include <atomic>
+#include <cctype>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <optional>
 #include <set>
 #include <regex>
 #include <thread>
@@ -34,6 +42,89 @@ namespace xblick
                 out += (i ? "," : "") + json::quote(items[i]);
             }
             return out + "]";
+        }
+
+        // The host of an endpoint (after endpoint()), IPv6 without brackets; none for a locator without a host
+        // (unixsock-stream/<path>, serial/...), as Python's session.host_of.
+        std::optional<std::string> host_of(const std::string& locator)
+        {
+            const std::string e = endpoint(locator, p::kDefaultPort);
+            const std::size_t slash = e.find('/');
+            const std::string protocol = e.substr(0, slash);
+            if (slash == std::string::npos or
+                (protocol != "tcp" and protocol != "udp" and protocol != "tls" and protocol != "quic" and protocol != "ws"))
+            {
+                return std::nullopt;
+            }
+            std::string rest = e.substr(slash + 1);
+            rest = rest.substr(0, rest.find('#'));
+            if (not rest.empty() and rest.front() == '[')
+            {
+                return rest.substr(1, rest.find(']') - 1);
+            }
+            const std::size_t colon = rest.find(':');
+            if (colon != std::string::npos and rest.find(':', colon + 1) == std::string::npos)
+            {
+                return rest.substr(0, colon);
+            }
+            return rest;  // no port, or an IPv6 address without brackets
+        }
+
+        bool named_loopback(std::string host)
+        {
+            std::transform(host.begin(), host.end(), host.begin(), [](unsigned char c) { return std::tolower(c); });
+            const std::string suffix = ".localhost";
+            return host == "localhost" or
+                   (host.size() > suffix.size() and host.compare(host.size() - suffix.size(), suffix.size(), suffix) == 0);
+        }
+
+        // Each address `host` resolves to (none when it does not resolve), with whether it is a loopback address and
+        // whether it is the unspecified one.
+        struct Address
+        {
+            sockaddr_storage address{};
+            socklen_t length = 0;
+            bool loopback = false;
+            bool unspecified = false;
+        };
+
+        std::vector<Address> addresses(const std::string& host)
+        {
+            addrinfo hints{};
+            hints.ai_family = AF_UNSPEC;
+            hints.ai_socktype = SOCK_STREAM;
+            addrinfo* found = nullptr;
+            if (getaddrinfo(host.c_str(), nullptr, &hints, &found) != 0)
+            {
+                return {};
+            }
+            std::vector<Address> out;
+            for (addrinfo* a = found; a != nullptr; a = a->ai_next)
+            {
+                Address address;
+                std::memcpy(&address.address, a->ai_addr, a->ai_addrlen);
+                address.length = a->ai_addrlen;
+                if (a->ai_family == AF_INET)
+                {
+                    const std::uint32_t ip = ntohl(reinterpret_cast<const sockaddr_in*>(a->ai_addr)->sin_addr.s_addr);
+                    address.loopback = (ip >> 24) == 127;
+                    address.unspecified = ip == 0;
+                }
+                else if (a->ai_family == AF_INET6)
+                {
+                    const in6_addr& ip = reinterpret_cast<const sockaddr_in6*>(a->ai_addr)->sin6_addr;
+                    address.loopback = IN6_IS_ADDR_LOOPBACK(&ip) or
+                                       (IN6_IS_ADDR_V4MAPPED(&ip) and ip.s6_addr[12] == 127);
+                    address.unspecified = IN6_IS_ADDR_UNSPECIFIED(&ip);
+                }
+                else
+                {
+                    continue;
+                }
+                out.push_back(address);
+            }
+            freeaddrinfo(found);
+            return out;
         }
     }  // namespace
 
@@ -85,6 +176,15 @@ namespace xblick
         {
             throw std::invalid_argument("client mode needs an endpoint to connect to (a router or a peer)");
         }
+        if (not o.program.empty())
+        {
+            const std::vector<std::string> across = across_pcs(o);
+            if (not across.empty())
+            {
+                std::fprintf(stderr, "%s: %s\n", o.program.c_str(), across_pcs_text(across).c_str());
+                std::fflush(stderr);
+            }
+        }
         auto endpoints = [](const std::vector<std::string>& hosts) {
             std::vector<std::string> out;
             for (const auto& h : hosts)
@@ -102,6 +202,83 @@ namespace xblick
             config.insert_json5("listen/endpoints", endpoints(listen));
         }
         return zenoh::Session::open(std::move(config));
+    }
+
+    bool this_pc(const std::string& host)
+    {
+        if (named_loopback(host))
+        {
+            return true;
+        }
+        for (const Address& a : addresses(host))
+        {
+            if (a.loopback or a.unspecified)
+            {
+                return true;
+            }
+            const int s = ::socket(a.address.ss_family, SOCK_STREAM, 0);
+            if (s < 0)
+            {
+                continue;
+            }
+            const bool bound = ::bind(s, reinterpret_cast<const sockaddr*>(&a.address), a.length) == 0;  // port 0
+            ::close(s);
+            if (bound)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool loopback(const std::string& host)
+    {
+        if (named_loopback(host))
+        {
+            return true;
+        }
+        const std::vector<Address> found = addresses(host);
+        return not found.empty() and std::all_of(found.begin(), found.end(), [](const Address& a) { return a.loopback; });
+    }
+
+    std::vector<std::string> across_pcs(const SessionOptions& o)
+    {
+        if (not o.config_file.empty() or o.mode != "peer" or o.connect.empty())
+        {
+            return {};
+        }
+        std::vector<std::string> endpoints;
+        for (const std::string& c : o.connect)
+        {
+            const std::optional<std::string> host = host_of(c);
+            if (not host or this_pc(*host))
+            {
+                return {};
+            }
+            endpoints.push_back(endpoint(c, p::kDefaultPort));
+        }
+        for (const std::string& l : o.listen)
+        {
+            const std::optional<std::string> host = host_of(l);
+            if (host and not loopback(*host))
+            {
+                return {};
+            }
+        }
+        return endpoints;
+    }
+
+    std::string across_pcs_text(const std::vector<std::string>& endpoints)
+    {
+        std::string given;
+        for (const std::string& e : endpoints)
+        {
+            given += (given.empty() ? "" : " ") + e;
+        }
+        return "connecting as a peer to another PC (" + given + "): programs there usually cannot reach this one, "
+               "which listens on loopback only. Use --zenoh-mode client, or start a router on this PC with: xblick "
+               "router --connect " + given + ", and this program without --connect, or make this program reachable from there "
+               "with --listen tcp/0.0.0.0:0 (any program on the network can then connect to it)";
     }
 
     std::string check_name(const std::string& path)

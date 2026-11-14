@@ -47,10 +47,12 @@ The start lines give, once per stream, the command that opens it in VLC by hand,
 ```bash
 xblick view test/camera/color                                 # VLC
 xblick view test/camera/color test/camera/depth --browser     # both streams side by side in the browser
-xblick view cam/video0/color --connect 192.0.2.10             # a stream of another PC
+xblick view cam/video0/color --connect tcp/192.0.2.10:7447 --zenoh-mode client   # a stream of another PC
 ```
 
-Put the streams before `--connect`, because `--connect` accepts several endpoints.
+Put the streams before `--connect`, because `--connect` accepts several endpoints. To watch the streams of another PC
+from a PC without a router, connect as a client. The router of the other PC then relays the frames. As a peer, the
+command would listen on loopback only, and the programs there could not reach it. It says so at the start.
 
 **VLC** is the program `vlc` on `PATH`. Install it yourself, for example with `sudo apt install vlc`. It starts with
 `--network-caching=100`, a cache of 100 ms: little delay and a few frames of buffer. With several streams, VLC opens

@@ -4,7 +4,7 @@
 //                     [--output <camera>/points] [--cuda-device 0] [--max-offset-ms 10] [--remote compressed|raw]
 //                     [--max-depth M] [--max-hz HZ] [--source robot] [--connect host[:port] ...]
 //                     [--range-step 0.001] [--jpeg-quality 95]   (cloud/compressed, for readers on other hosts)
-//                     [--listen host:port ...]
+//                     [--listen host:port ...] [--zenoh-mode peer|client]
 //
 // --max-hz: at most so many clouds a second, of the newest depth frames; the frames between are not decoded; 0 or
 // none: every frame it can take (the default).
@@ -61,7 +61,8 @@ int main(int argc, char** argv)
         {
             throw std::invalid_argument("--depth <base of the depth stream> is needed");
         }
-        zenoh::Session session = open_session({.connect = args.list("connect"), .listen = args.list("listen")});
+        zenoh::Session session = open_session({.connect = args.list("connect"), .listen = args.list("listen"),
+                                                   .mode = args.get("zenoh-mode", "peer"), .program = "xblick-points"});
         PointCloudNode node(session, options);
         std::cerr << "xblick-points: " << options.depth << (options.color.empty() ? "" : " + " + options.color)
                   << " -> " << node.output() << " on CUDA device " << options.cuda_device << ", "

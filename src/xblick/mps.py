@@ -167,6 +167,7 @@ def serve(pipe_dir: str, log_dir: str | None = None, name: str | None = None, co
     name = name or default_name()
     token_key(name)  # a wrong name ends it here, before the daemon
     config = zsession.make_config(connect, listen, mode, config_file=config_file)
+    zsession.say_across_pcs(connect, listen, mode, config_file, "xblick mps")
     pipe = Path(pipe_dir).resolve()
     log = Path(log_dir).resolve() if log_dir else pipe / "log"
     longest = len(str(pipe / LONGEST_SOCKET))
@@ -201,7 +202,7 @@ def serve(pipe_dir: str, log_dir: str | None = None, name: str | None = None, co
                   "cuda_visible_devices": os.environ.get("CUDA_VISIBLE_DEVICES"), "xblick": _core.__version__,
                   **({"gpus": gpus} if gpus_error is None else {"gpus_error": gpus_error})}
         try:
-            session = zsession.Session(zenoh.open(config))
+            session = zsession.Session(zenoh.open(config), zsession.across_pcs(connect, listen, mode, config_file))
             announcement = Announcement(session, name, record, env)
         except zenoh.ZError as error:  # no clients yet: the daemon goes too
             print(f"xblick mps: no Zenoh session ({error}): stopping the daemon", file=sys.stderr, flush=True)

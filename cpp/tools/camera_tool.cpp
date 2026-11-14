@@ -22,6 +22,7 @@
 // --jpeg-frames: like an MJPEG camera, every frame also exists as a JPEG (written here, with the comment segment
 // "xblick-test-jpeg <seq>" so that a subscriber can tell these bytes from a JPEG the publisher wrote); it is
 // decoded (here: the pattern itself) only if somebody takes the pixels.
+// --connect, --listen, --zenoh-mode peer|client: the Zenoh session (SessionOptions); none of them: the PC's router.
 #include <atomic>
 #include <chrono>
 #include <optional>
@@ -46,7 +47,8 @@ int main(int argc, char** argv)
     std::signal(SIGTERM, [](int) { stop = 1; });
     try
     {
-        zenoh::Session session = open_session({.connect = args.list("connect"), .listen = args.list("listen")});
+        zenoh::Session session = open_session({.connect = args.list("connect"), .listen = args.list("listen"),
+                                                   .mode = args.get("zenoh-mode", "peer"), .program = "xblick-cpp-camera"});
         const std::string encoding = args.get("encoding", "rgb8");
         const auto size = args.list("size");
         const std::uint32_t width = size.size() == 2 ? std::stoul(size[0]) : 640;

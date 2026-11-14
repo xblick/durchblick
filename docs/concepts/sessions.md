@@ -49,15 +49,30 @@ xblick router --connect tcp/<other-pc>:7447
 zenohd --no-multicast-scouting -l tcp/0.0.0.0:7447 -e tcp/<other-pc>:7447   # or this
 ```
 
-Between PCs the data travels from router to router. A program on another host reaches the programs of a PC through
-`--connect <pc>`, which means port 7447 of that PC.
+Between PCs the data travels from router to router. A program on a host without a router reaches the programs of a PC
+through `--connect <pc> --zenoh-mode client`. `<pc>` means port 7447 of that PC.
+
+## Which mode when
+
+| Setup | Options | What follows |
+| --- | --- | --- |
+| a router on every PC, programs as peers | none on the programs. On one PC of each pair: `xblick router --connect tcp/<other PC>:7447` | the standard. On one PC the frames travel through rings. Between PCs they travel from router to router. |
+| a visiting program, for example a viewer on a laptop | `--connect tcp/<other PC>:7447 --zenoh-mode client` | The router of the other PC relays everything for it. Nothing changes on that PC. |
+| a peer on a PC without a router of its own | `--connect tcp/<other PC>:7447 --listen tcp/0.0.0.0:0` | Only on purpose. The peers there learn its address through their router and connect to it. Every program on that network can connect to it, and Zenoh in this setup has no access control. |
+| two programs without any router, for example in a test | `--listen tcp/127.0.0.1:<port>` on one, `--connect tcp/127.0.0.1:<port>` on the other | They connect directly. |
+
+A peer that connects only to another PC and listens on loopback only usually finds nothing. The programs of that
+PC learn its loopback address and cannot connect to it. Every `xblick` command and every node says so in one line at
+the start, with the three ways out from the table. The rule uses the options alone. It does not know whether the
+programs of the other PC listen on network addresses, in which case the connection works. The terminal interface
+refuses a peer that only connects.
 
 ## Other ways to connect
 
 | You want | Use |
 | --- | --- |
 | the router of this PC | no option |
-| the router of another PC | `--connect <host>` |
+| the router of another PC | `--connect <host> --zenoh-mode client` |
 | two programs without a router, for example in a test | explicit endpoints: `--connect` on one side and `--listen` on the other |
 | full control | a Zenoh JSON5 file with `--config` (Python: `config_file`). It replaces all other options. |
 
@@ -93,7 +108,8 @@ without endpoints (since 0.5.3; before, such a session did not listen and found 
 
 - A peer that connects to the router of another PC cannot reach that PC's programs through it, because they cannot
   connect to its loopback port. Connect as a client (`--zenoh-mode client`), or run a router on this PC as well and
-  let the routers connect to each other.
+  let the routers connect to each other. A third way is `--listen` on a network address, which opens the program to
+  the whole network.
 - A session in client mode does not listen; the router relays everything for it.
 
 **A query can stay open after its timeout.** Zenoh ends a query after its timeout in almost all cases. In one CI
@@ -122,3 +138,7 @@ close its session in a separate thread with a deadline.
 ## Status and limits
 
 - Routers between two real PCs are not tested yet.
+- A peer with `--listen tcp/0.0.0.0:0` that connects only to another PC is tested on one PC only. There a peer that
+  listened on loopback only opened a link to the network address of the other peer, which it learned through the
+  router. `--listen tcp/0.0.0.0:0` announces the addresses of the PC's network interfaces, not 0.0.0.0. Two real PCs
+  were not tested.

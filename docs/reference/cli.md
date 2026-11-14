@@ -19,6 +19,18 @@ Every command accepts the same options for its Zenoh session.
 A router does not relay between peers: peers reach each other directly, so a peer always listens (on a free
 loopback port unless `--listen` says otherwise). A program on another PC that only connects to a router therefore
 uses `--zenoh-mode client`.
+
+| Setup | Options |
+| --- | --- |
+| a router on every PC (the standard) | none. The routers connect with `xblick router --connect tcp/<other PC>:7447`. |
+| a visiting program, for example a viewer on a laptop | `--connect tcp/<other PC>:7447 --zenoh-mode client` |
+| a peer on a PC without a router, on purpose | `--connect tcp/<other PC>:7447 --listen tcp/0.0.0.0:0`. Every program on the network can then connect to it. |
+| two programs without a router | `--listen tcp/127.0.0.1:<port>` on one, `--connect tcp/127.0.0.1:<port>` on the other |
+
+A peer that connects only to other PCs and listens on loopback only prints one line at the start: the programs there
+usually cannot reach it. The line names the three ways out with the given endpoints. The messages for an empty
+result (`no stream answered`, `nothing received`, `no publisher answers`) then name the same cause. The C++ programs
+`xblick-cpp-camera`, `xblick-cpp-probe` and `xblick-points` print the same line and accept `--zenoh-mode`.
 [Sessions and routers](../concepts/sessions.md) explains the background.
 
 ## Router
