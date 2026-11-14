@@ -693,3 +693,52 @@ def test_passthrough_refuses_a_camera_without_mjpeg(sessions):  # noqa: F811
     with pytest.raises(cam.CamError, match="--mjpeg passthrough: the camera delivers 320x240 rgb24 at 30 frames/s "
                                            r"\(rgb8\), not MJPEG"):
         cam.LiveCamera(a, source(), fmt="lavfi", mjpeg="passthrough").run()
+
+
+def run_for(argv, seconds, until):
+    """A command as a program for at most ``seconds``, ended by SIGTERM once a line contains ``until``: its output."""
+    process = subprocess.Popen([sys.executable, "-m", "xblick.cli", *argv], stdout=subprocess.PIPE,
+                               stderr=subprocess.STDOUT, text=True)
+    lines, end = [], time.monotonic() + seconds
+    try:
+        while time.monotonic() < end:
+            line = process.stdout.readline()
+            if not line:
+                break
+            lines.append(line.rstrip("\n"))
+            if until in line:
+                break
+    finally:
+        process.send_signal(signal.SIGTERM)
+        rest, _ = process.communicate(timeout=10)
+    return lines + rest.splitlines(), process.returncode
+
+
+@pytest.mark.parametrize("argv, stream, camera", [
+    (["cam", "testsrc=size=64x48:rate=30,realtime", "--format", "lavfi"], "cam/camera/color", "cam/camera"),
+    (["test-camera"], "test/camera/color", "test/camera"),
+])
+def test_the_stream_and_the_camera_for_a_node_are_printed(argv, stream, camera):
+    """Both publishers say on lines of their own what they publish and what a node takes (nodes take the camera
+    explicitly); a session that reached no router and no other session gets a hint once at the start."""
+    lines, code = run_for([*argv, "--listen", f"tcp/127.0.0.1:{free_port()}"], 30, "for a node:")
+    prog = "xblick " + argv[0]
+    assert code == 0, lines
+    assert f"{prog}: publishing {stream}" in lines and f"{prog}: for a node: --camera {camera}" in lines, lines
+    hints = [line for line in lines if "nobody can receive this stream yet" in line]
+    assert len(hints) == 1 and hints[0].startswith(f"{prog}: ") and "start zenohd" in hints[0], lines
+
+
+def test_no_hint_when_the_session_reaches_another(sessions):  # noqa: F811
+    """A session that reached a router or another session gets no hint (the router of test_tui)."""
+    from test_tui import open_router
+
+    port = free_port()
+    router = open_router(port)
+    try:
+        lines, code = run_for(["test-camera", "--connect", f"tcp/127.0.0.1:{port}", "--listen", "tcp/127.0.0.1:0"],
+                              30, "for a node:")
+    finally:
+        router.close()
+    assert code == 0 and "xblick test-camera: publishing test/camera/color" in lines, lines
+    assert not any("nobody can receive" in line for line in lines), lines

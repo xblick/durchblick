@@ -325,6 +325,9 @@ class LiveCamera:
         jpeg = "; JPEG: the camera's own" if self.passthrough else ""
         print(f"{self.prog}: {self.source} -> {self.base}: {self.delivered.text()}, published as {encoding}{jpeg}; "
               f"{said}", flush=True)
+        # on lines of their own: what a node is started with (nodes take the camera explicitly)
+        print(f"{self.prog}: publishing {self.base}", flush=True)
+        print(f"{self.prog}: for a node: --camera {self.camera}", flush=True)
         self._ready.set()
 
     # ------------------------------------------------------------------------------------------ the main thread

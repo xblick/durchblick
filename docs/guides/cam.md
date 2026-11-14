@@ -14,7 +14,17 @@ pip install "xblick[cam]"
 xblick cam /dev/video0        # untested: no V4L2 device was at hand
 ```
 
-The webcam is now the stream `cam/video0/color`. Start any node on the camera `cam/video0`.
+The webcam is now the stream `cam/video0/color`. Once the first frame is in, the command prints the stream and the
+camera that a node takes, each on a line of its own:
+
+```
+xblick cam: publishing cam/video0/color
+xblick cam: for a node: --camera cam/video0
+```
+
+Start any node with that `--camera`. Nodes take the camera explicitly. When the session reached no Zenoh router
+and no other session, the command prints a hint once at the start: `nobody can receive this stream yet`, and how
+to start the router. It publishes anyway.
 
 ```bash
 # an IP camera, asked for 1280 x 720 at 25 frames per second, as door/camera/color (untested: no IP camera)

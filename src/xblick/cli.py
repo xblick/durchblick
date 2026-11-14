@@ -163,15 +163,26 @@ def test_pattern(width: int, height: int, t: float) -> np.ndarray:
     return image
 
 
+def _say_if_alone(z, prog: str):
+    """A publisher's hint at its start when its session reached no router and no other session: then nobody receives
+    its stream (a first-time user without zenohd). Only a hint: the program goes on as it is."""
+    alone = zsession.alone(z)
+    if alone:
+        print(f"{prog}: nobody can receive this stream yet: {alone}", flush=True)
+
+
 def _test_camera(args) -> int:
     base = topics.stream_base(args.namespace, args.camera, args.stream)
     w, h = args.size
     f = 0.5 * h / np.tan(np.radians(args.vfov) / 2)
     info = CameraInfo.pinhole(w, h, f, f, (w - 1) / 2, (h - 1) / 2, frame_id=args.frame_id)
     with zsession.open_from_args(args) as z:
+        _say_if_alone(z, "xblick test-camera")
         publisher = CameraPublisher(z, base, encoding="rgb8", frame_id=args.frame_id, camera_info=info,
                                     source="test")
-        print(f"publishing {w}x{h} rgb8 at {args.fps:g} Hz on {base} (Ctrl-C to stop)", flush=True)
+        print(f"xblick test-camera: {w}x{h} rgb8 at {args.fps:g} Hz (Ctrl-C to stop)", flush=True)
+        print(f"xblick test-camera: publishing {base}", flush=True)
+        print(f"xblick test-camera: for a node: --camera {base.rpartition('/')[0]}", flush=True)
         period, start = 1.0 / args.fps, time.monotonic()
         try:
             while True:
@@ -200,6 +211,7 @@ def _cam(args, parser) -> int:
     except (ImportError, VideoError, cam.CamError) as error:
         raise SystemExit(f"xblick cam: {error}") from None
     with zsession.open_from_args(args) as z:
+        _say_if_alone(z, "xblick cam")
         params = Parameters(z, name, namespace)
         try:
             params.configure(args)

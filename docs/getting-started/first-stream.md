@@ -11,8 +11,10 @@ xblick test-camera
 ```
 
 The command publishes a moving test pattern with 640 x 480 pixels at 15 Hz. The name of the stream is
-`test/camera/color`. The options `--namespace`, `--camera`, `--stream`, `--size` and `--fps` change the name
-and the format. Leave the command running and open a second terminal.
+`test/camera/color`. The command prints it on a line of its own, `xblick test-camera: publishing test/camera/color`,
+and the camera for a node on the next line, `xblick test-camera: for a node: --camera test/camera`. Without a router
+it prints a hint that nobody can receive the stream yet. The options `--namespace`, `--camera`, `--stream`, `--size`
+and `--fps` change the name and the format. Leave the command running and open a second terminal.
 
 ## 2. Look at what is published
 

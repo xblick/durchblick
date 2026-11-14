@@ -20,7 +20,10 @@ or newer. 0.4.0 to 0.4.3 speak the protocol of 0.3.59 to 0.3.68: their programs 
   torque step and the record and play node's commands wait until the session knows the queryable and are never sent
   again. 0.5.1 sent parameter sets again while no reply came, which a node that dropped a set without replying got
   several times. Examples in the documentation and help texts use the test camera's `test/camera` and the device
-  nodes' `cam/rc_visard` and `cam/azurekinect` in place of `robot/camera`.
+  nodes' `cam/rc_visard` and `cam/azurekinect` in place of `robot/camera`. `xblick cam` and `xblick test-camera` print
+  the stream they publish and the camera for a node (`--camera ...`) on lines of their own, and a hint at the start
+  when their session reached no router and no other session. `xblick test-camera`'s first line no longer names the
+  stream; the next one does.
 * **0.5.1** **Changed default:** `xblick test-camera` publishes `test/camera/color`, no longer
   `robot/test_camera/color`. `xblick-cpp-camera` and `xblick-cpp-probe` default to `test/camera/color` and
   `test/camera/points`. A script that subscribes to the old name needs the new one, or the test camera started with
