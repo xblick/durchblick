@@ -88,13 +88,17 @@ cache-keys = [{ file = "pyproject.toml" }, { file = "CMakeLists.txt" }, { file =
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-# a test that hangs (a node that never answers, a query Zenoh never ends, a close that never returns): after 90 s
-# faulthandler dumps every thread's Python stack, after 120 s pytest-timeout dumps them again and ends the run
-# ("thread": it works while the main thread is blocked in a C call, where a signal would wait for the call; the run
-# ends, the tests after it do not run). A test that needs longer: @pytest.mark.timeout(seconds)
-faulthandler_timeout = 90
+# a test that hangs (a node that never answers, a query Zenoh never ends, a close that never returns): after 120 s
+# pytest-timeout dumps every thread's Python stack and ends the run ("thread": it works while the main thread is blocked
+# in a C call, where a signal would wait for the call; the run ends, the tests after it do not run). It needs the GIL:
+# for a hang that holds it, tests/conftest.py's faulthandler watchdog (no GIL) does the same 30 s later, which is why
+# pytest's own faulthandler_timeout is off (one watchdog per process). A test that needs longer:
+# @pytest.mark.timeout(seconds)
+faulthandler_timeout = 0
 timeout = 120
 timeout_method = "thread"
+# a thread's exception is an error of the test it happened in (pytest reports it there): no warning that a pass hides
+filterwarnings = ["error::pytest.PytestUnhandledThreadExceptionWarning"]
 
 [tool.scikit-build]
 minimum-version = "build-system.requires"

@@ -176,6 +176,8 @@ def test_auto(sessions):
     sub2 = PointCloudSubscriber(b, "t/p5/points")
     same(publish_until(remote, cloud(5), sub2).points, cloud(5))
     assert sub2.transport == "raw"
+    for closable in (sub2, sub, remote, pub):
+        closable.close()
 
 
 def test_info_record_and_kinds(sessions):

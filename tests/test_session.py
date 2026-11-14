@@ -61,8 +61,8 @@ class FakeReply:
 
 
 class FakeChannel:
-    """A get's reply channel: these replies, then its end (``ends``) or none for good (blocked, as Zenoh's channel
-    of a query it never finalizes)."""
+    """A get's reply channel: these replies, then its end (``ends``) or none until ``never`` is set (blocked, as
+    Zenoh's channel of a query it never finalizes; the test sets it at its end, so that its reader thread ends)."""
 
     def __init__(self, items, ends=True):
         self.items, self.ends = list(items), ends
@@ -88,9 +88,14 @@ def test_error_replies_are_passed_on():
 def test_replies_return_at_the_deadline_when_zenoh_never_finalizes(caplog):
     session.not_finalized.pop("x/never", None)
     started = time.monotonic()
-    with caplog.at_level("WARNING", logger="xblick"):
-        got = session.collect(FakeChannel(["a"], ends=False), "x/never", timeout=0.2)
-        again = session.collect(FakeChannel([], ends=False), "x/never", timeout=0.2)
+    channels = [FakeChannel(["a"], ends=False), FakeChannel([], ends=False)]
+    try:
+        with caplog.at_level("WARNING", logger="xblick"):
+            got = session.collect(channels[0], "x/never", timeout=0.2)
+            again = session.collect(channels[1], "x/never", timeout=0.2)
+    finally:
+        for channel in channels:
+            channel.never.set()
     elapsed = time.monotonic() - started
     assert got == ["a"] and again == []
     assert 1.3 < elapsed < 1.6  # twice: the timeout and max(0.5, timeout) more
@@ -140,13 +145,18 @@ def test_close_waits_at_most_its_timeout(caplog):
             def zid():
                 return "abc"
 
+        released = threading.Event()  # set at the end of the test: its close thread ends
+
         def close(self):
-            threading.Event().wait()
+            self.released.wait()
 
     started = time.monotonic()
-    with caplog.at_level("WARNING", logger="xblick"):
-        assert session.close(Stuck(), timeout=0.2) is False
-    assert time.monotonic() - started < 1.0 and "did not close within 0.2 s" in caplog.text
+    try:
+        with caplog.at_level("WARNING", logger="xblick"):
+            assert session.close(Stuck(), timeout=0.2) is False
+        assert time.monotonic() - started < 1.0 and "did not close within 0.2 s" in caplog.text
+    finally:
+        Stuck.released.set()
 
 
 def test_open_session_closes_within_its_timeout(monkeypatch, caplog):
@@ -164,16 +174,20 @@ def test_open_session_closes_within_its_timeout(monkeypatch, caplog):
 
     class Blocking:
         info = real.info
+        released = threading.Event()  # set at the end of the test: its close thread ends
 
         def close(self):
-            threading.Event().wait()
+            self.released.wait()
 
     object.__setattr__(stuck, "_session", Blocking())
     started = time.monotonic()
-    with caplog.at_level("WARNING", logger="xblick"):
-        assert session.close(stuck, timeout=0.2) is False
-    assert time.monotonic() - started < 1.0 and "did not close within" in caplog.text
-    real.close()
+    try:
+        with caplog.at_level("WARNING", logger="xblick"):
+            assert session.close(stuck, timeout=0.2) is False
+        assert time.monotonic() - started < 1.0 and "did not close within" in caplog.text
+    finally:
+        Blocking.released.set()
+        real.close()
 
 
 def test_a_command_that_finds_nothing_says_why_in_one_line(capsys):
