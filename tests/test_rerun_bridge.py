@@ -518,7 +518,9 @@ def test_a_nodes_tracks_over_its_image(sessions):  # noqa: F811
     tracks["track_id"], tracks["object_id"], tracks["visible"] = [[1, 2, 3]], [[4, 7, 7]], [[1, 1, 0]]
     publisher.publish(tracks, stamp_ns=5 * 10**9)
     wait_until(lambda: bridge.frames[key] == 1 or bridge._error is not None)
-    wait_until(lambda: key in {e for e, *_ in of(rr, "Transform3D")} or bridge._error is not None)
+    # placed at the camera's origin first, then in the colour camera's frame once tf_static came (slow hosts: later)
+    wait_until(lambda: np.allclose({e: f for e, _, f, _ in of(rr, "Transform3D")}.get(key, {}).get(
+        "translation", [0, 0, 0]), [0.032, 0, 0]) or bridge._error is not None)
     bridge.check()
     assert CAMERA in bridge.cameras and f"{CAMERA}/tapnext" not in bridge.cameras
     (entity, _, points, _), = of(rr, "Points3D")
