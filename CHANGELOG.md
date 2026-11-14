@@ -7,6 +7,19 @@ Within 0.3.x, 0.3.59 changed the rings' keys and the info record's version (3): 
 or newer. 0.4.0 to 0.4.3 speak the protocol of 0.3.59 to 0.3.68: their programs and those of 0.3.68 work together.
 0.5.0 renamed every name on the wire and on disk: programs of 0.5 do not work with programs of 0.3 or 0.4.
 
+* **0.5.5** Nothing on the wire changed: programs of 0.5.5 work with those of 0.5.0 to 0.5.4.
+  **Added:** a fixed place for the files of nodes (issue #11), the same for a checkout and a pip install. The cache
+  (weights, engines, compiled kernels) is `~/.cache/xblick/<node>/`, the data a user made is
+  `~/.local/share/xblick/<node>/`, and `XBLICK_HOME` moves both to `<it>/cache/<node>/` and `<it>/data/<node>/`.
+  `xblick.paths.cache_dir`, `data_dir`, `config_dir` and `check_node_name`, and the same rule in C++
+  (`xblick/paths.hpp` in `xblick::core`). `<node>` is the short name (`yolox`, not `xblick-yolox`).
+  `xblick.weights.Store(prog, node=..., terms=...)` takes the node's cache directory as its root, `Weight` paths
+  relative to the root, `--weights-dir DIR` (from `add_arguments`) with `Store.at`, and `former`: the places where a
+  node kept its weights before. A file there is not used. The node prints once the command that moves it and then
+  goes on as for a missing file. A `Store` with an explicit root works as before. The page
+  [Where files are](docs/reference/files.md) lists the places and variables.
+  **Changed:** the terminal interface's presets file follows the XDG rule: a relative `XDG_CONFIG_HOME` is ignored,
+  and a leading `~` in it is expanded. An absolute or unset `XDG_CONFIG_HOME` gives the same path as before.
 * **0.5.4** Nothing on the wire changed: programs of 0.5.4 work with those of 0.5.0 to 0.5.3.
   **Fixed:** a node ends on SIGINT also as a background job of a script (issue #11). `xblick.node.start` now restores
   Python's SIGINT handler, as the commands did since 0.5.3: a non-interactive shell starts background jobs with SIGINT
