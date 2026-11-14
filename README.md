@@ -25,17 +25,18 @@ This takes about 1 ms for any number of readers.
 
 ## Requirements
 
-Linux on x86-64, Python 3.10 to 3.13, and one Zenoh router (`zenohd` 1.10) per PC. An NVIDIA GPU is needed only for
-frames in GPU memory. C++ programs need CMake and a C++20 compiler.
+Linux on x86-64, Python 3.10 to 3.13, and one Zenoh router per PC (`xblick router`, or `zenohd` 1.10). An NVIDIA GPU
+is needed only for frames in GPU memory. C++ programs need CMake and a C++20 compiler.
 
 ## Install
 
 ```bash
 pip install "xblick[rerun,record]"                      # wheels for Linux x86-64 with glibc 2.28 or newer
-zenohd --no-multicast-scouting -l tcp/0.0.0.0:7447     # the router, once per PC
+xblick router                                           # the router, once per PC (or zenohd, below)
 ```
 
-The router `zenohd` is not part of the pip packages. It comes from
+`xblick router` runs the Zenoh router from the package. A robot's setup may use `zenohd` instead
+(`zenohd --no-multicast-scouting -l tcp/0.0.0.0:7447`), which is not part of the pip packages. It comes from
 [Eclipse Zenoh](https://github.com/eclipse-zenoh/zenoh/releases).
 
 To build from a checkout of this repository, run `pip install "./xblick[rerun,record]"`. The build needs CMake

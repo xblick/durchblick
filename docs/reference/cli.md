@@ -20,6 +20,19 @@ A peer that only connects does not listen, and a router does not route between s
 that only connects to a router therefore uses `--zenoh-mode client`.
 [Sessions and routers](../concepts/sessions.md) explains the background.
 
+## Router
+
+### `xblick router`
+
+Runs a Zenoh router from the Zenoh library in the package, until Ctrl-C or SIGTERM. Every PC needs one router; this
+one replaces `zenohd`. Nothing starts it on its own. It has no plugins (REST, storage) and reads no Zenoh
+configuration file. A port that is taken ends it with one line: a router may run there already.
+
+| Option | Meaning |
+| --- | --- |
+| `--listen ENDPOINT ...` | where it listens. The default is `tcp/0.0.0.0:7447`, where every program looks for the router of its PC. |
+| `--connect ENDPOINT ...` | the routers of other PCs (`zenohd`'s `-e`) |
+
 ## Inspect
 
 ### `xblick list [prefix]`

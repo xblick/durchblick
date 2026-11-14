@@ -35,15 +35,18 @@ This design has three consequences.
 
 ## Start a router
 
-Use `zenohd` 1.10, the Zenoh version of the Python and C++ packages.
-[Install](../getting-started/install.md#the-router) states where `zenohd` comes from.
+Start `xblick router`, the router of the package, or `zenohd` 1.10, the Zenoh version of the Python and C++
+packages. [Install](../getting-started/install.md#the-router) states where `zenohd` comes from and what
+`xblick router` lacks.
 
 ```bash
 # on a single PC
-zenohd --no-multicast-scouting -l tcp/0.0.0.0:7447
+xblick router
+zenohd --no-multicast-scouting -l tcp/0.0.0.0:7447        # or this
 
-# on a PC of a group: add one -e per other PC
-zenohd --no-multicast-scouting -l tcp/0.0.0.0:7447 -e tcp/<other-pc>:7447
+# on a PC of a group: one connection per other PC
+xblick router --connect tcp/<other-pc>:7447
+zenohd --no-multicast-scouting -l tcp/0.0.0.0:7447 -e tcp/<other-pc>:7447   # or this
 ```
 
 Between PCs the data travels from router to router. A program on another host reaches the programs of a PC through

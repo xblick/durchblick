@@ -1,5 +1,6 @@
 """``xblick`` command line: look at what is published, measure a stream, save a frame, publish a test pattern.
 
+    xblick router                                 # the Zenoh router every PC needs, instead of zenohd (router.py)
     xblick list --connect 192.0.2.10              # topics seen within 2 s, with rate, size and type
     xblick hz test/camera/color --connect …  # frame rate, latency from capture, dropped frames (or clouds)
     xblick snapshot test/camera/color out.png --connect …
@@ -35,7 +36,7 @@ from pathlib import Path
 
 import numpy as np
 
-from . import cam, diagnostics, mps, recording, rerun_bridge, survey, topics
+from . import cam, diagnostics, mps, recording, rerun_bridge, router, survey, topics
 from . import session as zsession
 from .camera import CameraPublisher, ImageSubscriber, find_streams, wait_for_info
 from .msg import CameraInfo
@@ -613,6 +614,15 @@ def build_parser(prog: str = "xblick") -> argparse.ArgumentParser:
     Parameters.add_arguments(p)
     zsession.add_arguments(p)
     p.set_defaults(run=lambda a, parser=p: _cam(a, parser))
+
+    p = commands.add_parser("router", help="run a Zenoh router (the one every PC needs) from the Zenoh library inside "
+                                           "the package, instead of zenohd; until Ctrl-C",
+                            description=router.__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("--listen", nargs="+", default=[router.LISTEN], metavar="ENDPOINT",
+                   help=f"where it listens (default {router.LISTEN}, as zenohd in the documentation)")
+    p.add_argument("--connect", nargs="*", default=[], metavar="ENDPOINT",
+                   help="the routers of other PCs to connect to (zenohd's -e), e.g. tcp/other-pc:7447")
+    p.set_defaults(run=lambda a: router.serve(a.listen, a.connect))
 
     p = commands.add_parser("diagnostics", help="how the cameras' publishers are doing (<camera>/diagnostics)")
     p.add_argument("prefix", nargs="?", default="", help="only cameras below this prefix, e.g. test")

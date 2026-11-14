@@ -1,7 +1,8 @@
 # Your first stream
 
 In this tutorial you publish a camera stream, look at it with the command line tools, and read it in Python. You
-need an installed Durchblick and a running router, as [install](install.md) describes. The tutorial takes about
+need an installed Durchblick and a running router, as [install](install.md) describes. The simplest is
+`xblick router` in a terminal of its own. The tutorial takes about
 ten minutes and needs no camera and no GPU.
 
 ## 1. Publish a test camera
