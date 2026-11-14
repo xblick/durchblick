@@ -666,3 +666,32 @@ def test_without_anything_on_this_pc_the_connect_dialog_opens_on_the_address(fak
         assert not isinstance(app.screen, tui.ConnectScreen)
 
     run_app(app, test)
+
+
+def test_the_interface_ends_while_its_session_is_still_opening(monkeypatch, tmp_path):
+    """zenoh.open cannot be interrupted (a client whose endpoint accepts and never answers waits for Zenoh's open
+    timeout): the interface ends at once all the same. The open's thread closes what it opened afterwards and ends."""
+    entered, release, opened = threading.Event(), threading.Event(), []
+
+    def held_open(connection):
+        entered.set()
+        assert release.wait(30.0)
+        opened.append(open_session(local_router=False))
+        return opened[-1]
+
+    monkeypatch.setattr(tui.Connection, "open", held_open)
+    app = tui.XblickApp(tui.Connection(connect=["tcp/127.0.0.1:9"], mode="client"),
+                        tui.Presets(tmp_path / "presets.json"), discover_every=0.5)
+    left = []
+
+    async def test(pilot):
+        await until(pilot, entered.is_set)
+        left.append(time.monotonic())
+
+    run_app(app, test)
+    assert time.monotonic() - left[0] < 3.0, "the interface waited for the open"
+    opener = [t for t in threading.enumerate() if t.name == "xblick open"]
+    assert len(opener) == 1 and not opener[0].daemon
+    release.set()
+    opener[0].join(10.0)
+    assert not opener[0].is_alive() and opened[0].is_closed()

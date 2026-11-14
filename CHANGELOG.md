@@ -22,6 +22,10 @@ or newer. 0.4.0 to 0.4.3 speak the protocol of 0.3.59 to 0.3.68: their programs 
   exit code 1. The line names the endpoints and says that a client needs its router there. Other errors at the
   start of a session, such as a taken `--listen` port, give Zenoh's text in one line. `session.open_session` raises
   `session.OpenError`, a `zenoh.ZError`.
+  **Fixed:** the terminal interface could not end while its session was still opening, because it waited for
+  `zenoh.open`, which cannot be interrupted. On CI such an open did not return for more than 90 s. The interface
+  now ends at once and gives the terminal back. The process ends when the open returns, and the thread that opened
+  the session closes it. `sessions.md` states that a program in client mode needs its router at the start.
   **Changed:** the documentation uses Zenoh's terms. A router routes data. "Relay" names only our program.
   `sessions.md` introduces gossip scouting, the peer-to-peer region below a router, the clique and the gateway.
   `--connect` takes a Zenoh endpoint, and `--key` of `xblick play` and `xblick recorder` takes a key expression

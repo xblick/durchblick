@@ -40,6 +40,7 @@ import zenoh
 from rich.console import Group
 from rich.pretty import Pretty
 from rich.text import Text
+from textual import events
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import ModalScreen
@@ -544,6 +545,10 @@ class XblickApp(App):
         self.discover_every = discover_every
         self.session: zenoh.Session | None = None
         self.generation = 0  # of the session; results of an older one are dropped
+        # the opening thread hands its result over under this lock; after the end (on_unmount) it closes it itself
+        self._open_lock = threading.Lock()
+        self._unmounted = False
+        self._handed: dict[int, zenoh.Session] = {}  # generation -> a session opened, not yet taken by the loop
         self.discovery = Discovery()
         self.meter: survey.TrafficMeter | None = None  # every topic (m)
         self.detail: survey.TrafficMeter | None = None  # the selected topic
@@ -677,8 +682,11 @@ class XblickApp(App):
         self.generation += 1
         self.error = None
         self._status(f"connecting: {connection.describe()}")
-        self.run_worker(functools.partial(self._open_thread, connection, old, self.generation), thread=True,
-                        group="open", exclusive=True)
+        # A thread of its own, not a Textual worker: the app's end waits for its workers (asyncio's default executor),
+        # and zenoh.open cannot be interrupted, so the interface could not end while a connect is pending. Not a
+        # daemon either: a daemon thread inside Zenoh at the interpreter's exit aborts the process. The process ends
+        # when the open returns; the thread then closes what it opened.
+        threading.Thread(target=self._open_thread, args=(connection, old, self.generation), name="xblick open").start()
 
     def _open_thread(self, connection: Connection, old: zenoh.Session | None, generation: int):
         if old is not None:
@@ -686,9 +694,20 @@ class XblickApp(App):
         try:
             session = connection.open()
         except Exception as error:  # noqa: BLE001 - shown: what Zenoh said, nothing opened
-            self.call_from_thread(self._open_failed, generation, f"{type(error).__name__}: {error}")
+            with self._open_lock:
+                self._call_soon(functools.partial(self._open_failed, generation, f"{type(error).__name__}: {error}"))
             return
-        self.call_from_thread(self._opened, generation, session)
+        with self._open_lock:
+            if self._call_soon(functools.partial(self._opened, generation)):
+                self._handed[generation] = session  # taken by _opened, or closed by on_unmount
+                return
+        zsession.close(session)  # the app has ended
+
+    def _call_soon(self, callback) -> bool:
+        """Has the event loop call ``callback``, without waiting for it (call_from_thread would wait for good if the
+        loop stopped first); False when the app has ended. Under ``_open_lock``: on_unmount, which takes it, comes
+        before the loop stops."""
+        return not self._unmounted and self.post_message(events.Callback(callback))
 
     def _open_failed(self, generation: int, error: str):
         if generation == self.generation:
@@ -710,9 +729,13 @@ class XblickApp(App):
         self._discover_now.set()
         self.query_one("#rerun-found", Static).update(Text("looking...", style="yellow"))
 
-    def _opened(self, generation: int, session: zenoh.Session):
+    def _opened(self, generation: int):
+        with self._open_lock:
+            session = self._handed.pop(generation, None)
+        if session is None:  # closed by on_unmount
+            return
         if generation != self.generation:  # another connection was asked for meanwhile
-            threading.Thread(target=session.close, daemon=True).start()
+            threading.Thread(target=zsession.close, args=(session,), name="xblick close").start()
             return
         self.session = session
         self.discovery = Discovery()
@@ -1412,9 +1435,12 @@ class XblickApp(App):
         for pane in self.query(ParametersPane):  # (gone already when the app ends)
             pane.close()
         self.stop_rerun()
+        with self._open_lock:  # a session still opening is closed by its thread (_open_thread)
+            self._unmounted = True
+            handed, self._handed = list(self._handed.values()), {}
         session = self._close_session()
-        if session is not None:
-            zsession.close(session)
+        for s in ([session] if session is not None else []) + handed:
+            zsession.close(s)
 
 
 def _ms(value: float) -> str:

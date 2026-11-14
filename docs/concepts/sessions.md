@@ -96,11 +96,13 @@ of the server, and it could reach none of them.
 
 ## Order and restarts
 
-Programs and routers start and stop in any order.
+Programs and routers start and stop in any order. A program in client mode is the exception: it needs its router at
+the start.
 
 | Event | Behaviour |
 | --- | --- |
-| A program starts before its router | It waits and connects 0.6 s after the router started. |
+| A program starts before its router | It waits and connects 0.6 s after the router started. Its session opens after 0.5 s and connects in the background. |
+| A program in client mode starts before its router | It ends with one line and exit code 1 ([cli.md](../reference/cli.md)). Zenoh does not retry a client's connect at the start. |
 | A router restarts | The programs find it again within one second. |
 | A router is gone | The programs of one PC keep their direct connections. Data continued for 6 s without a router in our test. |
 | A program restarts | The others find it again within 1.5 s. |

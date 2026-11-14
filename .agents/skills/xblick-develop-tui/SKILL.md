@@ -130,6 +130,9 @@ Branch: <name, commit>
   sets them for child processes.
 - **A thread that calls back after the app ended raises RuntimeError.** Catch it in every `call_from_thread` of a
   worker.
+- **The app's end waits for its thread workers.** A worker inside a call that cannot be interrupted (`zenoh.open`)
+  kept the interface from ending. The session opens in a thread of its own (`_open_thread`) that hands its result
+  over with `post_message`; never a daemon thread inside Zenoh (the process aborted at the interpreter's exit).
 - **A port 7447 router on the development machine changes the start.** Without one, xblick opens the connect dialog
   by itself. Tests that depend on either case check the port first.
 
