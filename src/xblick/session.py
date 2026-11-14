@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import logging
 import threading
+import time
 from collections.abc import Sequence
 
 import zenoh
@@ -172,6 +173,25 @@ def replies(session: zenoh.Session, selector: str, timeout: float, liveliness: b
     cancel = zenoh.CancellationToken()
     return collect(getter(selector, timeout=timeout, cancellation_token=cancel, **get_options), selector, timeout,
                    cancel)
+
+
+ASK_PERIOD = 0.25  # s: how often ask() sends a read again while nothing answered
+
+
+def ask(session: zenoh.Session, selector: str, timeout: float, **get_options) -> list:
+    """The replies to a query that only reads (an info record, a status, a node's parameter values, rays), asked
+    again every ASK_PERIOD seconds until a first reply comes or ``timeout`` passed.
+
+    A session just opened knows no queryable yet: through a router their declarations arrive some 0.1-0.3 s later,
+    and a query sent before ends at once without a reply. Asking again is right only for reads: an empty result
+    does not prove that no queryable got the query (a queryable that drops it without a reply also gives an empty
+    result at once), so a command would run twice. Commands go through ``ask_once``."""
+    end = time.monotonic() + timeout
+    while True:
+        answers = replies(session, selector, max(end - time.monotonic(), 0.01), **get_options)
+        if answers or time.monotonic() >= end:
+            return answers
+        time.sleep(min(ASK_PERIOD, max(0.0, end - time.monotonic())))
 
 
 CLOSE_TIMEOUT_S = 5.0  # how long a close waits for Zenoh (Session, close)

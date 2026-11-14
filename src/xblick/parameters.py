@@ -38,14 +38,14 @@ from pathlib import Path
 import zenoh
 
 from . import _core, topics
-from .camera import FIND_PERIOD, cdr_encoding
+from .camera import cdr_encoding
 from .msg import (DescribeParametersRequest, DescribeParametersResponse, FloatingPointRange, GetParametersRequest,
                   GetParametersResponse, GetParameterTypesRequest, GetParameterTypesResponse, IntegerRange,
                   ListParametersRequest, ListParametersResponse, Parameter, ParameterDescriptor, ParameterEvent,
                   ParameterType, ParameterValue, SetParametersAtomicallyRequest, SetParametersAtomicallyResponse,
                   SetParametersRequest, SetParametersResponse, SetParametersResult, Time)
 from .paths import expand_path
-from .session import replies
+from .session import ASK_PERIOD, ask, replies
 
 P = _core.protocol
 SERVICES = {P.LIST_PARAMETERS: (ListParametersRequest, ListParametersResponse),
@@ -554,7 +554,7 @@ class ParameterClient:
 
     def _call(self, service: str, request):
         _, response_type = SERVICES[service]
-        answers = _ask(self._session, f"{self.key}/{service}", self.timeout, payload=bytes(request.serialize()))
+        answers = ask(self._session, f"{self.key}/{service}", self.timeout, payload=bytes(request.serialize()))
         errors = [reply.err.payload.to_string() for reply in answers if reply.err is not None]
         if errors:
             raise RuntimeError(errors[0])
@@ -608,29 +608,16 @@ def _parameters(values: dict) -> list[Parameter]:
     return [Parameter(n, v if isinstance(v, ParameterValue) else ParameterValue.of(v)) for n, v in values.items()]
 
 
-def _ask(session: zenoh.Session, selector: str, timeout: float, **options) -> list:
-    """The replies to a query of a node's service, asked again every FIND_PERIOD seconds until a reply comes or
-    ``timeout`` passed. A session just opened knows no queryable yet: through a router their declarations arrive some
-    0.1-0.3 s later, and a query sent before ends at once without a reply (camera.find_streams). A query that reached
-    the node ends with its reply, so a request is sent again only when no node got it."""
-    end = time.monotonic() + timeout
-    while True:
-        answers = replies(session, selector, max(end - time.monotonic(), 0.01), **options)
-        if answers or time.monotonic() >= end:
-            return answers
-        time.sleep(min(FIND_PERIOD, max(0.0, end - time.monotonic())))
-
-
 def find_nodes(session: zenoh.Session, timeout: float = 1.0) -> list[str]:
     """The keys (``<namespace>/<name>``) of the nodes offering parameters now (their liveliness tokens), asked
-    again every FIND_PERIOD seconds until ``timeout``: a session just opened knows no token yet (``_ask``)."""
+    again every ASK_PERIOD seconds until ``timeout``: a session just opened knows no token yet (session.ask)."""
     suffix = "/" + P.PARAMETERS_TOKEN
     found = set()
     end = time.monotonic() + timeout
     while (remaining := end - time.monotonic()) > 0:
         found.update(str(r.ok.key_expr)[:-len(suffix)]
                      for r in replies(session, "**" + suffix, remaining, liveliness=True) if r.ok is not None)
-        time.sleep(max(0.0, min(FIND_PERIOD, end - time.monotonic())))
+        time.sleep(max(0.0, min(ASK_PERIOD, end - time.monotonic())))
     return sorted(found)
 
 

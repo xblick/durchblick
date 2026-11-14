@@ -33,7 +33,7 @@ from .codecs import JPEG, RVL, compress, decompress
 from .gpu import CudaArray, CudaImage, cuda_array, is_cuda_array, write_ring
 from .msg import (POINT_FIELD_DTYPES, CompressedImage, CompressedPointCloud2, CudaPointCloud2, Header, PointCloud2,
                   PointField, Rays, ShmPointCloud2, Time)
-from .session import replies
+from .session import ask
 
 XYZ = ([PointField("x", 0, PointField.FLOAT32), PointField("y", 4, PointField.FLOAT32),
         PointField("z", 8, PointField.FLOAT32)], 16)
@@ -399,7 +399,7 @@ class PointCloudSubscriber(Subscription):
     def _rays_of(self, name: str) -> np.ndarray:
         """The rays of this name, asked from the publisher at the first cloud that names them."""
         if self._rays is None or self._rays[0] != name:
-            for reply in replies(self._session, topics.cloud_rays(self.base), self.RAYS_TIMEOUT_S):
+            for reply in ask(self._session, topics.cloud_rays(self.base), self.RAYS_TIMEOUT_S):
                 if reply.ok is None:
                     continue
                 rays = Rays.deserialize(reply.ok.payload.to_bytes())

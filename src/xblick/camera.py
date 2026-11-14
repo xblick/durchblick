@@ -45,11 +45,11 @@ from .gpu import (CudaArray, CudaImage, check_cuda_array, cuda_array, device_ord
                   write_ring)
 from .msg import CameraInfo, CompressedImage, Header, Image, Message, ShmImage, TFMessage, Time, TransformStamped
 from .msg import CudaImage as CudaImageMsg
-from .session import replies
+from .session import ASK_PERIOD, ask, replies
 
 log = logging.getLogger("xblick")
 
-FIND_PERIOD = 0.25  # find_streams asks again this often: publishers become known to a session over time
+FIND_PERIOD = ASK_PERIOD  # find_streams asks again this often: publishers become known to a session over time
 DEFAULT_SLOTS = 32  # a reader has DEFAULT_SLOTS - 1 frame periods to read a frame (about a second at 30 Hz)
 
 ATTACHMENT_VERSION = _core.protocol.ATTACHMENT_VERSION
@@ -563,9 +563,20 @@ def _check_encoding(key: str, got: str, message_type: type[Message]):
 
 
 def query_info(session: zenoh.Session, base: str, timeout: float = 1.0) -> list[dict]:
-    """The info records of the publishers of a stream (usually one)."""
+    """The info records of the publishers of a stream (usually one), asked once (a subscriber's chooser asks in its
+    own loop; a session just opened finds nothing yet: ``wait_for_info``)."""
+    return _info_records(base, replies(session, topics.info(base), timeout))
+
+
+def wait_for_info(session: zenoh.Session, base: str, timeout: float = 1.0) -> list[dict]:
+    """As ``query_info``, asked again until a publisher answers or ``timeout`` passed (session.ask): for a session
+    just opened, as a command line tool's."""
+    return _info_records(base, ask(session, topics.info(base), timeout))
+
+
+def _info_records(base: str, answers: list) -> list[dict]:
     records = []
-    for reply in replies(session, topics.info(base), timeout):
+    for reply in answers:
         if reply.ok is None:
             continue
         record = json.loads(reply.ok.payload.to_string())

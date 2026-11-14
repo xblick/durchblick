@@ -71,6 +71,14 @@ namespace xblick
                                       const std::optional<std::vector<std::uint8_t>>& payload = std::nullopt);
     std::uint64_t queries_not_finalized();
 
+    // The replies to a query that only reads (an info record, rays, a node's parameter values), asked again every
+    // 250 ms until a first reply comes or `timeout` passed (Python's session.ask): a session just opened knows no
+    // queryable yet, and a query sent before ends at once without a reply. Only for reads: an empty result does not
+    // prove that no queryable got the query, so a command would run twice.
+    std::vector<zenoh::Reply> ask(const zenoh::Session& session, const std::string& selector,
+                                  std::chrono::milliseconds timeout,
+                                  const std::optional<std::vector<std::uint8_t>>& payload = std::nullopt);
+
     // Topic names (protocol.hpp): "<base>/image_raw" etc.; base is checked against ROS's name rules.
     std::string check_name(const std::string& path);
     std::string stream_base(const std::string& ns, const std::string& camera, const std::string& stream);

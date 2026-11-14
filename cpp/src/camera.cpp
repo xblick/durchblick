@@ -7,6 +7,7 @@
 #include <cstring>
 #include <set>
 #include <regex>
+#include <thread>
 
 #include "xblick/protocol.hpp"
 #include "xblick/version.hpp"
@@ -925,6 +926,25 @@ namespace xblick
             }
         }
         return std::move(state->replies);
+    }
+
+    std::vector<zenoh::Reply> ask(const zenoh::Session& session, const std::string& selector,
+                                  std::chrono::milliseconds timeout,
+                                  const std::optional<std::vector<std::uint8_t>>& payload)
+    {
+        using clock = std::chrono::steady_clock;
+        const auto end = clock::now() + timeout;
+        while (true)
+        {
+            const auto left = std::chrono::duration_cast<std::chrono::milliseconds>(end - clock::now());
+            std::vector<zenoh::Reply> answers =
+                replies(session, selector, std::max(left, std::chrono::milliseconds(10)), payload);
+            if (not answers.empty() or clock::now() >= end)
+            {
+                return answers;
+            }
+            std::this_thread::sleep_for(std::min<clock::duration>(std::chrono::milliseconds(250), end - clock::now()));
+        }
     }
 
     std::vector<std::string> query_info(zenoh::Session& session, const std::string& base,

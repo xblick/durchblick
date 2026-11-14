@@ -37,7 +37,7 @@ import numpy as np
 
 from . import cam, diagnostics, mps, recording, rerun_bridge, survey, topics
 from . import session as zsession
-from .camera import CameraPublisher, ImageSubscriber, find_streams, query_info
+from .camera import CameraPublisher, ImageSubscriber, find_streams, wait_for_info
 from .msg import CameraInfo
 from .paths import expand_path
 from .points import PointCloudSubscriber
@@ -84,7 +84,7 @@ def _list_streams(args) -> int:
 def _is_cloud(z, base: str) -> bool:
     """True if the stream's publisher says it is a point cloud stream (a stream that does not answer is taken as
     images; its subscriber refuses it later if it is not)."""
-    return any(r.get("kind") == "points" for r in query_info(z, base))
+    return any(r.get("kind") == "points" for r in wait_for_info(z, base))
 
 
 def _hz(args) -> int:

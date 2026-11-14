@@ -43,15 +43,16 @@ from .msg import (
     UnloadControllerRequest,
     UnloadControllerResponse,
 )
-from .session import replies
+from .session import ask, replies
 
 P = _core.protocol
 
 STATES = ("unconfigured", "inactive", "active", "finalized")
 
 
-def _call(session: zenoh.Session, key: str, request, response_type, timeout: float):
-    answers = replies(session, key, timeout, payload=bytes(request.serialize()))
+def _call(session: zenoh.Session, key: str, request, response_type, timeout: float, read: bool = False):
+    """One service call; ``read``: a request that only reads, asked again while nothing answers (session.ask)."""
+    answers = (ask if read else replies)(session, key, timeout, payload=bytes(request.serialize()))
     errors = [reply.err.payload.to_string() for reply in answers if reply.err is not None]
     if errors:
         raise RuntimeError(errors[0])
@@ -71,13 +72,13 @@ class ControllerManager:
         self.timeout = timeout
         self._session = session
 
-    def _call(self, service: str, request, response_type, timeout: float | None = None):
+    def _call(self, service: str, request, response_type, timeout: float | None = None, read: bool = False):
         return _call(self._session, f"{self.key}/{service}", request, response_type,
-                     self.timeout if timeout is None else timeout)
+                     self.timeout if timeout is None else timeout, read)
 
     def list(self) -> list:
         """Every controller (controller_manager_msgs ControllerState: name, state, type, ...)."""
-        return self._call(P.LIST_CONTROLLERS, ListControllersRequest(), ListControllersResponse).controller
+        return self._call(P.LIST_CONTROLLERS, ListControllersRequest(), ListControllersResponse, read=True).controller
 
     def states(self) -> dict:
         """Name -> state (inactive, active) of every controller."""
@@ -93,14 +94,15 @@ class ControllerManager:
 
     def config(self, name: str) -> dict:
         """The config the controller ``name`` runs with."""
-        response = self._call(P.GET_CONTROLLER_CONFIG, GetControllerConfigRequest(name), GetControllerConfigResponse)
+        response = self._call(P.GET_CONTROLLER_CONFIG, GetControllerConfigRequest(name), GetControllerConfigResponse,
+                              read=True)
         if not response.ok:
             raise RuntimeError(f"no config of controller {name}: {response.message}")
         return json.loads(response.config)
 
     def config_file(self, type: str, name: str) -> dict:
         """The robot's config file ``<type>/<name>``."""
-        response = self._call(P.GET_CONFIG_FILE, GetConfigFileRequest(type, name), GetConfigFileResponse)
+        response = self._call(P.GET_CONFIG_FILE, GetConfigFileRequest(type, name), GetConfigFileResponse, read=True)
         if not response.ok:
             raise RuntimeError(f"no config file {type}/{name}: {response.message}")
         return json.loads(response.config)

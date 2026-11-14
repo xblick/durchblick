@@ -629,7 +629,7 @@ namespace xblick
         {
             const std::string& base = subscription.base();
             const std::string rays_key = key(base, p::kCloudRays);
-            for (const zenoh::Reply& reply : replies(session, rays_key, std::chrono::milliseconds(5000)))
+            for (const zenoh::Reply& reply : ask(session, rays_key, std::chrono::milliseconds(5000)))
             {
                 if (not reply.is_ok())
                 {
