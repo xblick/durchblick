@@ -23,7 +23,7 @@ db_session.add_arguments(parser)                      # --connect, --listen, --z
 node.Parameters.add_arguments(parser)                 # --param NAME:=VALUE, --params-file, ...
 args = parser.parse_args()
 
-node.start("brightness")                              # logging, and SIGTERM ends the node like Ctrl-C
+node.start("brightness")                              # logging; SIGTERM and SIGINT end the node like Ctrl-C
 session = db_session.open_from_args(args)
 params = node.Parameters(session, "brightness", args.camera)   # the node <camera>/brightness
 params.configure(args)
@@ -79,9 +79,10 @@ ten seconds. In another terminal, `xblick diagnostics test` shows the state of t
 
 ## What each part does
 
-**`node.start("brightness")`** sets up the logging. It also makes SIGTERM end the node in the same way as Ctrl-C,
-so that the `finally` block always closes the node cleanly. Call it before you load a model, because model
-libraries write log messages while they load.
+**`node.start("brightness")`** sets up the logging. It also makes SIGTERM and SIGINT end the node in the same way as
+Ctrl-C, so that the `finally` block always closes the node cleanly. A script that starts the node in the background
+starts it with SIGINT ignored, and `node.start` restores SIGINT there as well. Call it before you load a model,
+because model libraries write log messages while they load.
 
 **`FrameHistory`** reads the subscriber in a thread of its own and keeps the last 10 frames by stamp. It calls
 `wake.set` when a frame arrives, so the main loop sleeps until there is work. `color.newest()` returns the newest

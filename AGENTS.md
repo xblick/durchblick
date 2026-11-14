@@ -79,7 +79,7 @@ Reference check: `tools/check_references.sh` (no internal or robot-framework nam
 | A test cannot open its own CUDA ring | The creating process cannot open a CUDA ring. Read it from a `spawn`ed child process. |
 | Device frames arrive wrong or late | `publish()` of a device array needs `stream=` (for PyTorch `torch.cuda.current_stream()`). Without it the publisher waits for all GPU work of the process. |
 | Nodes misbehave on a looped playback | `xblick play --loop` moves all stamps forward on each pass. Nodes rely on stamps that only grow. |
-| A test or harness never ends | Zenoh threads keep a process alive. Close sessions. Run long checks in the background with `timeout`. Background processes ignore SIGINT: stop them by PID with SIGTERM. Never kill by name pattern. |
+| A test or harness never ends | Zenoh threads keep a process alive. Close sessions. Run long checks in the background with `timeout`. A shell script starts background jobs with SIGINT ignored: `xblick` commands, `node.start` (`node.end_on_signals`) and the C++ tools end on it anyway, other programs and nodes on an older xblick may not. Stop by PID with SIGTERM. Never kill by name pattern. |
 | Large writes fail | NFS. Build and write large outputs on a local disk. |
 
 ## Layout

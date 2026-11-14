@@ -11,7 +11,7 @@ that your code contains only your method.
 
 | Module | What you use | What it does |
 | --- | --- | --- |
-| `xblick.node` | `start(prog)` | It sets up the logging. It makes SIGTERM end the node as Ctrl-C does, through your cleanup. |
+| `xblick.node` | `start(prog)` | It sets up the logging. It makes SIGTERM and SIGINT end the node as Ctrl-C does, through your cleanup, also as a background job of a script. |
 | | `Reporter` | It publishes your counts as diagnostics on `<camera>/diagnostics` about once a second. It writes a log line every ten seconds. |
 | | `state()` | It returns the level and the message of a report. The level is OK, or WARN with the problems or with what the node waits for. |
 | | `add_arguments(parser, ...)` | It adds `--max-hz` and `--local` to your parser. |

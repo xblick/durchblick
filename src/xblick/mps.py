@@ -46,6 +46,7 @@ import zenoh
 
 from . import _core, topics
 from . import session as zsession
+from .node import end_on_signals
 
 PIPE_ENV = "CUDA_MPS_PIPE_DIRECTORY"
 LOG_ENV = "CUDA_MPS_LOG_DIRECTORY"
@@ -177,7 +178,7 @@ def serve(pipe_dir: str, log_dir: str | None = None, name: str | None = None, co
     env = {**os.environ, PIPE_ENV: str(pipe), LOG_ENV: str(log)}
     # Ctrl-C (ExternalApplicationManager's stop) also when started with SIGINT ignored, as a background job of a script
     # is: Python keeps an ignored SIGINT instead of raising KeyboardInterrupt
-    signal.signal(signal.SIGINT, signal.default_int_handler)
+    end_on_signals()
     if _answers(str(pipe)):
         raise RuntimeError(f"an MPS control daemon runs at {pipe} already")
     # preexec_fn is unsafe in a process with threads: this one has none yet (the Zenoh session comes after)

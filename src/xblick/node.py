@@ -1,5 +1,5 @@
-"""What every node does: its start (logging, SIGTERM) and its report (diagnostics about once a second, a log line
-every ten seconds).
+"""What every node does: its start (logging, SIGINT and SIGTERM) and its report (diagnostics about once a second, a
+log line every ten seconds).
 
     log = node.start("xblick-sam3", ignore=["pkg_resources is deprecated"])
     report = node.Reporter(session, camera, "sam3", "xblick-sam3")
@@ -114,16 +114,26 @@ def _subscriptions(watched) -> list:
 _UNSET = object()
 
 
-def start(prog: str, ignore: list[str] = (), max_hz=_UNSET, local: str | None = None) -> logging.Logger:
-    """A node's start: its logging (``logs.setup``) and SIGTERM ending it as Ctrl-C does (KeyboardInterrupt), through
-    its cleanup; with ``max_hz`` (its ``--max-hz``) the line ``<prog>: max 30 Hz`` or ``<prog>: every frame``, with
-    ``local`` (its ``--local``) ``<prog>: frames on this host: auto``; the transport each stream takes is logged
-    when it is chosen (camera.py) and reported (Reporter). Call it before loading models (their libraries warn while
-    loading)."""
+def end_on_signals():
+    """SIGINT and SIGTERM end the program as Ctrl-C does (KeyboardInterrupt), through its cleanup. SIGTERM (kill, a
+    service manager) would otherwise end it in the middle of its cleanup (xblick rerun --save lost what Rerun still
+    buffered). SIGINT also ends it when it was started as a background job of a script: a non-interactive shell starts
+    those with SIGINT ignored, and Python then never installs its handler, so ``kill -INT`` and Ctrl-C on the script
+    did nothing. ``node.start`` and every ``xblick`` command call it."""
     def interrupt(signum, frame):
         raise KeyboardInterrupt
 
     signal.signal(signal.SIGTERM, interrupt)
+    signal.signal(signal.SIGINT, signal.default_int_handler)
+
+
+def start(prog: str, ignore: list[str] = (), max_hz=_UNSET, local: str | None = None) -> logging.Logger:
+    """A node's start: its logging (``logs.setup``) and SIGINT and SIGTERM ending it as Ctrl-C does
+    (``end_on_signals``: KeyboardInterrupt, through its cleanup, also as a background job of a script); with
+    ``max_hz`` (its ``--max-hz``) the line ``<prog>: max 30 Hz`` or ``<prog>: every frame``, with ``local`` (its
+    ``--local``) ``<prog>: frames on this host: auto``; the transport each stream takes is logged when it is chosen
+    (camera.py) and reported (Reporter). Call it before loading models (their libraries warn while loading)."""
+    end_on_signals()
     log = setup(prog, ignore)
     if max_hz is not _UNSET:
         print(f"{prog}: {rate_text(max_hz)}", flush=True)

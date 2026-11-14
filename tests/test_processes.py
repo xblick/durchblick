@@ -1,13 +1,14 @@
 """The commands as separate processes behind ``xblick router``, in the default (peer) mode, as a user starts them:
 a publisher, then ``list``, ``hz`` (network and the move to the shm ring), ``param`` (liveliness and a query), a
 client-mode session and ``xblick view``; the default port without any option (skipped when 7447 is taken); and the
-long-running commands ending on SIGTERM and on SIGINT as background jobs of a script (a non-interactive shell starts
-those with SIGINT ignored).
+long-running commands, a node (``xblick.node.start``) and the C++ tools ending on SIGTERM and on SIGINT as background
+jobs of a script (a non-interactive shell starts those with SIGINT ignored).
 
 0.5.3 found nothing here: a peer that only connected did not listen, and a Zenoh 1.10 router does not relay between
 peers (they reach each other directly), while the earlier router tests used sessions that listened."""
 
 import os
+import shlex
 import shutil
 import signal
 import socket
@@ -156,24 +157,56 @@ def test_the_default_port_without_any_option():
         assert end(router) == 0
 
 
+CPP_BUILD = os.environ.get("XBLICK_CPP_BUILD")
+
+NODE = """
+import sys
+import time
+
+from xblick import node, session
+
+node.start("xblick-test-node")  # SIGINT and SIGTERM: KeyboardInterrupt, also as a background job of a script
+s = session.open_session(connect=[sys.argv[1]])
+try:
+    while True:
+        time.sleep(0.1)
+except KeyboardInterrupt:
+    pass
+finally:
+    s.close()
+"""
+
+
 def commands(router: str) -> dict:
+    """The programs' command lines (``XBLICK``: an ``xblick`` command)."""
     return {
-        "router": ["router", "--listen", f"tcp/127.0.0.1:{free_port()}"],
-        "test-camera": ["test-camera", "--connect", router, "--namespace", "sig"],
-        "view": ["view", "test/camera/color", "--no-player", "--http", f"127.0.0.1:{free_port()}", "--connect",
-                 router],
-        "cam": ["cam", "testsrc=size=160x120:rate=15,realtime", "--format", "lavfi", "--stream", "sig/lav/color",
-                "--connect", router],
+        "router": [*XBLICK, "router", "--listen", f"tcp/127.0.0.1:{free_port()}"],
+        "test-camera": [*XBLICK, "test-camera", "--connect", router, "--namespace", "sig"],
+        "view": [*XBLICK, "view", "test/camera/color", "--no-player", "--http", f"127.0.0.1:{free_port()}",
+                 "--connect", router],
+        "cam": [*XBLICK, "cam", "testsrc=size=160x120:rate=15,realtime", "--format", "lavfi", "--stream",
+                "sig/lav/color", "--connect", router],
+        "node": [sys.executable, "-c", NODE, router],
+        "cpp-camera": [os.path.join(CPP_BUILD or "", "xblick-cpp-camera"), "--connect", router, "--base",
+                       "sig/cpp/color", "--size", "64", "48", "--fps", "15", "--seconds", "60"],
+        "cpp-probe": [os.path.join(CPP_BUILD or "", "xblick-cpp-probe"), "--connect", router, "--base",
+                      "test/camera/color", "--transport", "raw", "--frames", "100000", "--timeout", "60"],
     }
 
 
+# the exit status a script sees: the probe has no cleanup and keeps the default action (killed by the signal)
+EXIT = {("cpp-probe", "INT"): 128 + signal.SIGINT, ("cpp-probe", "TERM"): 128 + signal.SIGTERM}
+
+
 @pytest.mark.skipif(shutil.which("bash") is None, reason="needs bash")
-@pytest.mark.parametrize("name", ["router", "test-camera", "view", "cam"])
+@pytest.mark.parametrize("name", ["router", "test-camera", "view", "cam", "node", "cpp-camera", "cpp-probe"])
 @pytest.mark.parametrize("sig", ["INT", "TERM"])
 def test_a_background_job_of_a_script_ends_on_sigint_and_sigterm(camera, name, sig):
     if name == "cam" and not LAVFI:
         pytest.skip("PyAV without lavfi (xblick[cam])")
-    argv = " ".join(f"'{a}'" for a in [*XBLICK, *commands(camera)[name]])
+    if name.startswith("cpp-") and not CPP_BUILD:
+        pytest.skip("XBLICK_CPP_BUILD (the C++ build directory) is not set")
+    argv = shlex.join(commands(camera)[name])
     script = ("sleep 30 &\ngrep '^SigIgn' /proc/$!/status\nkill $!\n"  # a background job: SIGINT ignored
               f"{argv} > /dev/null 2>&1 &\npid=$!\nsleep 4\nkill -{sig} $pid\n"
               # at most 5 s; a job that does not end is killed, so that no test leaves it running
@@ -184,11 +217,8 @@ def test_a_background_job_of_a_script_ends_on_sigint_and_sigterm(camera, name, s
     out = subprocess.run(["bash", "-c", script], capture_output=True, text=True, timeout=60, env=ENV)
     ignored = int(out.stdout.split()[1], 16)
     assert ignored & (1 << (signal.SIGINT - 1)), out.stdout  # the shell did start background jobs so
-    assert out.stdout.strip().endswith("exit=0"), out.stdout + out.stderr
+    assert out.stdout.strip().endswith(f"exit={EXIT.get((name, sig), 0)}"), out.stdout + out.stderr
     assert time.monotonic() - started < 4 + 5  # ended within some seconds of the signal
-
-
-CPP_BUILD = os.environ.get("XBLICK_CPP_BUILD")
 
 
 @pytest.mark.skipif(not CPP_BUILD, reason="XBLICK_CPP_BUILD (the C++ build directory) is not set")

@@ -30,7 +30,6 @@ import importlib.util
 import json
 import os
 import shutil
-import signal
 import sys
 import time
 from pathlib import Path
@@ -41,6 +40,7 @@ from . import cam, diagnostics, mps, recording, rerun_bridge, router, survey, to
 from . import session as zsession
 from .camera import CameraPublisher, ImageSubscriber, find_streams, wait_for_info
 from .msg import CameraInfo
+from .node import end_on_signals
 from .paths import expand_path
 from .points import PointCloudSubscriber
 
@@ -522,22 +522,6 @@ def _param(args) -> int:
     return 0
 
 
-def _interrupt_on_sigterm():
-    """SIGTERM (kill, a service manager) ends like Ctrl-C: through the commands' cleanup, not in the middle of it
-    (xblick rerun --save lost what Rerun still buffered)."""
-    def interrupt(signum, frame):
-        raise KeyboardInterrupt
-
-    signal.signal(signal.SIGTERM, interrupt)
-
-
-def _interrupt_on_sigint():
-    """SIGINT ends the commands as Ctrl-C, also when the command was started as a background job of a script: a
-    non-interactive shell starts those with SIGINT ignored, and Python then never installs its handler, so
-    ``kill -INT`` did nothing (0.5.3 and before)."""
-    signal.signal(signal.SIGINT, signal.default_int_handler)
-
-
 RELAY = "xblick-relay"      # the relay program (github.com/xblick/xblick-relay)
 
 
@@ -841,8 +825,7 @@ def main(argv=None) -> int:
 
         return tui.run(_interface_connection(argv, prog))
     args = parse(argv, prog)
-    _interrupt_on_sigterm()
-    _interrupt_on_sigint()
+    end_on_signals()  # SIGTERM and SIGINT as Ctrl-C, also as a background job of a script
     try:
         return args.run(args)
     except (TimeoutError, zsession.NoAnswer) as error:  # did not answer, or a command sent once: one line

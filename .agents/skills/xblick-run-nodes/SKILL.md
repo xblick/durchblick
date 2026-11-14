@@ -119,7 +119,8 @@ echo quit | CUDA_MPS_PIPE_DIRECTORY=/tmp/xblick-mps-gpu<N> nvidia-cuda-mps-contr
 - A peer session that only `--connect`s to a router does not listen, and the router does not route between such
   sessions: nothing is found. Give no endpoints, add `--listen tcp/127.0.0.1:0`, or use `--zenoh-mode client`.
 - Never stop processes by name pattern on a shared machine. Use the PIDs you started.
-- Processes started from a background shell ignore SIGINT. Stop them with SIGTERM.
+- A background shell starts processes with SIGINT ignored. A node on an xblick older than 0.5.4 then ignores
+  SIGINT. Stop programs with SIGTERM.
 - A viewer that subscribes to every stream makes every publisher produce every transport. On one robot PC this cut the
   camera from 30 to 12 frames per second. Name the streams the viewer shows.
 - Whole point clouds over the network are about 177 MB/s at 30 Hz. Run a point cloud node on the reader's PC instead.

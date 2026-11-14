@@ -10,6 +10,7 @@
 // result), then a line per parameter (name, type, value, read_only, additional_constraints).
 // --points: a point cloud stream (points.hpp); a line per cloud with its fields instead of the encoding.
 #include <chrono>
+#include <csignal>
 #include <map>
 
 #include "xblick/camera.hpp"
@@ -125,6 +126,9 @@ namespace
 int main(int argc, char** argv)
 {
     using namespace xblick;
+    // Ctrl-C and kill -INT end the probe also as a background job of a script, which a non-interactive shell starts
+    // with SIGINT ignored: the default action, as in the foreground (the probe has no cleanup of its own)
+    std::signal(SIGINT, SIG_DFL);
     tools::Args args(argc, argv);
     try
     {
