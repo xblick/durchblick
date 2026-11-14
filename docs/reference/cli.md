@@ -91,7 +91,9 @@ extra `xblick[cam]`. See the [guide](../guides/cam.md).
 | `--camera-info FILE` | a ROS calibration file of the delivered size |
 | `--hfov DEG`, `--vfov DEG` | without `--camera-info`: the field of view of the assumed pinhole camera (default 60 degrees horizontal) |
 | `--frame-id ID` | the frame id. The default is the stream with `_` in place of `/`. |
-| `--timeout S` | end with an error when no frame comes for this long (default 5) |
+| `--timeout S` | end with an error when no frame comes for this long (default 5). With `--reconnect`: open the camera again. |
+| `--reconnect [SECONDS]` | open a camera that stops or cannot be opened again every SECONDS (default 2), also at the start. It must come back with its first mode. |
+| `--option KEY=VALUE` | an FFmpeg input option, for example `rtsp_transport=tcp` (repeat for more). An option FFmpeg does not have for this source is refused. |
 | `--param`, `--params-file`, `--dump-params`, `--params-read-only` | the options as parameters of the node `<camera>` |
 
 ## Test

@@ -121,7 +121,7 @@ were exposed several milliseconds apart. [Pairing streams](pairing-streams.md) e
 
 ## When the camera stops
 
-`xblick cam` ends with an error and the exit code 1 in these cases:
+Without `--reconnect`, `xblick cam` ends with an error and the exit code 1 in these cases:
 
 | Case | Message ends with |
 | --- | --- |
@@ -130,10 +130,50 @@ were exposed several milliseconds apart. [Pairing streams](pairing-streams.md) e
 | FFmpeg reports an error while reading | `the camera stopped delivering (<FFmpeg's error>)` |
 | the camera changes its frame size | `the camera changed its frame size from <old> to <new>` |
 
-The command does not reconnect. Restart it with a process manager if the camera should come back.
+With `--reconnect [SECONDS]`, the command opens the camera again in these cases, every SECONDS (default 2) until
+it delivers. It also tries the first opening again, because a robot or a PC may start before its IP camera. With
+`--reconnect`, a V4L2 device that does not exist yet is waited for as well.
 
-Ctrl-C or SIGTERM ends the command within a second, also while FFmpeg waits for the camera. The ring of the stream
-is removed from `/dev/shm`.
+```bash
+xblick cam rtsp://192.0.2.20/stream1 --reconnect 5        # untested: no IP camera was at hand
+```
+
+- Each loss is one log line, for example `lost (the stream ended); trying again every 5 s`. Each return is one log
+  line, for example `back after 7.3 s`.
+- While the camera is away, the diagnostics status `cam` has the level WARN and the message `camera away for 7 s
+  (<why>), trying again every 5 s`. The value `losses` counts the losses.
+- The camera must come back with the mode of its first frame: the same size and the same format. The stream's
+  subscribers and its ring were set up for that mode, so another mode ends the command with an error that names
+  both.
+- A mode that differs from `--size`, `--fps` or `--pixel-format` ends the command also with `--reconnect`.
+- `xblick cam` opens the camera again only after the previous opening has ended, because a V4L2 device cannot be
+  opened twice. For a URL, FFmpeg ends a hung connection or read after `--timeout` seconds. A V4L2 device that hangs
+  without an error keeps the command waiting until it returns.
+
+Ctrl-C or SIGTERM ends the command within a second, also while FFmpeg waits for the camera and while the command
+waits to open it again. The ring of the stream is removed from `/dev/shm`.
+
+## FFmpeg options
+
+`--option KEY=VALUE` passes an input option to FFmpeg. Repeat it for more options. Use it for what `xblick cam` has
+no option of its own for. These three options are useful for an RTSP camera. They exist in the FFmpeg of PyAV's
+wheel (PyAV 19.0.2, FFmpeg's libavformat 63).
+
+| Option | Meaning |
+| --- | --- |
+| `rtsp_transport=tcp` | RTSP over TCP, for a network that loses UDP packets |
+| `timeout=5000000` | the RTSP socket's timeout, in microseconds |
+| `fflags=nobuffer` | less buffering in FFmpeg, for a lower latency |
+
+```bash
+xblick cam rtsp://192.0.2.20/stream1 --option rtsp_transport=tcp --option fflags=nobuffer   # untested on a camera
+```
+
+`xblick cam` refuses an option that FFmpeg does not have where it applies options for this source. FFmpeg itself
+would ignore such an option without a word. The command looks in FFmpeg's generic input options, in the options of
+the input format (`--format`, or the URL's scheme such as `rtsp`) and in the options of the URL's protocol (such as
+`http`). For an HTTP URL, FFmpeg detects the format from the data, so an option of that format needs `--format`.
+The options `video_size`, `framerate` and `input_format` are given with `--size`, `--fps` and `--pixel-format`.
 
 ## Parameters and diagnostics
 
@@ -152,6 +192,7 @@ xblick param --node cam/video0
 | `frames/s` | the frames published in the last second |
 | `mode` | the delivered mode, for example `640x480 mjpeg at 30 frames/s` |
 | `decode ms` | the mean time from the arrival of a frame's data to the decoded image |
+| `losses` | how often the camera was lost (with `--reconnect`) |
 
 ## Status and limits
 
@@ -161,6 +202,8 @@ xblick param --node cam/video0
   sample data of a webcam. Neither was tested on a PC with a real camera.
 - The command decodes the JPEG frames of an MJPEG camera and encodes them again for the transport `compressed`.
   It does not pass the camera's JPEG frames on unchanged.
-- The command publishes the first video stream of a source. Further FFmpeg options, for example RTSP over TCP,
-  cannot be given.
-- A camera that stops ends the command. There is no reconnect.
+- The command publishes the first video stream of a source.
+- `--reconnect` was tested with an HTTP server that ended its stream, refused connections and came back, and with a
+  file of another size after the return. It was not tested with an unplugged USB camera.
+- `--option` refuses options of a protocol below another one (the `tcp` under `rtsp`) and FFmpeg's generic URL
+  options such as `rw_timeout`, because FFmpeg's public API does not tell whether they exist.

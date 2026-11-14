@@ -10,7 +10,9 @@ The size, rate and pixel format asked for go to FFmpeg as the device options ``v
 (V4L2) ``input_format``. A device may change them, and a URL or a filter graph ignores them: what the first frame
 and the stream deliver is checked against what was asked, and a difference ends the program (CamError). A frame's
 stamp is the arrival of its packet from FFmpeg on this PC (wall clock). A camera that delivers no frame for
-``timeout`` seconds, or whose stream ends, ends the program with an error: there is no reconnect.
+``timeout`` seconds, or whose stream ends, ends the program with an error; with ``--reconnect`` it is opened again
+until it delivers, in the mode of its first frame. ``--option KEY=VALUE`` passes FFmpeg input options, checked to
+exist (ffopts.py).
 
 FFmpeg reads and decodes in a daemon thread of its own. The main thread waits, reports and stops: Ctrl-C (SIGTERM)
 closes the publisher at once (its ring goes with it), also while the thread is blocked in FFmpeg.
@@ -32,14 +34,16 @@ from pathlib import Path
 import zenoh
 
 from .camera import CameraPublisher
-from . import topics, v4l2
+from . import ffopts, topics, v4l2
 from .codecs import JPEG, RVL
+from .diagnostics import DiagnosticsPublisher
 from .node import Reporter, state
 from .video import VideoError, camera_info_for, camera_of, parse_size
 
 SOURCE = "cam"  # the info record's source
 V4L2 = "video4linux2"
 URL_SCHEMES = ("rtsp", "rtsps", "rtmp", "http", "https", "udp", "tcp", "srt")
+RECONNECT_S = 2.0  # --reconnect without a value: seconds between attempts
 RATE_TOLERANCE = 0.01  # relative: a rate asked for and the one delivered agree within this
 # decoded frame format -> (format to convert to, the stream's encoding): as video.VideoFile; everything else rgb24
 FORMATS = {"gray16le": ("gray16le", "16UC1"), "gray16be": ("gray16le", "16UC1"), "gray": ("gray", "mono8"),
@@ -147,52 +151,82 @@ def check_mode(source: str, asked: Mode, delivered: Mode):
         raise CamError(f"{source}: asked for {' '.join(wrong)}, the camera delivers {delivered.text()}")
 
 
+class _Attempt:
+    """One opening of the camera, read by a thread of its own: what came of it."""
+
+    def __init__(self, number: int):
+        self.number = number
+        self.started = time.monotonic()
+        self.frames = 0
+        self.ended = threading.Event()
+        self.error: BaseException | None = None  # why it ended
+        self.fatal = False  # an error no reconnect helps: a mode not asked for, or another one than before
+
+
 class LiveCamera:
     """One live camera published as the stream ``base`` (module docstring); None: ``camera_for``'s camera and
-    ``stream_for``'s stream, named at the first frame (colour or grey). :meth:`run` blocks until :meth:`stop` or an
-    error (CamError, raised in the calling thread)."""
+    ``stream_for``'s stream, named at the first frame (colour or grey). ``reconnect``: seconds between attempts to
+    open the camera again after it stopped (None: a camera that stops ends it). ``options``: FFmpeg's input options
+    (``--option``), checked to exist (ffopts.py). :meth:`run` blocks until KeyboardInterrupt or an error (CamError,
+    raised in the calling thread)."""
 
     def __init__(self, session: zenoh.Session, source: str, base: str | None = None, *, fmt: str | None = None,
                  size: tuple[int, int] | None = None, fps: float | None = None, pixel_format: str | None = None,
                  camera_info: str | None = None, hfov: float | None = None, vfov: float | None = None,
-                 frame_id: str | None = None, timeout: float = 5.0, prog: str = "xblick cam"):
+                 frame_id: str | None = None, timeout: float = 5.0, reconnect: float | None = None,
+                 options: dict | None = None, prog: str = "xblick cam"):
         self.av = import_av()
         self.session, self.source, self.base, self.prog = session, source, base, prog
         self.fmt = input_format(source, fmt)
         self.camera = camera_for(source, self.fmt, base)
         self.asked = Mode(size, fps, pixel_format)
         self.options = device_options(self.fmt, size, fps, pixel_format)
+        options = dict(options or {})
+        own = sorted(set(options) & set(self.options))
+        if own:
+            raise CamError(f"--option {', '.join(own)}: give it with --size, --fps or --pixel-format")
+        ffopts.check(options, self.fmt, source)
+        self.options.update(options)
         if not timeout > 0:
             raise CamError(f"--timeout {timeout:g}: above 0")
-        self.timeout = timeout
+        if reconnect is not None and not reconnect > 0:
+            raise CamError(f"--reconnect {reconnect:g}: above 0")
+        self.timeout, self.reconnect = timeout, reconnect
         self.frame_id = frame_id  # None: the stream's name, "/" as "_", once it is known
         self.calibration, self.hfov, self.vfov = camera_info, hfov, vfov
-        if self.fmt == V4L2 and not Path(source).exists():
+        if self.fmt == V4L2 and not Path(source).exists() and reconnect is None:
             devices = v4l2_devices()
             raise CamError(f"{source}: no such device (V4L2 devices on this PC: {', '.join(devices) or 'none'})")
         self.publisher: CameraPublisher | None = None
         self.delivered: Mode | None = None
+        self.encoding: str | None = None
         self.error: BaseException | None = None
         self.frames = 0
+        self.losses = 0
+        self.returns = 0  # times it came back after a loss
+        self.away: str | None = None  # why the camera is away (reconnecting), None while it delivers
         self.decode_s = 0.0  # summed over the frames: from the packet's arrival to the array
         self._last_frame = time.monotonic()
-        self._lock = threading.Lock()  # publish against close
+        self._lock = threading.Lock()  # publish against close; the attempt that may publish
         self._stopping = False
-        self._done = threading.Event()
         self._ready = threading.Event()
-        self._thread = threading.Thread(target=self._capture, name=f"cam {source}", daemon=True)
+        self._attempt: _Attempt | None = None
+        self._thread: threading.Thread | None = None
 
-    # -------------------------------------------------------------------------------------------- the thread
+    # ---------------------------------------------------------------------------------------- an attempt's thread
 
     def _open(self):
+        network = self.fmt is None  # a URL: FFmpeg's interrupt callback ends a hung connect or read (PyAV timeout)
         try:
-            return self.av.open(self.source, format=self.fmt, container_options=self.options)  # not the decoder
+            return self.av.open(self.source, format=self.fmt, container_options=self.options,  # not the decoder
+                                timeout=self.timeout if network else None)
         except self.av.FFmpegError as error:
-            asked = f" with {self.asked.text()}" if self.options else ""
+            asked = f" with {self.asked.text()}" if self.asked != Mode() else ""
             raise CamError(f"{self.source}: FFmpeg cannot open it{asked} ({error})") from None
 
-    def _capture(self):
-        """Opens the camera, checks its mode, publishes every frame until stopped; an error ends it (``error``)."""
+    def _capture(self, attempt: _Attempt):
+        """One attempt: opens the camera, checks its mode, publishes its frames until it stops (``attempt.error``)
+        or this attempt is no longer the current one (``_attempt``: abandoned, or stopped)."""
         container = None
         try:
             container = self._open()
@@ -206,35 +240,54 @@ class LiveCamera:
                 arrived = time.time_ns()
                 started = time.monotonic()
                 for frame in packet.decode():
-                    if self.delivered is None:  # the first frame: the camera's mode, checked; then the publisher
-                        self.delivered = Mode((frame.width, frame.height), float(rate) if rate else None,
-                                              context.pix_fmt if raw else context.name)
-                        check_mode(self.source, self.asked, self.delivered)
-                        self._start_publisher(frame.format.name)
+                    if attempt.frames == 0:
+                        self._first_frame(attempt, Mode((frame.width, frame.height), float(rate) if rate else None,
+                                                        context.pix_fmt if raw else context.name),
+                                          frame.format.name)
                     elif (frame.width, frame.height) != self.delivered.size:
+                        attempt.fatal = True
                         raise CamError(f"{self.source}: the camera changed its frame size from "
                                        f"{self.delivered.size[0]}x{self.delivered.size[1]} to "
                                        f"{frame.width}x{frame.height}")
                     image = frame.to_ndarray(format=self._to)
                     with self._lock:
-                        if self._stopping:
+                        if self._stopping or self._attempt is not attempt:
                             return
                         self.publisher.publish(image, stamp_ns=arrived)
+                        attempt.frames += 1
                         self.frames += 1
                         self.decode_s += time.monotonic() - started
                         self._last_frame = time.monotonic()
             raise CamError(f"{self.source}: the stream ended")
         except self.av.FFmpegError as error:  # unplugged, a connection lost
-            self.error = CamError(f"{self.source}: the camera stopped delivering ({error})")
-        except BaseException as error:  # noqa: BLE001 - raised by run() in the main thread
-            self.error = error
+            attempt.error = CamError(f"{self.source}: the camera stopped delivering ({error})")
+        except BaseException as error:  # noqa: BLE001 - raised or reconnected by run() in the main thread
+            attempt.error = error
         finally:
-            self._done.set()
+            attempt.ended.set()
             if container is not None:
                 container.close()
 
-    def _start_publisher(self, pixel_format: str):
-        self._to, encoding = FORMATS.get(pixel_format, ("rgb24", "rgb8"))
+    def _first_frame(self, attempt: _Attempt, mode: Mode, pixel_format: str):
+        """The first frame of an attempt: of the first one checked against what was asked, and the publisher made;
+        of a later one (a reconnect) checked against the first's mode, which subscribers and the ring were made for."""
+        to, encoding = FORMATS.get(pixel_format, ("rgb24", "rgb8"))
+        if self.delivered is None:
+            try:
+                check_mode(self.source, self.asked, mode)
+            except CamError:
+                attempt.fatal = True
+                raise
+            self.delivered, self._to = mode, to
+            self._start_publisher(encoding)
+            return
+        if (mode.size, mode.pixel_format, encoding) != (self.delivered.size, self.delivered.pixel_format,
+                                                         self.encoding):
+            attempt.fatal = True
+            raise CamError(f"{self.source}: back with {mode.text()} ({encoding}), before {self.delivered.text()} "
+                           f"({self.encoding}): the stream's subscribers and ring are set up for the first")
+
+    def _start_publisher(self, encoding: str):
         self.base = self.base or stream_for(self.camera, encoding)
         self.frame_id = self.frame_id or self.base.replace("/", "_")
         info, said = camera_info_for(self.delivered.size[0], self.delivered.size[1], self.frame_id,
@@ -252,30 +305,80 @@ class LiveCamera:
 
     # ------------------------------------------------------------------------------------------ the main thread
 
-    def run(self):
-        """Starts the camera and blocks, its diagnostics once a second, until KeyboardInterrupt (which stops the
-        camera and propagates) or an error: the camera's, or CamError when it delivers no frame for ``timeout``
-        s."""
-        reporter = Reporter(self.session, self.camera, SOURCE, self.prog)
+    def _start_attempt(self, number: int):
+        attempt = _Attempt(number)
+        with self._lock:
+            self._attempt = attempt
         self._last_frame = time.monotonic()
+        self._thread = threading.Thread(target=self._capture, args=(attempt,), name=f"cam {self.source}",
+                                        daemon=True)
         self._thread.start()
+
+    def _lost(self, why: str):
+        """The camera stopped: with reconnect, logged once; the next attempt follows after ``reconnect`` s."""
+        if self.away is None:
+            self.losses += 1
+            self.away_since = time.monotonic()
+            print(f"{self.prog}: {self.source}: lost ({why}); trying again every {self.reconnect:g} s", flush=True)
+        self.away = why
+
+    def run(self):
+        """Starts the camera and blocks, its diagnostics once a second, until :meth:`stop`, KeyboardInterrupt (which
+        stops the camera and propagates) or an error: the camera's, or CamError when it delivers no frame for
+        ``timeout`` s. With ``reconnect``, a camera that stops or cannot be opened is opened again every
+        ``reconnect`` s (the first opening too); an attempt still blocked in FFmpeg is waited for (a V4L2 device
+        cannot be opened twice). Its mode must be the first one's."""
+        reporter = Reporter(self.session, self.camera, SOURCE, self.prog)
+        number, next_try = 1, None
+        self._start_attempt(number)
         sent = 0
         try:
-            while not self._done.wait(0.1):
-                if time.monotonic() - self._last_frame > self.timeout:
-                    what = "a frame" if self._ready.is_set() else "its first frame"
-                    raise CamError(f"{self.source}: no frame for {self.timeout:g} s (waiting for {what}; "
-                                   "the camera stopped, or raise --timeout)")
-                if self._ready.is_set() and reporter.due():
+            while not self._stopping:  # stop() from another thread ends it too
+                time.sleep(0.05)
+                attempt = self._attempt
+                if self.away is not None and attempt is not None and attempt.frames > 0:  # before its end, if any
+                    print(f"{self.prog}: {self.source}: back after {time.monotonic() - self.away_since:.1f} s",
+                          flush=True)
+                    self.away = None
+                    self.returns += 1
+                if attempt is not None and attempt.ended.is_set():  # it stopped by itself
+                    if attempt.fatal or self.reconnect is None or not isinstance(attempt.error, CamError):
+                        raise attempt.error
+                    self._lost(str(attempt.error).removeprefix(f"{self.source}: "))
+                    with self._lock:
+                        self._attempt = None
+                    next_try = time.monotonic() + self.reconnect
+                elif attempt is not None and time.monotonic() - self._last_frame > self.timeout:
+                    first = "its first frame" if attempt.frames == 0 else "a frame"
+                    if self.reconnect is None:
+                        what = "a frame" if self._ready.is_set() else "its first frame"
+                        raise CamError(f"{self.source}: no frame for {self.timeout:g} s (waiting for {what}; "
+                                       "the camera stopped, or raise --timeout)")
+                    self._lost(f"no frame for {self.timeout:g} s, waiting for {first}")
+                    with self._lock:
+                        self._attempt = None  # abandoned: its thread publishes nothing more
+                    next_try = time.monotonic() + self.reconnect
+                if (self._attempt is None and next_try is not None and time.monotonic() >= next_try
+                        and not (self._thread is not None and self._thread.is_alive())):
+                    number += 1
+                    self._start_attempt(number)
+                    next_try = None
+                if reporter.due():
                     frames, decode_s = self.frames, self.decode_s
                     _, seconds = reporter.take()
                     hz = (frames - sent) / seconds
-                    level, message = state(f"{hz:.1f} frames/s")
-                    reporter.publish(level, message, {"frames/s": hz, "mode": self.delivered.text(),
-                                                      "decode ms": f"{decode_s / max(frames, 1) * 1e3:.2f}"})
                     sent = frames
-            if self.error is not None:
-                raise self.error
+                    values = {"frames/s": hz, "losses": self.losses}
+                    if self.delivered is not None:
+                        values.update({"mode": self.delivered.text(),
+                                       "decode ms": f"{decode_s / max(frames, 1) * 1e3:.2f}"})
+                    if self.away is not None:
+                        reporter.publish(DiagnosticsPublisher.WARN, f"camera away for "
+                                         f"{time.monotonic() - self.away_since:.0f} s ({self.away}), trying again "
+                                         f"every {self.reconnect:g} s", values)
+                    elif self._ready.is_set():
+                        level, message = state(f"{hz:.1f} frames/s")
+                        reporter.publish(level, message, values)
         finally:
             self.stop()
             reporter.close()
@@ -284,10 +387,12 @@ class LiveCamera:
         """Closes the publisher (its ring goes with it); the thread ends at its next frame, or with the process."""
         with self._lock:
             self._stopping = True
+            self._attempt = None
             if self.publisher is not None:
                 self.publisher.close()
                 self.publisher = None
-        self._thread.join(timeout=0.5)
+        if self._thread is not None:
+            self._thread.join(timeout=0.5)
 
 
 # --------------------------------------------------------------------------------- choosing a camera without a source
@@ -367,6 +472,19 @@ def select_source(stdin=None, stdout=None, prog: str = "xblick cam") -> str:
     return chosen.path
 
 
+def parse_options(given: list[str] | None) -> dict:
+    """``--option KEY=VALUE`` (repeated) as a dict; CamError for one without ``=`` or given twice."""
+    options = {}
+    for item in given or []:
+        key, sep, value = item.partition("=")
+        if not sep or not key:
+            raise CamError(f"--option {item!r}: KEY=VALUE, e.g. rtsp_transport=tcp")
+        if key in options:
+            raise CamError(f"--option {key}: given twice")
+        options[key] = value
+    return options
+
+
 def add_arguments(parser: argparse.ArgumentParser):
     """``xblick cam``'s own options (cli.py adds the parameters' and the Zenoh session's)."""
     def size(text: str) -> tuple[int, int]:
@@ -398,4 +516,12 @@ def add_arguments(parser: argparse.ArgumentParser):
     parser.add_argument("--vfov", type=float, default=None, metavar="DEG", help="... or of this vertical one")
     parser.add_argument("--frame-id", default=None, metavar="ID", help="the frame id (default: the base, / as _)")
     parser.add_argument("--timeout", type=float, default=5.0, metavar="S",
-                        help="end with an error when the camera delivers no frame for this long (default 5)")
+                        help="end with an error when the camera delivers no frame for this long (default 5); with "
+                             "--reconnect: open it again")
+    parser.add_argument("--reconnect", type=float, nargs="?", const=RECONNECT_S, default=None, metavar="SECONDS",
+                        help="a camera that stops, or cannot be opened (also at the start), is opened again every "
+                             f"SECONDS (default {RECONNECT_S:g}); it must come back with the same mode (default: a "
+                             "camera that stops ends the command)")
+    parser.add_argument("--option", action="append", default=None, metavar="KEY=VALUE",
+                        help="an FFmpeg input option, e.g. rtsp_transport=tcp (repeat for more); one FFmpeg does not "
+                             "have for this source is refused")

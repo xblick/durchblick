@@ -421,3 +421,143 @@ def test_default_stream_names(sessions):  # noqa: F811
             camera.stop()
             thread.join(5.0)
         assert not errors
+
+
+# ------------------------------------------------------------------------------------- reconnect, FFmpeg options
+
+def mjpeg_clip(path, w=160, h=120, n=20, fps=10, container="matroska"):
+    """``n`` MJPEG frames (frame i: red i*10) in a file, for an HTTP server to serve as a camera's stream."""
+    with av.open(str(path), "w", format=container) as out:
+        s = out.add_stream("mjpeg", rate=fps)
+        s.width, s.height, s.pix_fmt = w, h, "yuvj422p"
+        for i in range(n):
+            image = np.zeros((h, w, 3), np.uint8)
+            image[..., 0] = i * 10
+            for packet in s.encode(av.VideoFrame.from_ndarray(image, format="rgb24")):
+                out.mux(packet)
+        for packet in s.encode():
+            out.mux(packet)
+    return path
+
+
+class HttpCamera:
+    """An HTTP server of a directory in a thread: a camera that ends its stream after each file (a loss for xblick
+    cam), and that can be stopped and started again on its port (away and back)."""
+
+    def __init__(self, directory):
+        import functools
+        import http.server
+
+        self.port = free_port()
+        self.handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(directory))
+        self.handler.log_message = lambda *a: None
+        self.server = None
+        self.start()
+
+    def start(self):
+        import http.server
+
+        self.server = http.server.ThreadingHTTPServer(("127.0.0.1", self.port), self.handler)
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+
+    def stop(self):
+        self.server.shutdown()
+        self.server.server_close()
+
+    def url(self, name):
+        return f"http://127.0.0.1:{self.port}/{name}"
+
+
+def test_reconnect_after_the_stream_ended_and_while_the_camera_is_away(sessions, tmp_path):  # noqa: F811
+    from xblick import diagnostics
+
+    a, b = sessions
+    mjpeg_clip(tmp_path / "cam.mkv")
+    server = HttpCamera(tmp_path)
+    statuses = []
+    sub = b.declare_subscriber("cam/camera/diagnostics", lambda s: statuses.append(diagnostics.read(s)[1].status[0]))
+    camera = cam.LiveCamera(a, server.url("cam.mkv"), reconnect=0.3, timeout=2.0)
+    thread, errors = run_in_thread(camera)
+    try:
+        wait_until(lambda: camera.returns >= 2, timeout=15.0)  # the stream ended, came back, twice
+        assert camera.frames >= 40 and camera.base == "cam/camera/color"
+        server.stop()  # away: every attempt is refused
+        wait_until(lambda: camera.away is not None and "Connection refused" in camera.away, timeout=10.0)
+        wait_until(lambda: any(s.level == diagnostics.DiagnosticsPublisher.WARN and "camera away" in s.message
+                               for s in statuses), timeout=5.0)
+        frames, returns = camera.frames, camera.returns
+        server.start()
+        wait_until(lambda: camera.frames > frames and camera.returns > returns, timeout=10.0)
+        # back with another mode: the stream's subscribers and ring were set up for the first: an error
+        mjpeg_clip(tmp_path / "cam.mkv", w=320, h=240)
+        wait_until(lambda: errors, timeout=15.0)
+        assert "back with 320x240 mjpeg" in str(errors[0]) and "before 160x120 mjpeg" in str(errors[0])
+    finally:
+        camera.stop()
+        thread.join(5.0)
+        sub.undeclare()
+        server.stop()
+
+
+def test_reconnect_waits_for_a_camera_that_is_not_there_yet(sessions, tmp_path):  # noqa: F811
+    """The first opening is tried again too (a robot that starts before its IP camera)."""
+    a, _ = sessions
+    mjpeg_clip(tmp_path / "late.mkv")
+    server = HttpCamera(tmp_path)
+    server.stop()
+    camera = cam.LiveCamera(a, server.url("late.mkv"), reconnect=0.2, timeout=2.0)
+    thread, errors = run_in_thread(camera)
+    try:
+        wait_until(lambda: camera.away is not None, timeout=5.0)
+        assert camera.publisher is None
+        server.start()
+        wait_until(lambda: camera.frames > 0, timeout=10.0)
+    finally:
+        camera.stop()
+        thread.join(5.0)
+        server.stop()
+    assert not errors
+
+
+def test_ctrl_c_while_reconnecting(tmp_path):
+    port = free_port()
+    process = subprocess.Popen([sys.executable, "-m", "xblick.cli", "cam", f"http://127.0.0.1:{port}/none.mkv",
+                                "--reconnect", "0.5", "--listen", f"tcp/127.0.0.1:{free_port()}"],
+                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    try:
+        time.sleep(3.0)  # failed attempts meanwhile
+        process.send_signal(signal.SIGINT)
+        started = time.monotonic()
+        out, _ = process.communicate(timeout=10)
+        assert time.monotonic() - started < 1.0 and process.returncode == 0, out
+        assert out.count("lost (FFmpeg cannot open it") == 1 and "Traceback" not in out, out
+    finally:
+        if process.poll() is None:
+            process.kill()
+            process.wait()
+
+
+def test_ffmpeg_options_are_checked_and_passed(sessions):  # noqa: F811
+    a, b = sessions
+    with pytest.raises(cam.ffopts.OptionError, match="--option bogus: FFmpeg has no such option in FFmpeg's generic "
+                                                     "input options, the input format lavfi"):
+        cam.LiveCamera(a, source(), fmt="lavfi", options={"bogus": "1"})
+    with pytest.raises(cam.ffopts.OptionError, match="stimeout"):  # gone from FFmpeg since 5.0
+        cam.LiveCamera(a, "rtsp://192.0.2.1/x", options={"stimeout": "1000000"})
+    cam.LiveCamera(a, "rtsp://192.0.2.1/x", options={"rtsp_transport": "tcp", "timeout": "1000000",
+                                                     "fflags": "nobuffer"})
+    with pytest.raises(cam.CamError, match="--option video_size: give it with --size"):
+        cam.LiveCamera(a, "/dev/video0", size=(640, 480), options={"video_size": "1x1"}, reconnect=1.0)
+    assert cam.parse_options(["rtsp_transport=tcp", "fflags=nobuffer"]) == {"rtsp_transport": "tcp",
+                                                                            "fflags": "nobuffer"}
+    with pytest.raises(cam.CamError, match="KEY=VALUE"):
+        cam.parse_options(["tcp"])
+    # an option FFmpeg has and takes: the camera runs with it
+    camera = cam.LiveCamera(a, source(), fmt="lavfi", options={"fflags": "nobuffer"})
+    thread, errors = run_in_thread(camera)
+    try:
+        wait_until(lambda: camera.frames > 5, timeout=10.0)
+    finally:
+        camera.stop()
+        thread.join(5.0)
+    assert not errors
