@@ -1,5 +1,7 @@
 # Durchblick
 
+[![PyPI](https://img.shields.io/pypi/v/xblick)](https://pypi.org/project/xblick/) [![Python](https://img.shields.io/pypi/pyversions/xblick)](https://pypi.org/project/xblick/) [![CI](https://github.com/xblick/xblick/actions/workflows/ci.yml/badge.svg)](https://github.com/xblick/xblick/actions/workflows/ci.yml) [![licence](https://img.shields.io/badge/licence-Apache--2.0-blue)](https://github.com/xblick/xblick/blob/main/LICENSE) [![platform](https://img.shields.io/badge/platform-Linux%20x86__64-lightgrey)](https://github.com/xblick/xblick/blob/main/docs/getting-started/install.md) [![Zenoh](https://img.shields.io/badge/Zenoh-1.10-informational)](https://zenoh.io)
+
 Durchblick is a middleware for camera streams and perception results. It moves frames between programs in shared
 memory and in GPU memory, and it uses the message types of ROS 2 without needing ROS.
 
