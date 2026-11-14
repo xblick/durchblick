@@ -1,21 +1,30 @@
 """A node's model weights: their download at the node's start, checked, once for every process (standard library only).
 
-A node keeps the list of its files (``Weight``: where it goes, where it comes from, its exact size, its SHA-256), the
-terms notice of its model, the code that must be there first, and sources of its own; this module does the rest:
+A node keeps the list of its files (``Weight``: its path below the store's root, where it comes from, its exact size,
+its SHA-256), the terms notice of its model, the code that must be there first, and sources of its own; this module
+does the rest:
 
-    STORE = weights.Store("xblick-vjepa2", root=REPO / "weights", terms=TERMS, required=(), repo=REPO)
-    weights.add_arguments(parser)                 # --download-only, --no-download
+    STORE = weights.Store("xblick-vjepa2", node="vjepa2", terms=TERMS, former=[REPO / "weights"])
+    weights.add_arguments(parser)                 # --download-only, --no-download, --weights-dir
     args = weights.parse_args(parser, argv)       # --download-only needs none of the start's required options
+    store = STORE.at(args.weights_dir)            # --weights-dir: another place than the node's cache directory
     options = ["--checkpoint", args.checkpoint]   # the options that select the weights, for the lines
     if args.download_only:
-        return STORE.download_only(needed(args.checkpoint), options=options)
+        return store.download_only(needed(args.checkpoint), options=options)
     try:
-        STORE.ensure(needed(args.checkpoint), download=not args.no_download, options=options)
+        store.ensure(needed(args.checkpoint), download=not args.no_download, options=options)
     except weights.WeightsError as error:
-        return STORE.fail(error)
+        return store.fail(error)
+    model = load(store.file(CHECKPOINT))          # the file's path: below store.root
 
-``options`` (a list of command-line words) go into the command that the lines name (``xblick-vjepa2 --download-only
---checkpoint vitl``), so that the printed command fetches exactly the missing files.
+The root is the node's cache directory (``xblick.paths.cache_dir``: ``~/.cache/xblick/vjepa2``, ``$XBLICK_HOME/cache/
+vjepa2``), the same for a checkout and a pip install; a node may pass its own ``root``. ``options`` (a list of
+command-line words) go into the command that the lines name (``xblick-vjepa2 --download-only --checkpoint vitl``), so
+that the printed command fetches exactly the missing files.
+
+``former``: where the node kept its weights before (its checkout's ``weights/``). A file missing in the root but there
+is never used from there. The store prints once, before anything else, the command that moves that directory to the
+root, then goes on as for any missing file (a download, or the ``--no-download`` error).
 
 ``ensure`` touches neither the disk nor the network when every file is there. A missing file is downloaded under a
 temporary name in its directory (``<name>.part``), checked and only then renamed, all under a file lock in the root,
@@ -30,6 +39,7 @@ SHA-256 of what it wrote (``store.http`` downloads, ``store.short`` names a path
 from __future__ import annotations
 
 import contextlib
+import copy
 import fcntl
 import hashlib
 import os
@@ -43,6 +53,8 @@ import urllib.parse
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
+
+from . import paths
 
 CHUNK = 1 << 20  # bytes read at a time
 TIMEOUT_S = 60.0  # without a byte for this long, a download fails
@@ -104,7 +116,8 @@ class Url:
 
 @dataclass(frozen=True)
 class Weight:
-    """One file the node reads: where it is (``path``), where it comes from (``source``), its exact size (``size``,
+    """One file the node reads: where it is (``path``: relative, below the store's root; absolute paths do not move
+    with ``--weights-dir`` and have no former place), where it comes from (``source``), its exact size (``size``,
     bytes: announced, and a download of another length is refused) and, where known, its SHA-256."""
 
     path: Path
@@ -114,7 +127,10 @@ class Weight:
 
 
 def add_arguments(parser):
-    """``--download-only`` and ``--no-download``, which exclude each other."""
+    """``--download-only`` and ``--no-download``, which exclude each other, and ``--weights-dir`` (``Store.at``)."""
+    parser.add_argument("--weights-dir", default=None, metavar="DIR",
+                        help="where the weights are and go (default: the node's cache directory, "
+                             "~/.cache/xblick/<node> or $XBLICK_HOME/cache/<node>)")
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--download-only", action="store_true",
                        help="download the missing weights, check them and end (for preparation scripts): no camera, "
@@ -143,15 +159,43 @@ def parse_args(parser, argv=None):
 
 class Store:
     """The weights of one node: ``prog`` (its command: the lines' prefix and the downloads' User-Agent), ``root``
-    (the weights' directory: the download lock goes there), ``terms`` (the notice printed before a download),
-    ``required`` ((path, what): code that a setup script puts there first, checked before anything else) and
-    ``repo`` (paths in messages are shown relative to it)."""
+    (the weights' directory: the download lock goes there) or ``node`` (its short name: the root is
+    ``paths.cache_dir(node)``), ``terms`` (the notice printed before a download), ``required`` ((path, what): code
+    that a setup script puts there first, checked before anything else), ``repo`` (paths in it are shown relative to
+    it) and ``former`` (directories where the node kept the weights before: see ``ensure``)."""
 
-    def __init__(self, prog: str, root: Path, terms: str, required=(), repo: Path | None = None):
-        self.prog, self.root, self.terms = prog, Path(root), terms
+    def __init__(self, prog: str, root: Path | None = None, terms: str | None = None, required=(),
+                 repo: Path | None = None, *, node: str | None = None, former=()):
+        if (root is None) == (node is None):
+            raise ValueError(f"{prog}: give the weights' root or the node's short name (its cache directory), "
+                             "exactly one")
+        if terms is None:
+            raise ValueError(f"{prog}: the model's terms notice (terms) is missing")
+        if isinstance(former, (str, Path)):
+            raise TypeError(f"former: a list of directories, not {former!r}")
+        self.prog, self.terms, self.node = prog, terms, node
+        self.root = Path(root) if root is not None else paths.cache_dir(node)
         self.required = tuple(required)
         self.repo = Path(repo) if repo is not None else None
+        self.former = tuple(Path(f) for f in former)
+        self.moved = False  # True: the root is --weights-dir's (at)
+        self._told = False  # the former place's message printed (once a process)
         self._fetch_command = self.command()  # the command named when a download fails (ensure sets it)
+
+    def at(self, directory) -> Store:
+        """This store with ``directory`` as its root (``--weights-dir``: ``${VAR}`` and ``~`` expanded, relative to
+        the working directory), or this store itself for None."""
+        if directory is None:
+            return self
+        if not str(directory).strip():
+            raise ValueError("--weights-dir: an empty directory name")
+        moved = copy.copy(self)
+        moved.root, moved.moved = paths.expand_path(directory).absolute(), True
+        return moved
+
+    def file(self, w: Weight) -> Path:
+        """Where ``w`` is: below the root, or its absolute path."""
+        return w.path if w.path.is_absolute() else self.root / w.path
 
     def command(self, options=()) -> str:
         """``<prog> --download-only`` with the node's options that select the weights (a list of command-line words,
@@ -171,11 +215,11 @@ class Store:
         if not weights:
             print(f"{self.prog}: no weights to download for these options", file=out, flush=True)
         elif got:
-            print(f"{self.prog}: weights complete: {len(got)} downloaded into {self.short(_root(weights))}", file=out,
-                  flush=True)
+            print(f"{self.prog}: weights complete: {len(got)} downloaded into {self.short(self._root(weights))}",
+                  file=out, flush=True)
         else:
-            print(f"{self.prog}: weights complete in {self.short(_root(weights))}, nothing to download", file=out,
-                  flush=True)
+            print(f"{self.prog}: weights complete in {self.short(self._root(weights))}, nothing to download",
+                  file=out, flush=True)
         return 0
 
     def fail(self, error: WeightsError) -> int:
@@ -193,20 +237,25 @@ class Store:
         command that an error line gives (``command``)."""
         out = out or sys.stdout
         fetch_command = self.command(options)
+        for w in weights:
+            if w.path.is_absolute() and (self.moved or self.former):
+                raise ValueError(f"{w.path}: an absolute path does not move with --weights-dir and has no former "
+                                 "place; give the weight's path relative to the store's root")
         for path, what in self.required:
             if not Path(path).exists():
                 raise WeightsError(f"{self.short(path)} is missing ({what}): run tools/setup.sh")
-        missing = [w for w in weights if not w.path.is_file()]
+        missing = [w for w in weights if not self.file(w).is_file()]
         with _stoppable():
             for w in weights if verify else []:
                 if w not in missing and w.sha256 is not None:
-                    digest = sha256_of(w.path)
+                    digest = sha256_of(self.file(w))
                     if digest != w.sha256:
-                        raise WeightsError(f"{self.short(w.path)}: wrong SHA-256 ({digest}, expected {w.sha256}): "
-                                           "remove it, then download again")
+                        raise WeightsError(f"{self.short(self.file(w))}: wrong SHA-256 ({digest}, expected "
+                                           f"{w.sha256}): remove it, then download again")
         if not missing:
             return []
-        names = ", ".join(self.short(w.path) for w in missing)
+        self._tell_former(missing, out)
+        names = ", ".join(self.short(self.file(w)) for w in missing)
         if not download:
             raise WeightsError(f"weights missing: {names}; download them with {fetch_command} or "
                                "tools/setup.sh (--no-download is set)")
@@ -216,15 +265,33 @@ class Store:
         finally:
             self._fetch_command = self.command()
 
+    def _tell_former(self, missing: list[Weight], out):
+        """Once a process: the former places that hold a file missing in the root, with the command that moves each
+        there. The file is not used from the former place (no fallback): a moved checkout would lose it."""
+        places = [old for old in self.former if any((old / w.path).is_file() for w in missing)]
+        if self._told or not places:
+            return
+        self._told = True
+        lines = [f"{self.prog}: the weights are kept in {self.root} now, and some of them are still at the node's "
+                 "former place. They are not used from there. Move them (then start again):"]
+        for old in places:
+            if self.root.exists():  # into a directory that is there: copy what is missing, then remove the old one
+                lines.append(f"  cp -a -n {shlex.quote(str(old))}/. {shlex.quote(str(self.root))}/ && "
+                             f"rm -r {shlex.quote(str(old))}")
+            else:
+                lines.append(f"  mkdir -p {shlex.quote(str(self.root.parent))} && "
+                             f"mv {shlex.quote(str(old))} {shlex.quote(str(self.root))}")
+        print("\n".join(lines), file=out, flush=True)
+
     def _download_missing(self, missing: list[Weight], out) -> list[Weight]:
         """``ensure``'s downloads, under the lock."""
         with _stoppable(), self._locked(out):
-            missing = [w for w in missing if not w.path.is_file()]  # another process may have downloaded them
+            missing = [w for w in missing if not self.file(w).is_file()]  # another process may have downloaded them
             if not missing:
                 print(f"{self.prog}: another process downloaded the weights", file=out, flush=True)
                 return []
             total = sum(w.size for w in missing)
-            print(f"{self.prog}: to download: " + ", ".join(f"{self.short(w.path)} ({size_text(w.size)})"
+            print(f"{self.prog}: to download: " + ", ".join(f"{self.short(self.file(w))} ({size_text(w.size)})"
                                                            for w in missing)
                   + f", {size_text(total)} in all", file=out)
             print(self.terms, file=out, flush=True)
@@ -235,10 +302,11 @@ class Store:
     def _download(self, w: Weight, out):
         """One file: into ``<name>.part``, its size and (where known) its SHA-256 checked, renamed. A failed check
         keeps the .part file for a look; any other failure or an interrupt removes it."""
-        tmp = w.path.with_name(w.path.name + ".part")
-        w.path.parent.mkdir(parents=True, exist_ok=True)
-        print(f"{self.prog}: {w.path.name} ({size_text(w.size)}) from {w.source.describe()}", file=out, flush=True)
-        progress = _Progress(self.prog, w.path.name, out)
+        path = self.file(w)
+        tmp = path.with_name(path.name + ".part")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        print(f"{self.prog}: {path.name} ({size_text(w.size)}) from {w.source.describe()}", file=out, flush=True)
+        progress = _Progress(self.prog, path.name, out)
         try:
             digest = w.source.fetch(tmp, progress, self)
         except BaseException:
@@ -252,8 +320,8 @@ class Store:
         if w.sha256 is not None and digest != w.sha256:
             raise WeightsError(f"{self.short(tmp)}: wrong SHA-256 ({digest}, expected {w.sha256}): the source changed "
                                "or the download is damaged; remove it, then start again")
-        os.replace(tmp, w.path)
-        print(f"{self.prog}: {self.short(w.path)}: " + ("size and SHA-256 checked" if w.sha256 else "size checked")
+        os.replace(tmp, path)
+        print(f"{self.prog}: {self.short(path)}: " + ("size and SHA-256 checked" if w.sha256 else "size checked")
               + ", in place", file=out, flush=True)
 
     def http(self, url: str, tmp: Path, progress, token: str | None = None, denied: str | None = None) -> str:
@@ -289,6 +357,10 @@ class Store:
         if total is not None and done != total:
             raise WeightsError(f"{url}: {done} of {total} bytes came: start again")
         return digest.hexdigest()
+
+    def _root(self, weights: list[Weight]) -> Path:
+        """The directory that holds ``weights``."""
+        return Path(os.path.commonpath([self.file(w).parent for w in weights]))
 
     def short(self, path) -> str:
         """``path`` relative to the repository where it is in it."""
@@ -385,10 +457,6 @@ def sha256_of(path: Path) -> str:
         while chunk := f.read(CHUNK):
             digest.update(chunk)
     return digest.hexdigest()
-
-
-def _root(weights: list[Weight]) -> Path:
-    return Path(os.path.commonpath([w.path.parent for w in weights]))
 
 
 def size_text(n: int | None) -> str:

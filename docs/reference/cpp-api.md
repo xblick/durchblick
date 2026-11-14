@@ -174,5 +174,6 @@ definitions (vision_msgs 4.1.1, in `tests/data/vision_msgs`).
 | `parameters.hpp` | parameters of a node ([parameters](parameters.md)) |
 | `options.hpp` | `Options`: a program's command-line options, parsed and offered as its parameters ([a C++ program's options](parameters.md#a-c-programs-options-as-parameters)) |
 | `pairing.hpp` | `partner_of`, `partner_period_ns`: a partner stream's sample of a primary frame, by stamp |
+| `paths.hpp` | `cache_dir`, `data_dir`, `config_dir`, `check_node_name`: where a node keeps its files ([Where files are](files.md)), in `xblick::core` |
 | `protocol.hpp` | topic names, message types and versions |
 | `ring.hpp`, `cuda_ring.hpp` | the rings |

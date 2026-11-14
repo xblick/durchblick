@@ -15,6 +15,7 @@
 
 #include "xblick/cuda_ring.hpp"
 #include "xblick/pairing.hpp"
+#include "xblick/paths.hpp"
 #include "xblick/protocol.hpp"
 #include "xblick/ray_cloud.hpp"
 #include "xblick/rectify.hpp"
@@ -52,6 +53,10 @@ NB_MODULE(_core, m)
     nb::exception<xblick::rvl::Error>(m, "RvlError", PyExc_ValueError);
 
     m.def("host_id", &xblick::host_id, "boot id of this host; descriptors carry it");
+    // the C++ rule of xblick.paths (paths.hpp), for tests/test_paths.py's comparison; Python uses its own
+    m.def("cpp_cache_dir", [](const std::string& node) { return xblick::cache_dir(node).string(); });
+    m.def("cpp_data_dir", [](const std::string& node) { return xblick::data_dir(node).string(); });
+    m.def("cpp_config_dir", [] { return xblick::config_dir().string(); });
     m.def("rvl_encode", [](InArray pixels) {
               if (pixels.ndim() != 2 or pixels.dtype() != nb::dtype<std::uint16_t>())
               {

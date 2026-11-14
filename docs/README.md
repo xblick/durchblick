@@ -50,6 +50,7 @@ Complete lists for lookup.
 - [Topics](reference/topics.md)
 - [Parameters](reference/parameters.md)
 - [Nodes](reference/nodes.md)
+- [Where files are](reference/files.md)
 - [Glossary](reference/glossary.md)
 
 ## Integrations

@@ -47,7 +47,10 @@ Follow the pattern of the existing node repositories:
 - one console script `xblick-<name>`, named after the model, not the task (`xblick-yolox`, not `xblick-detect`),
 - the weights in `weights.py` as a list of `xblick.weights.Weight` and a `xblick.weights.Store` with the model's
   terms notice: downloaded at the start, `--download-only` for `tools/setup.sh`, `--no-download`; `ensure` and
-  `download_only` get the options that select the weights (`options=["--model", args.model]`),
+  `download_only` get the options that select the weights (`options=["--model", args.model]`); the store's root
+  is `xblick.paths.cache_dir(<node>)` (`Store(prog, node=..., terms=...)`, `store = STORE.at(args.weights_dir)`),
+  built files in the cache too, a user's files in `data_dir(<node>)`, nothing in the checkout
+  ([Where files are](../../../docs/reference/files.md)),
 - README, `docs/`, AGENTS.md and a one-line CLAUDE.md as
   [Writing documentation](../../../docs/project/writing-docs.md#a-node-repository) describes.
 

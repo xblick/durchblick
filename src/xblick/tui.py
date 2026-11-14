@@ -51,7 +51,7 @@ from textual.worker import get_current_worker
 from . import diagnostics, parameters, survey, topics
 from . import session as zsession
 from .camera import find_streams
-from .paths import expand_path
+from .paths import config_dir, expand_path
 from .tui_graph import GraphEdge, GraphNode, GraphView
 from .tui_parameters import ParametersPane
 
@@ -234,9 +234,8 @@ class RerunSelection:
 
 
 def presets_path() -> Path:
-    """``$XDG_CONFIG_HOME/xblick/rerun_presets.json`` (``~/.config`` without it)."""
-    base = os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config")
-    return Path(base) / "xblick" / "rerun_presets.json"
+    """``$XDG_CONFIG_HOME/xblick/rerun_presets.json`` (``~/.config`` without it; ``paths.config_dir``)."""
+    return config_dir() / "rerun_presets.json"
 
 
 class Presets:

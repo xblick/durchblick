@@ -59,7 +59,7 @@ find_package(Threads REQUIRED)
 # ------------------------------------------------------------------------------------------------ core
 
 add_library(xblick_core cpp/src/ring.cpp cpp/src/cuda_ring.cpp cpp/src/rvl.cpp cpp/src/ray_cloud.cpp
-            cpp/src/rectify.cpp cpp/src/pairing.cpp)
+            cpp/src/rectify.cpp cpp/src/pairing.cpp cpp/src/paths.cpp)
 add_library(xblick::core ALIAS xblick_core)
 set_target_properties(xblick_core PROPERTIES EXPORT_NAME core)
 target_include_directories(xblick_core
@@ -137,6 +137,9 @@ if(BUILD_TESTING)
   add_executable(test_rectify cpp/tests/test_rectify.cpp)
   target_link_libraries(test_rectify PRIVATE xblick_core)
   add_test(NAME rectify COMMAND test_rectify)
+  add_executable(test_paths cpp/tests/test_paths.cpp)
+  target_link_libraries(test_paths PRIVATE xblick_core)
+  add_test(NAME paths COMMAND test_paths)
   add_test(NAME cuda_ring COMMAND test_rings cuda)
   set_tests_properties(cuda_ring PROPERTIES SKIP_RETURN_CODE 77)  # no GPU: skipped, not failed
   if(XBLICK_CAMERA)

@@ -91,6 +91,7 @@ Reference check: `tools/check_references.sh` (no internal or robot-framework nam
 | `cpp/include/xblick/camera.hpp`, `points.hpp`, `msg.hpp`, `parameters.hpp` | C++ API |
 | `cpp/include/xblick/rectify.hpp`, `src/xblick/rectify.py` | rectification map from a CameraInfo (R, P), CPU remap; same in C++ and Python |
 | `cpp/include/xblick/pairing.hpp` | `partner_of`: partner sample of a primary frame by stamp; Python's `PartnerHistory` calls it via `_core` |
+| `cpp/include/xblick/paths.hpp`, `src/xblick/paths.py` | cache, data and config directories; same rule in C++ and Python (`tests/test_paths.py`) |
 | `cpp/points/` | point cloud node `xblick-points` (CUDA) |
 | `cpp/python/bindings.cpp` | `xblick._core` |
 | `src/xblick/camera.py`, `points.py`, `detections.py`, `session.py` | Python API: streams, sessions |
@@ -106,6 +107,8 @@ Reference check: `tools/check_references.sh` (no internal or robot-framework nam
 ## Defaults
 
 - Router: `zenohd` 1.10 on `127.0.0.1:7447`, one per PC. Start: `zenohd --no-multicast-scouting -l tcp/0.0.0.0:7447`.
+- Files: cache `~/.cache/xblick/<node>/`, data `~/.local/share/xblick/<node>/`, config `~/.config/xblick/`;
+  `XBLICK_HOME` moves cache and data (docs/reference/files.md).
 - Stream name: `<namespace>/<camera>/<stream>`. Node results: `<camera>/<node>/<name>`. Diagnostics:
   `<camera>/diagnostics`.
 - Transports: `auto`, `compressed`, `raw`, `shm`, `cuda`. Nodes and the CLI use `auto`.
@@ -121,11 +124,14 @@ Reference check: `tools/check_references.sh` (no internal or robot-framework nam
 
 Rules every node keeps (docs/guides/writing-nodes.md, "Rules every node keeps"): the name identifies the model
 (`xblick-yolox`, not `xblick-detect`); `--camera` explicit and required, nothing guessed; fixed, documented defaults
-only (nothing that depends on the machine, the installed packages or a measurement; convenience goes into the
-`xblick` command); weights downloaded at the start through `xblick.weights` with `--download-only` and
-`--no-download`, the terms notice before a download; a queryable replies and drops the query at once; drawn results
-only with `--overlay` (off by default, a start option): `<camera>/<node>/overlay`, rgb8, the colour frame's size,
-stamp, frame id and camera_info, results published first, drawn by `xblick.overlay.Overlay` only while subscribed.
+only (nothing that depends on the machine, the installed packages or a measurement; convenience goes into the `xblick`
+command); weights downloaded at the start through `xblick.weights` with `--download-only`, `--no-download` and
+`--weights-dir`, the terms notice before a download; weights and built files (engines, kernels) in
+`xblick.paths.cache_dir(<node>)` (`~/.cache/xblick/<node>/`), what a user made in `data_dir(<node>)`, never in the
+checkout, `<node>` the short name (`yolox`), former places named in `Store(former=...)` (docs/reference/files.md); a
+queryable replies and drops the query at once; drawn results only with `--overlay` (off by default, a start option):
+`<camera>/<node>/overlay`, rgb8, the colour frame's size, stamp, frame id and camera_info, results published first,
+drawn by `xblick.overlay.Overlay` only while subscribed.
 
 Same pattern in each: a uv project pinned to a version of `xblick` (`pyproject.toml`, `uv.lock`), `tools/setup.sh`
 for `.venv` and checkpoints, a console script `xblick-<name>`, outputs below `<camera>/<node>/`, diagnostics on

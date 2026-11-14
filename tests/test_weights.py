@@ -386,3 +386,129 @@ def test_a_source_of_the_nodes_own_gets_the_store(home, store):
 
     w = weights.Weight(home / "j.bin", Joined(), 2, hashlib.sha256(b"ab").hexdigest())
     assert store.ensure([w], out=io.StringIO()) == [w] and w.path.read_bytes() == b"ab"
+
+
+# --------------------------------------------- the node's cache directory, --weights-dir, the former place
+
+
+@pytest.fixture
+def user(tmp_path, monkeypatch):
+    """A HOME in tmp_path, none of the variables that move the cache; the node's cache directory."""
+    monkeypatch.setenv("HOME", str(tmp_path / "u"))
+    for v in ("XBLICK_HOME", "XDG_CACHE_HOME", "XDG_DATA_HOME", "XDG_CONFIG_HOME"):
+        monkeypatch.delenv(v, raising=False)
+    return tmp_path / "u" / ".cache" / "xblick" / "yolox"
+
+
+def node_store(**kwargs) -> weights.Store:
+    return weights.Store("xblick-yolox", node="yolox", terms=TERMS_LINE, **kwargs)
+
+
+def relative_weight(server: Server, name="a.bin") -> weights.Weight:
+    server.files[f"/{name}"] = DATA
+    return weights.Weight(Path(name), weights.Url(f"{server.url}/{name}"), len(DATA), DATA_SHA)
+
+
+def test_the_default_root_is_the_nodes_cache_directory_and_nothing_is_made_before_a_download(user, server):
+    store = node_store()
+    assert store.root == user and not user.parent.parent.exists()  # asking made nothing
+    w = relative_weight(server)
+    out = io.StringIO()
+    assert store.ensure([w], out=out) == [w]
+    assert (user / "a.bin").read_bytes() == DATA and store.file(w) == user / "a.bin"
+    assert f"{user}/a.bin: size and SHA-256 checked" in out.getvalue()  # the real path, not one relative to a repo
+
+
+def test_xblick_home_moves_the_default_root(user, tmp_path, monkeypatch):
+    monkeypatch.setenv("XBLICK_HOME", str(tmp_path / "shared"))
+    assert node_store().root == tmp_path / "shared" / "cache" / "yolox"
+
+
+def test_a_store_takes_a_root_or_a_node_and_a_short_name(user, tmp_path):
+    with pytest.raises(ValueError, match="exactly one"):
+        weights.Store("xblick-yolox", terms=TERMS_LINE)
+    with pytest.raises(ValueError, match="exactly one"):
+        weights.Store("xblick-yolox", tmp_path, TERMS_LINE, node="yolox")
+    with pytest.raises(ValueError, match="node name"):
+        weights.Store("xblick-yolox", node="xblick-yolox", terms=TERMS_LINE)
+    with pytest.raises(ValueError, match="terms"):
+        weights.Store("xblick-yolox", node="yolox")
+    with pytest.raises(TypeError, match="a list of directories"):
+        node_store(former=tmp_path)
+
+
+def test_weights_dir_moves_the_root(user, server, tmp_path, monkeypatch):
+    p = argparse.ArgumentParser(prog="xblick-yolox")
+    weights.add_arguments(p)
+    monkeypatch.setenv("SHARED", str(tmp_path / "shared"))
+    args = weights.parse_args(p, ["--weights-dir", "${SHARED}/yolox", "--no-download"])
+    store = node_store().at(args.weights_dir)
+    assert store.root == tmp_path / "shared" / "yolox" and node_store().root == user  # the node's STORE unchanged
+    assert node_store().at(weights.parse_args(p, []).weights_dir).root == user  # not given: the cache directory
+    w = relative_weight(server)
+    with pytest.raises(weights.WeightsError, match=f"weights missing: {tmp_path}/shared/yolox/a.bin"):
+        store.ensure([w], download=False)
+    assert store.ensure([w], out=io.StringIO()) == [w] and (tmp_path / "shared" / "yolox" / "a.bin").is_file()
+    monkeypatch.chdir(tmp_path)
+    assert node_store().at("rel").root == tmp_path / "rel"  # relative to the working directory, shown absolute
+    with pytest.raises(ValueError, match="does not move with --weights-dir"):
+        store.ensure([weights.Weight(tmp_path / "abs.bin", w.source, 1)], download=False)
+
+
+def former_place(tmp_path: Path, server: Server):
+    """A node's checkout with the weight in its weights/ (the former place)."""
+    old = tmp_path / "checkout" / "weights"
+    place({old / "a.bin": DATA})
+    return old, relative_weight(server)
+
+
+def test_a_file_only_at_the_former_place_is_not_used_and_the_move_is_printed_once(user, server, tmp_path):
+    old, w = former_place(tmp_path, server)
+    store = node_store(former=[old])
+    with pytest.raises(weights.WeightsError, match="weights missing") as error:
+        out = io.StringIO()
+        store.ensure([w], download=False, out=out)
+    lines = out.getvalue().splitlines()
+    assert lines[0].startswith(f"xblick-yolox: the weights are kept in {user} now") and "not used" in lines[0]
+    assert lines[1] == f"  mkdir -p {user.parent} && mv {old} {user}"
+    assert "a.bin" in str(error.value)
+    out = io.StringIO()
+    assert store.ensure([w], out=out) == [w]  # then as for any missing file: downloaded, the message not again
+    assert "former place" not in out.getvalue() and "to download:" in out.getvalue()
+    assert (old / "a.bin").is_file()  # nothing moved by the node
+
+
+def test_the_command_runs_and_into_a_root_that_is_there_it_copies(user, server, tmp_path):
+    old, w = former_place(tmp_path, server)
+    out = io.StringIO()
+    node_store(former=[old]).download_only([w], out=out)  # --download-only prints it too
+    assert f"mv {old} {user}" in out.getvalue()
+    user.joinpath("a.bin").unlink()  # the root is there now (the lock), the file is not
+    out = io.StringIO()
+    with pytest.raises(weights.WeightsError):
+        node_store(former=[old]).ensure([w], download=False, out=out)
+    command = out.getvalue().splitlines()[1].strip()
+    assert command == f"cp -a -n {old}/. {user}/ && rm -r {old}"
+    subprocess.run(["bash", "-c", command], check=True)
+    assert node_store(former=[old]).ensure([w], download=False) == [] and not old.exists()
+
+
+def test_both_places_or_neither_print_nothing(user, server, tmp_path):
+    old, w = former_place(tmp_path, server)
+    place({user / "a.bin": DATA})
+    out = io.StringIO()
+    assert node_store(former=[old]).ensure([w], out=out) == [] and out.getvalue() == ""  # the new place is used
+    user.joinpath("a.bin").unlink()
+    (old / "a.bin").unlink()
+    out = io.StringIO()
+    assert node_store(former=[old]).ensure([w], out=out) == [w]
+    assert "former place" not in out.getvalue()
+
+
+def test_a_weights_dir_is_quoted_in_the_command(user, server, tmp_path):
+    old, w = former_place(tmp_path, server)
+    store = node_store(former=[old]).at(str(tmp_path / "a b"))
+    out = io.StringIO()
+    with pytest.raises(weights.WeightsError):
+        store.ensure([w], download=False, out=out)
+    assert f"mv {old} '{tmp_path}/a b'" in out.getvalue()
