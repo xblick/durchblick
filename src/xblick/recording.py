@@ -85,7 +85,7 @@ from .codecs import parse_format
 from .msg import CameraInfo, Clock, CompressedImage, Message, Time
 from .msgdefs import MSGDEFS
 from .parameters import Parameters
-from .session import replies
+from .session import ask_once, replies
 from .stamps import header_stamp  # recording.header_stamp: its old home
 
 STATUS_VERSION = 3
@@ -995,7 +995,8 @@ def request(session: zenoh.Session, name: str, command: str, timeout: float = 30
     payload = json.dumps({"command": command, **options})
     parse_command(payload.encode())  # bad ones fail here, not in the node
     query_status(session, name, timeout=min(timeout, 10.0))
-    answers = [r for r in replies(session, control_key(name), timeout, payload=payload) if r.ok is not None]
+    # exactly once (session.ask_once): a record or play command must not run twice
+    answers = [r for r in ask_once(session, control_key(name), timeout, payload=payload) if r.ok is not None]
     if not answers:
         raise TimeoutError(f"{name!r} did not answer {command} within {timeout} s (a node of Durchblick 0.3.28 or "
                            "newer answers commands sent as queries)")

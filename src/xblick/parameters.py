@@ -45,7 +45,7 @@ from .msg import (DescribeParametersRequest, DescribeParametersResponse, Floatin
                   ParameterType, ParameterValue, SetParametersAtomicallyRequest, SetParametersAtomicallyResponse,
                   SetParametersRequest, SetParametersResponse, SetParametersResult, Time)
 from .paths import expand_path
-from .session import ASK_PERIOD, ask, replies
+from .session import ASK_PERIOD, ask, ask_once, replies, timed_out
 
 P = _core.protocol
 SERVICES = {P.LIST_PARAMETERS: (ListParametersRequest, ListParametersResponse),
@@ -553,13 +553,20 @@ class ParameterClient:
         self._subscribers = []
 
     def _call(self, service: str, request):
+        """One service call: a read (list, describe, get, types) asked again while nothing answers (session.ask), a
+        set sent exactly once (session.ask_once: a node may act on a set, so it must not get it twice)."""
         _, response_type = SERVICES[service]
-        answers = ask(self._session, f"{self.key}/{service}", self.timeout, payload=bytes(request.serialize()))
-        errors = [reply.err.payload.to_string() for reply in answers if reply.err is not None]
+        command = service in (P.SET_PARAMETERS, P.SET_PARAMETERS_ATOMICALLY)
+        answers = (ask_once if command else ask)(self._session, f"{self.key}/{service}", self.timeout,
+                                                 payload=bytes(request.serialize()))
+        errors = [reply.err.payload.to_string() for reply in answers if reply.err is not None and not timed_out(reply)]
         if errors:
             raise RuntimeError(errors[0])
         ok = [reply.ok for reply in answers if reply.ok is not None]
         if not ok:
+            if command:
+                raise TimeoutError(f"{self.key}/{service}: sent once, no answer within {self.timeout:g} s (the node "
+                                   "may have taken it; not sent again)")
             raise TimeoutError(f"no answer from {self.key}/{service} within {self.timeout:g} s")
         if len(ok) > 1:
             raise RuntimeError(f"{len(ok)} nodes answer {self.key}/{service}: one name, one node")

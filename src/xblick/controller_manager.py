@@ -16,7 +16,9 @@ robot's software, or a bridge to it, serves it.
     manager.unload("teleop_arms")
 
 Every call raises RuntimeError with the manager's reason when it refuses, TimeoutError when nobody answers, and
-RuntimeError when several managers answer (one robot, one manager).
+RuntimeError when several managers answer (one robot, one manager). A command (create, switch, unload, torque step)
+is sent exactly once (session.ask_once): NotReached (a TimeoutError) when no manager became known, nothing sent; a
+TimeoutError "sent once" when it went out and no answer came, then the robot may have taken it.
 """
 
 from __future__ import annotations
@@ -43,7 +45,7 @@ from .msg import (
     UnloadControllerRequest,
     UnloadControllerResponse,
 )
-from .session import ask, replies
+from .session import ask, ask_once, timed_out
 
 P = _core.protocol
 
@@ -51,13 +53,18 @@ STATES = ("unconfigured", "inactive", "active", "finalized")
 
 
 def _call(session: zenoh.Session, key: str, request, response_type, timeout: float, read: bool = False):
-    """One service call; ``read``: a request that only reads, asked again while nothing answers (session.ask)."""
-    answers = (ask if read else replies)(session, key, timeout, payload=bytes(request.serialize()))
-    errors = [reply.err.payload.to_string() for reply in answers if reply.err is not None]
+    """One service call. ``read``: a request that only reads, asked again while nothing answers (session.ask).
+    Else a command (create, switch, unload, torque step): the robot acts on it, so it is sent exactly once
+    (session.ask_once: after the session knows the manager's queryable, never again after an empty result)."""
+    answers = (ask if read else ask_once)(session, key, timeout, payload=bytes(request.serialize()))
+    errors = [reply.err.payload.to_string() for reply in answers if reply.err is not None and not timed_out(reply)]
     if errors:
         raise RuntimeError(errors[0])
     ok = [reply.ok for reply in answers if reply.ok is not None]
     if not ok:
+        if not read:
+            raise TimeoutError(f"{key}: sent once, no answer within {timeout:g} s (the robot may have taken it; "
+                               "not sent again)")
         raise TimeoutError(f"no answer from {key} within {timeout:g} s")
     if len(ok) > 1:
         raise RuntimeError(f"{len(ok)} nodes answer {key}: one robot, one controller manager")

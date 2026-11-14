@@ -194,6 +194,40 @@ def ask(session: zenoh.Session, selector: str, timeout: float, **get_options) ->
         time.sleep(min(ASK_PERIOD, max(0.0, end - time.monotonic())))
 
 
+def timed_out(reply) -> bool:
+    """The error reply by which Zenoh ends a query whose timeout passed before a queryable answered (its text is
+    "Timeout"); the queryable may still be working on it."""
+    return reply.err is not None and reply.err.payload.to_string() == "Timeout"
+
+
+class NotReached(TimeoutError):
+    """No queryable for a command's key became known to the session within the timeout: nothing was sent."""
+
+
+def ask_once(session: zenoh.Session, selector: str, timeout: float, **get_options) -> list:
+    """The replies to a command (a parameter set, a controller switch, a torque step, a recorder command): sent
+    exactly once, after the session knows a queryable for ``selector``. Waits at most ``timeout`` for the queryable
+    (NotReached: nothing sent), then at most ``timeout`` for the replies. An empty result is returned as it is.
+
+    Why the command is never sent again: Zenoh ends a query without any reply in cases that the sender cannot tell
+    apart. The session knew no queryable, so nothing went out (the case of a session just opened). Or a queryable
+    got the query and dropped it without a reply, which also ends it at once. Or its reply came after the query's
+    timeout, or a connection on the way was lost. A command sent again in the later cases would run twice. Instead,
+    ask_once waits until a querier on the key reports a matching queryable (Zenoh's own routing knowledge, also
+    through a router) and then sends the command once. A queryable slower than the timeout gives Zenoh's error reply
+    "Timeout" (``timed_out``), which is no empty result either."""
+    end = time.monotonic() + timeout
+    querier = session.declare_querier(selector)
+    try:
+        while not querier.matching_status.matching:
+            if time.monotonic() >= end:
+                raise NotReached(f"no queryable for {selector} became known within {timeout:g} s: nothing was sent")
+            time.sleep(0.01)
+    finally:
+        querier.undeclare()
+    return replies(session, selector, timeout, **get_options)
+
+
 CLOSE_TIMEOUT_S = 5.0  # how long a close waits for Zenoh (Session, close)
 
 

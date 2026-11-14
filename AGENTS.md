@@ -70,7 +70,7 @@ Reference check: `tools/check_references.sh` (no internal or robot-framework nam
 | Symptom | Cause and fix |
 | --- | --- |
 | Programs find nothing | A peer session with only `--connect` does not listen, and the router does not route between such sessions. Give no endpoints, or add `--listen tcp/127.0.0.1:0`, or use `--zenoh-mode client`. |
-| A query finds nothing right after start | A new session needs time to learn of queryables. Queries repeat every `FIND_PERIOD`. Do not query once. |
+| A query finds nothing right after start | A new session needs time to learn of queryables. Reads: `session.ask` (C++ `xblick::ask`), asked again until a reply. Commands (a set, a controller switch, a recorder command): `session.ask_once` (C++ `xblick::ask_once`), sent once after the queryable is known. Never send a command again after an empty result: a queryable that dropped it also gives one. |
 | A loop over query replies hangs for minutes | Zenoh does not always finalize a query at its timeout. Never `for r in session.get(...)` or `liveliness().get`. Use `session.replies(session, selector, timeout, ...)` (C++ `xblick::replies`). |
 | `Session.close()` never returns | Happens after a query Zenoh did not finalize. Open sessions with `open_session` or `open_from_args` (close waits at most 5 s). Wrap an own `zenoh.open` in `session.Session(...)`. |
 | A subscriber gets JPEG on the publisher's host | `ImageSubscriber` defaults to `transport="compressed"`. Pass `transport="auto"`. |

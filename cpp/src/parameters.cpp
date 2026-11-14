@@ -1276,9 +1276,19 @@ namespace xblick
     std::vector<std::uint8_t> ParameterClient::call(const std::string& service,
                                                     const std::vector<std::uint8_t>& request)
     {
-        const std::vector<zenoh::Reply> answers =
-            ask(session_, key_ + "/" + service, std::chrono::milliseconds(static_cast<std::int64_t>(timeout_ms_)),
-                request);
+        // a read asked again while nothing answers (ask); a set sent exactly once (ask_once): a node may act on it
+        const bool command = service == p::kSetParameters or service == p::kSetParametersAtomically;
+        const auto timeout = std::chrono::milliseconds(static_cast<std::int64_t>(timeout_ms_));
+        std::vector<zenoh::Reply> answers;
+        try
+        {
+            answers = command ? ask_once(session_, key_ + "/" + service, timeout, request)
+                              : ask(session_, key_ + "/" + service, timeout, request);
+        }
+        catch (const NotReached& e)
+        {
+            throw ParameterError(e.what());
+        }
         std::vector<std::vector<std::uint8_t>> ok;
         for (const auto& reply : answers)
         {
@@ -1290,8 +1300,11 @@ namespace xblick
         }
         if (ok.empty())
         {
-            throw ParameterError("no answer from " + key_ + "/" + service + " within " + std::to_string(timeout_ms_) +
-                                 " ms");
+            throw ParameterError(command ? key_ + "/" + service + ": sent once, no answer within " +
+                                               std::to_string(timeout_ms_) + " ms (the node may have taken it; not sent "
+                                               "again)"
+                                         : "no answer from " + key_ + "/" + service + " within " +
+                                               std::to_string(timeout_ms_) + " ms");
         }
         if (ok.size() > 1)
         {

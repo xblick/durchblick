@@ -23,6 +23,7 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <vector>
@@ -78,6 +79,21 @@ namespace xblick
     std::vector<zenoh::Reply> ask(const zenoh::Session& session, const std::string& selector,
                                   std::chrono::milliseconds timeout,
                                   const std::optional<std::vector<std::uint8_t>>& payload = std::nullopt);
+
+    // No queryable for a command's key became known within the timeout: nothing was sent.
+    class NotReached : public std::runtime_error
+    {
+    public:
+        using std::runtime_error::runtime_error;
+    };
+
+    // The replies to a command (a parameter set): sent exactly once, after the session knows a queryable for
+    // `selector` (a querier's matching status). Waits at most `timeout` for it (NotReached: nothing sent), then at
+    // most `timeout` for the replies; an empty result is returned as it is. Never sent again: an empty result does
+    // not tell "no queryable got it" from "a queryable got it and gave no reply in time" (Python's session.ask_once).
+    std::vector<zenoh::Reply> ask_once(const zenoh::Session& session, const std::string& selector,
+                                       std::chrono::milliseconds timeout,
+                                       const std::optional<std::vector<std::uint8_t>>& payload = std::nullopt);
 
     // Topic names (protocol.hpp): "<base>/image_raw" etc.; base is checked against ROS's name rules.
     std::string check_name(const std::string& path);

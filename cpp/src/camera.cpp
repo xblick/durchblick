@@ -947,6 +947,27 @@ namespace xblick
         }
     }
 
+    std::vector<zenoh::Reply> ask_once(const zenoh::Session& session, const std::string& selector,
+                                       std::chrono::milliseconds timeout,
+                                       const std::optional<std::vector<std::uint8_t>>& payload)
+    {
+        using clock = std::chrono::steady_clock;
+        const auto end = clock::now() + timeout;
+        {
+            zenoh::Querier querier = session.declare_querier(zenoh::KeyExpr(selector));
+            while (not querier.get_matching_status().matching)
+            {
+                if (clock::now() >= end)
+                {
+                    throw NotReached("no queryable for " + selector + " became known within " +
+                                     std::to_string(timeout.count()) + " ms: nothing was sent");
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            }
+        }
+        return replies(session, selector, timeout, payload);
+    }
+
     std::vector<std::string> query_info(zenoh::Session& session, const std::string& base,
                                         std::chrono::milliseconds timeout)
     {
