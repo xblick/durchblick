@@ -115,8 +115,9 @@ namespace xblick
         using std::runtime_error::runtime_error;
     };
 
-    // A command answered by some node(s), while at least one more node got it and gave no answer in time (Zenoh's
-    // "Timeout" reply): that node may still execute it. Not sent again (Python's session.PartlyAnswered).
+    // A command answered by some node(s), while the query was still open at its timeout (the "Timeout" reply,
+    // timed_out): another node may have got it and may still execute it, or the answering node held the query after
+    // its reply. Not sent again (Python's session.PartlyAnswered).
     class PartlyAnswered : public NoAnswer
     {
     public:
@@ -131,8 +132,9 @@ namespace xblick
         using NoAnswer::NoAnswer;
     };
 
-    // The error reply by which Zenoh ends a query whose timeout passed before a queryable answered (its text is
-    // "Timeout"; Python's session.timed_out). The queryable may still be working on it.
+    // The error reply "Timeout" (Python's session.timed_out). A queryable ends its part of a query when it drops the
+    // query object. At the query's timeout, the querying session ends a query that a queryable has not finished yet
+    // and adds this reply itself: nothing comes over the network for it. The queryable may still be working on it.
     bool timed_out(const zenoh::Reply& reply);
 
     // The replies to a command (a parameter set): sent once to each queryable of `selector`, after the session knows

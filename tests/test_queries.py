@@ -230,7 +230,7 @@ def test_without_a_queryable_nothing_is_sent_within_the_timeout(network):
 
 def test_the_time_a_command_takes_at_most(network):
     """The bound in ask_once's docstring: up to timeout for the queryable, then the query's own timeout (Zenoh ends
-    it with its "Timeout" reply), so about 2 x timeout here; 3 x timeout + 1 s when Zenoh does not end it."""
+    it and adds the "Timeout" reply), so about 2 x timeout here; 3 x timeout + 1 s when Zenoh does not end it."""
     network.serve("t/slow", lambda q: b"late", delay=2.0)
     with network.new_session() as s:
         started = time.monotonic()
@@ -494,7 +494,7 @@ def test_the_command_line_says_which_case_it_was(network, capsys):
 
 # ------------------------------------------------------------------- the check for a second node: what it catches
 # The check before a command (session.count) is best effort: it catches two nodes that both answer the read, and a
-# node that answers the read late (Zenoh's "Timeout" reply). It does not catch a second node that drops the read, that
+# node that has not finished the read at its timeout (the "Timeout" reply that the caller's session adds). It does not catch a second node that drops the read, that
 # appears after it, or a second torque_step server without parameters: those get the command (pinned below).
 
 def busy(params, name="x"):
@@ -507,7 +507,7 @@ def busy(params, name="x"):
 
 
 def test_a_busy_second_node_gets_no_set(network):
-    """Two nodes of one name, the second busy: its read answer comes late (Zenoh's "Timeout"), so the set is not
+    """Two nodes of one name, the second busy: the read is still open at its timeout ("Timeout"), so the set is not
     sent; the first node's writer ran 0 times, the second's only for its own local set."""
     from xblick.parameters import ParameterClient, Parameters
 
@@ -522,7 +522,8 @@ def test_a_busy_second_node_gets_no_set(network):
         busy(b)
         with network.new_session() as s:
             with pytest.raises(RuntimeError, match="not sent: 1 node\\(s\\) answered t/busy/node/list_parameters, and "
-                                                   "a reply came late \\(a second node, or the answering node"):
+                                                   "the query was still open at its timeout \\(a second node, or the "
+                                                   "answering node"):
                 ParameterClient(s, "t/busy/node", 1.0).set({"x": 2.0})
         time.sleep(3.0)
         assert writes == {"a": [], "b": [1.0]}
@@ -532,8 +533,8 @@ def test_a_busy_second_node_gets_no_set(network):
 
 
 def test_a_command_answered_by_one_node_while_another_is_late(network):
-    """If a second node gets slow only after the read, the command's own result has one answer and Zenoh's
-    "Timeout" reply: PartlyAnswered (a NoAnswer, no TimeoutError), never success. Both ran it once."""
+    """If a second node gets slow only after the read, the command's own result has one answer and the "Timeout"
+    reply: PartlyAnswered (a NoAnswer, no TimeoutError), never success. Both ran it once."""
     from xblick.session import PartlyAnswered
 
     second = network.second_server()
@@ -541,7 +542,8 @@ def test_a_command_answered_by_one_node_while_another_is_late(network):
     network.serve("t/both", lambda q: b"late", delay=1.5, server=second, name="slow")
     with network.new_session() as s:
         time.sleep(0.5)
-        with pytest.raises(PartlyAnswered, match="t/both: answered by 1 node\\(s\\), and a reply came late after 0.5 s "
+        with pytest.raises(PartlyAnswered, match="t/both: answered by 1 node\\(s\\), and the query was still open "
+                                                 "after 0.5 s "
                                                  ".*a second node may still execute it"):
             command(s, "t/both", 0.5)
     time.sleep(1.5)
@@ -564,8 +566,8 @@ def test_a_second_manager_that_answers_its_read_late_or_not_at_all(network, read
         time.sleep(0.5)  # the second manager was declared just now: known to the router first (else it "appears later")
         m = controller_manager.ControllerManager(s, "robot", timeout=1.0)
         if read == "slow":
-            with pytest.raises(RuntimeError, match="not sent: 1 node\\(s\\) answered .*list_controllers, and a reply "
-                                                   "came late"):
+            with pytest.raises(RuntimeError, match="not sent: 1 node\\(s\\) answered .*list_controllers, and the "
+                                                   "query was still open at its timeout"):
                 m.switch(activate=["arms"])
         else:
             with pytest.raises(SeveralExecuted, match="switch_controller: sent, and 2 nodes answered: each of them "
@@ -636,8 +638,8 @@ def test_a_cpp_set_with_a_busy_second_node(network):
         busy(b)
         out = subprocess.run([probe, "--connect", network.endpoint[0], "--listen", "tcp/127.0.0.1:0", "--params",
                               "t/cbusy/node", "--set", "x:=2.0"], capture_output=True, text=True, timeout=30)
-        assert out.returncode != 0 and "not sent: 1 node(s) answered t/cbusy/node/list_parameters, and a reply " \
-                                       "came late" in \
+        assert out.returncode != 0 and "not sent: 1 node(s) answered t/cbusy/node/list_parameters, and the query " \
+                                       "was still open at its timeout" in \
             out.stderr, out.stderr
         time.sleep(5.0)
         assert writes == {"a": [], "b": [1.0]}
@@ -668,8 +670,8 @@ def test_one_slow_node_is_not_taken_for_a_second(network):
 
 def test_a_node_that_holds_the_query_after_its_reply(network):
     """The receiver rule, pinned: a single manager that replies at once and then keeps working inside the query's
-    callback makes Zenoh send a late "Timeout" reply as well; the check takes it for a possible second node and sends
-    nothing ("a second node, or the answering node still holding the query"). Its switch ran 0 times."""
+    callback keeps the query open until its timeout, and the caller's session adds the "Timeout" reply; the check
+    takes it for a possible second node and sends nothing ("a second node, or the answering node still holding the query"). Its switch ran 0 times."""
     def reply_then_hold(payload):
         def handle(query):
             query.reply(query.key_expr, payload)
@@ -682,9 +684,28 @@ def test_a_node_that_holds_the_query_after_its_reply(network):
     network.serve(f"{M}/switch_controller", lambda q: bytes(SwitchControllerResponse(True, "").serialize()))
     with network.new_session() as s:
         time.sleep(0.5)
-        with pytest.raises(RuntimeError, match="not sent: 1 node\\(s\\) answered .*list_controllers, and a reply came "
-                                               "late \\(a second node, or the answering node still holding the "
+        with pytest.raises(RuntimeError, match="not sent: 1 node\\(s\\) answered .*list_controllers, and the query was "
+                                               "still open at its timeout \\(a second node, or the answering node "
+                                               "still holding the "
                                                "query after its reply\\)"):
             controller_manager.ControllerManager(s, "robot", timeout=0.5).switch(activate=["arms"])
     time.sleep(1.5)
     assert network.calls[f"{M}/switch_controller"] == 0
+
+
+def test_a_command_reaches_every_queryable_of_its_key():
+    """"Sent once to each queryable of its key" holds because Zenoh's default query target (BestMatching) delivers a
+    query to every matching queryable while none of them is declared complete. Pinned in the sources: no Durchblick
+    queryable sets ``complete`` and no query sets a ``target``. The behaviour itself, two queryables that both get a
+    command, is pinned by test_a_second_torque_step_server_without_parameters_gets_the_step."""
+    import re
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    files = [*root.glob("src/xblick/**/*.py"), *root.glob("cpp/**/*.cpp"), *root.glob("cpp/**/*.hpp")]
+    assert len(files) > 20
+    pattern = re.compile(r"\bcomplete\s*=(?!=)|\.complete\b|QueryTarget|query_target|Z_QUERY_TARGET|\.target\s*=(?!=)|"
+                         r"\btarget\s*=\s*zenoh")
+    found = [f"{f.relative_to(root)}:{n}: {line.strip()}" for f in files
+             for n, line in enumerate(f.read_text().splitlines(), 1) if pattern.search(line)]
+    assert found == [], "\n".join(found)

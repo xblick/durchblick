@@ -170,8 +170,9 @@ README catalogue in the core repository.
   that a stamp repeats.
 - A Zenoh query can stay open past its timeout. Use `session.replies(...)`, never iterate `session.get(...)`.
 - A queryable must reply and drop the query at once (end the callback, keep no `Query`). A node that keeps working
-  inside the callback makes Zenoh send a late "Timeout" reply, and since 0.5.2 a caller takes that for a second node
-  and refuses to send commands to it ("not sent ... a reply came late").
+  inside the callback keeps the query open. At the query's timeout the caller's own session adds the error reply
+  "Timeout". Since 0.5.2 a caller takes that for a second node and refuses to send commands to it ("not sent ... the
+  query was still open at its timeout").
 - An overlay drawn in the result loop delays every result. Hand it to `xblick.overlay.Overlay` after publishing the
   results; it drops frames instead of queueing them.
 - A queryable with a Python callback runs it in zenoh-python's own thread, which is no daemon. A node that ends with

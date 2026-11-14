@@ -983,7 +983,7 @@ def request(session: zenoh.Session, name: str, command: str, timeout: float = 30
     """Send a command to a record and play node as a query and return its result once it took effect: ``record``'s
     ready, ``stop``'s numbers, ``play``'s and ``step``'s playback status. A refusal is a RuntimeError, a recording
     that failed its check a RecordingError (with the numbers in ``result``). Not sent unless exactly one node of
-    that name answers its status first and none gives Zenoh's "Timeout" reply (session.count, best effort:
+    that name answers its status first and the query ends before its timeout (session.count, best effort:
     RuntimeError, TimeoutError for none); then sent once (session.command): NotReached (a TimeoutError, nothing
     sent), NoAnswer (no TimeoutError: sent once, no answer within ``timeout`` s; it may still be executed; not sent
     again), PartlyAnswered, RuntimeError for an error reply."""

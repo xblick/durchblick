@@ -137,20 +137,21 @@ CameraInfo and are in `xblick::xblick`. Python has the same as `xblick.rectify`.
 
 ## Queries and commands
 
-`camera.hpp` has the two kinds of query that a program sends to other nodes. `xblick::ask` sends a read, such as
-an info record or a node's parameter values. It asks again until a first reply comes or the timeout passed.
-`xblick::ask_once` sends a command, such as a parameter set. It waits until the session knows a queryable for the
-key and then sends the command once to each queryable of the key. It never sends the command again.
-`xblick::ParameterClient` sends a set only after a read had exactly one answer and no late answer. This check is
-best effort. A second node that drops the read or starts after it still gets the set.
+`camera.hpp` has the two kinds of query that a program sends to other nodes. `xblick::ask` sends a read, such as an info
+record or a node's parameter values. It asks again until a first reply comes or the timeout passed. `xblick::ask_once`
+sends a command, such as a parameter set. It waits until the session knows a queryable for the key and then sends the
+command once to each queryable of the key. It never sends the command again. Zenoh's default query target delivers a
+query to every queryable of its key, as long as none of them is declared complete. No Durchblick queryable is declared
+complete. `xblick::ParameterClient` sends a set only after a read had exactly one answer and ended before its timeout.
+This check is best effort. A second node that drops the read or starts after it still gets the set.
 
 | Exception (base) | Sent? | Meaning |
 | --- | --- | --- |
 | `xblick::NotReached` (`std::runtime_error`) | not sent | no queryable became known within the timeout. You may try again. |
-| `xblick::ParameterError` "not sent: ..." (`std::runtime_error`) | not sent | the read before the set showed no node, several nodes, or a late reply |
+| `xblick::ParameterError` "not sent: ..." (`std::runtime_error`) | not sent | the read before the set showed no node or several nodes, or it was still open at its timeout |
 | `xblick::ParameterError` with the node's reason | sent | the node refused it, or a read got no answer |
 | `xblick::NoAnswer` (`std::runtime_error`) | sent once | no answer within the timeout. The receiver may still execute it. It was not sent again. |
-| `xblick::PartlyAnswered` (`NoAnswer`) | sent once | one node answered, and a reply came late: another node may still execute it |
+| `xblick::PartlyAnswered` (`NoAnswer`) | sent once | one node answered, and the query was still open at its timeout: another node may still execute it |
 | `xblick::SeveralExecuted` (`NoAnswer`) | sent once | several nodes answered: each of them executed it |
 
 All of them derive from `std::runtime_error`. `NotReached` and `NoAnswer` do not derive from `ParameterError`: a

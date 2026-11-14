@@ -17,7 +17,7 @@ robot's software, or a bridge to it, serves it.
 
 A read (list, config, config_file) raises TimeoutError when nobody answers and RuntimeError when several managers
 answer. Before a command (create, switch, unload, torque step), a read of the same node must have exactly one answer
-and no node's "Timeout" reply, else the command is not sent (RuntimeError, or TimeoutError when none answered). This
+and no "Timeout" reply, else the command is not sent (RuntimeError, or TimeoutError when none answered). This
 is a best-effort check that catches two nodes that both answer the read. A second node that does not answer the read
 (hung, dropping queries), that appears between the read and the command, or that serves a broad key expression still
 gets the command. For a torque step the read counts the controller's parameter servers, not its torque_step servers.
@@ -89,7 +89,7 @@ def _command(session: zenoh.Session, key: str, request, response_type, timeout: 
 
 def _count(session: zenoh.Session, read_key: str, request, timeout: float, key: str):
     """The best-effort check before a command on ``key``: the read ``read_key`` of the same node must have exactly
-    one answer and no node's "Timeout" reply (session.count), else nothing is sent."""
+    one answer and no "Timeout" reply (session.count), else nothing is sent."""
     try:
         count(ask(session, read_key, timeout, payload=bytes(request.serialize())), read_key)
     except RuntimeError as error:

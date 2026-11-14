@@ -112,23 +112,25 @@ without endpoints (since 0.5.3; before, such a session did not listen and found 
   the whole network.
 - A session in client mode does not listen; the router relays everything for it.
 
-**A query can stay open after its timeout.** Zenoh ends a query after its timeout in almost all cases. In one CI
-job, a query with a timeout of 1 s was still open after 5 minutes. Code that iterates over the replies waits that
-long. Use `session.replies(session, selector, timeout, ...)` in Python or `xblick::replies` in C++. These
-functions return at a deadline with the replies that arrived. The deadline is twice the timeout, and at least 0.5 s
-after the timeout. They count such queries (`session.not_finalized`, C++ `queries_not_finalized()`) and log each
-selector once. The cost is small: 0.15 ms per query against 0.10 ms for the direct iteration, measured on
-2026-11-05 between two sessions over TCP.
+**A query can stay open after its timeout.** A queryable ends its part of a query when it drops the query object. At the
+query's timeout, the caller's own session ends a query that is still open. It then adds an error reply with the text
+`Timeout`, and nothing comes over the network for it. Zenoh ends a query in this way in almost all cases. In one CI job,
+a query with a timeout of 1 s was still open after 5 minutes. This is our observation, which Zenoh's documentation does
+not describe. Code that iterates over the replies waits that long. Use `session.replies(session, selector, timeout,
+...)` in Python or `xblick::replies` in C++. These functions return at a deadline with the replies that arrived. The
+deadline is twice the timeout, and at least 0.5 s after the timeout. They count such queries (`session.not_finalized`,
+C++ `queries_not_finalized()`) and log each selector once. The cost is small: 0.15 ms per query against 0.10 ms for the
+direct iteration, measured on 2026-11-05 between two sessions over TCP.
 
 **A new session needs time to learn about the others.** A query directly after `open_session()` may find nothing.
 Durchblick's own queries repeat periodically. Do not query once and conclude that nothing is there.
 
-**Closing can block.** After a query that Zenoh did not end, `close()` of a Zenoh session can block without limit.
-The Python sessions from `open_session` and `open_from_args` therefore close within 5 s and continue with a warning
-otherwise. This also holds at the end of a `with` block. Wrap a session from your own `zenoh.open` call in
-`session.Session(...)`. C++ sessions close in the destructor of `zenoh::Session` without such a limit. We have not
-seen the hang in C++, because the C++ programs never query the router's admin space. A C++ program that does should
-close its session in a separate thread with a deadline.
+**Closing can block.** After a query that Zenoh did not end, `close()` of a Zenoh session can block without limit. We
+saw this in our tests. Zenoh's documentation does not describe it. The Python sessions from `open_session` and
+`open_from_args` therefore close within 5 s and continue with a warning otherwise. This also holds at the end of a
+`with` block. Wrap a session from your own `zenoh.open` call in `session.Session(...)`. C++ sessions close in the
+destructor of `zenoh::Session` without such a limit. We have not seen the hang in C++, because the C++ programs never
+query the router's admin space. A C++ program that does should close its session in a separate thread with a deadline.
 
 ## Related pages
 

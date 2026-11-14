@@ -1283,11 +1283,12 @@ namespace xblick
             // a set is a command (a node may act on it): not sent unless exactly one node answers a read first (two
             // would both apply it); then sent once (ask_once). NotReached: nothing sent; NoAnswer: sent once, no
             // answer, it may still be applied, not sent again (Python's ParameterClient._call).
-            // a best-effort check of a second node: the read must have exactly one answer and no node's "Timeout"
-            // reply (a node that did not answer in time is a second node, not none; Python's session.count)
+            // a best-effort check of a second node: the read must have exactly one answer and end before its timeout
+            // (no "Timeout" reply, which the session adds when a queryable had not finished the query: a node that did
+            // not answer in time is a second node, not none; Python's session.count)
             const std::string list_key = key_ + "/" + std::string(p::kListParameters);
             std::size_t answered = 0;
-            bool late = false;
+            bool still_open = false;
             for (const auto& reply : ask(session_, list_key, timeout, ListParametersRequest{}.serialize()))
             {
                 if (reply.is_ok())
@@ -1296,19 +1297,20 @@ namespace xblick
                 }
                 else if (timed_out(reply))
                 {
-                    late = true;
+                    still_open = true;
                 }
             }
             const char* holding = "a second node, or the answering node still holding the query after its reply";
             if (answered == 0)
             {
-                throw ParameterError("not sent: no node answered " + list_key + (late ? " in time" : "") +
+                throw ParameterError("not sent: no node answered " + list_key + (still_open ? " in time" : "") +
                                      " (the set to " + key + ")");
             }
-            if (late)
+            if (still_open)
             {
                 throw ParameterError("not sent: " + std::to_string(answered) + " node(s) answered " + list_key +
-                                     ", and a reply came late (" + holding + ") (the set to " + key + ")");
+                                     ", and the query was still open at its timeout (" + holding + ") (the set to " +
+                                     key + ")");
             }
             if (answered > 1)
             {
@@ -1332,8 +1334,8 @@ namespace xblick
             }
             if (not ok.empty() and unanswered)
             {
-                throw PartlyAnswered(key + ": answered by " + std::to_string(ok.size()) + " node(s), and a reply came "
-                                     "late after " + std::to_string(timeout_ms_) + " ms (" + holding +
+                throw PartlyAnswered(key + ": answered by " + std::to_string(ok.size()) + " node(s), and the query "
+                                     "was still open after " + std::to_string(timeout_ms_) + " ms (" + holding +
                                      "): a second node may still execute it; not sent again");
             }
             if (ok.empty())

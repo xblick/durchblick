@@ -558,9 +558,10 @@ class ParameterClient:
     def _call(self, service: str, request):
         """One service call: a read (list, describe, get, types) asked again while nothing answers (session.ask);
         a set (a command: a node may act on it) sent once (session.command), and only after a read (list_parameters)
-        had exactly one answer and no node's "Timeout" reply (session.count: a best-effort check of two nodes on the
-        key, which would both apply it). NotReached, NoAnswer, PartlyAnswered: as session.command. Ordinary reads
-        keep the one answer that came and ignore a "Timeout" reply of another node: a read changes nothing."""
+        had exactly one answer and no "Timeout" reply (session.count: a best-effort check of two nodes on the key,
+        which would both apply it). NotReached, NoAnswer, PartlyAnswered: as session.command. Ordinary reads keep the
+        one answer that came and ignore a "Timeout" reply, which says that another node had not finished the read: a
+        read changes nothing."""
         _, response_type = SERVICES[service]
         key = f"{self.key}/{service}"
         if service in (P.SET_PARAMETERS, P.SET_PARAMETERS_ATOMICALLY):

@@ -322,8 +322,10 @@ def ask(session: zenoh.Session, selector: str, timeout: float, **get_options) ->
 
 
 def timed_out(reply) -> bool:
-    """The error reply by which Zenoh ends a query whose timeout passed before a queryable answered: its text is
-    "Timeout" (eclipse-zenoh 1.10; tests/test_queries.py pins it). The queryable may still be working on it."""
+    """The error reply "Timeout" (eclipse-zenoh 1.10; tests/test_queries.py pins the text). A queryable ends its part
+    of a query when it drops the query object. At the query's timeout, the querying session ends a query that a
+    queryable has not finished yet and adds this reply itself: nothing comes over the network for it. So a queryable
+    received the query and had not dropped it in time. It may still be working on it."""
     return reply.err is not None and reply.err.payload.to_string() == "Timeout"
 
 
@@ -340,8 +342,9 @@ class NoAnswer(RuntimeError):
 
 
 class PartlyAnswered(NoAnswer):
-    """A command was answered by some node(s), and at least one more node got it and gave no answer in time (Zenoh's
-    "Timeout" reply): that node may still execute it. Not sent again. A NoAnswer, so no TimeoutError."""
+    """A command was answered by some node(s), and the query was still open at its timeout (the "Timeout" reply,
+    ``timed_out``): another node may have got it and may still execute it, or the answering node held the query after
+    its reply. Not sent again. A NoAnswer, so no TimeoutError."""
 
 
 class SeveralExecuted(NoAnswer):
@@ -349,7 +352,7 @@ class SeveralExecuted(NoAnswer):
     the check before the command did not see). Not sent again. A NoAnswer, so no TimeoutError."""
 
 
-HOLDING = "a second node, or the answering node still holding the query after its reply"  # why a late reply comes
+HOLDING = "a second node, or the answering node still holding the query after its reply"  # who keeps a query open
 
 
 def ask_once(session: zenoh.Session, selector: str, timeout: float, **get_options) -> list:
@@ -357,7 +360,9 @@ def ask_once(session: zenoh.Session, selector: str, timeout: float, **get_option
     to each queryable of ``selector``, after the session knows one. NotReached when none became known within
     ``timeout`` (nothing sent). The replies as they came, possibly none; ``command`` interprets them.
 
-    Once per queryable: two queryables on the key (two nodes, two bridges) both get it and both may execute it. The
+    Once per queryable: two queryables on the key (two nodes, two bridges) both get it and both may execute it. This
+    holds because Zenoh's default query target (BestMatching) reaches every matching queryable while none is declared
+    complete, and no Durchblick queryable is (tests/test_queries.py pins both). The
     callers check first, as far as the protocol lets them, that one node serves the key (``count``): a best-effort
     check that catches two nodes that both answer a read, not a guarantee.
 
@@ -366,7 +371,8 @@ def ask_once(session: zenoh.Session, selector: str, timeout: float, **get_option
     got the query and dropped it without a reply, which also ends it at once. Or a connection on the way was lost.
     A command sent again in the later cases would run twice. Instead, ask_once waits until a querier on the key
     reports a matching queryable (Zenoh's own routing knowledge, also through a router) and then sends the command
-    once. A queryable slower than the timeout gives Zenoh's error reply "Timeout" (``timed_out``).
+    once. A queryable that has not dropped the query by its timeout gives the error reply "Timeout" (``timed_out``),
+    which the session adds itself.
 
     Time: up to ``timeout`` for the queryable, then the query's own timeout ``timeout``; when Zenoh does not end the
     query by then, ``collect`` waits up to ``deadline_of(timeout)`` (``timeout + max(0.5, timeout)``) and 1 s more
@@ -387,9 +393,10 @@ def command(session: zenoh.Session, selector: str, timeout: float, **get_options
     """A command sent with ``ask_once`` and its answers checked: the successful replies (one or more), else
     NotReached (not sent), RuntimeError with the first error reply's text (an error reply other than Zenoh's own
     timeout), NoAnswer (sent once, no answer within ``timeout``: it may still be executed; not sent again),
-    PartlyAnswered (answered, and a late reply came too: another node may still execute it), or SeveralExecuted
-    (answered by several nodes: each executed it). A receiver replies and drops the query at once: one that keeps
-    the query after its reply makes Zenoh send a late "Timeout" reply, which looks like a second node."""
+    PartlyAnswered (answered, and the query was still open at its timeout: another node may still execute it), or
+    SeveralExecuted (answered by several nodes: each executed it). A receiver replies and drops the query at once: one
+    that keeps the query after its reply keeps it open until the timeout, and the "Timeout" reply that the session then
+    adds looks like a second node."""
     answers = ask_once(session, selector, timeout, **get_options)
     errors = [r.err.payload.to_string() for r in answers if r.err is not None and not timed_out(r)]
     if errors:
@@ -399,7 +406,7 @@ def command(session: zenoh.Session, selector: str, timeout: float, **get_options
         raise NoAnswer(f"{selector}: sent once, no answer within {timeout:g} s: it may still be executed; not sent "
                        "again")
     if any(timed_out(r) for r in answers):
-        raise PartlyAnswered(f"{selector}: answered by {len(ok)} node(s), and a reply came late after "
+        raise PartlyAnswered(f"{selector}: answered by {len(ok)} node(s), and the query was still open after "
                              f"{timeout:g} s ({HOLDING}): a second node may still execute it; not sent again")
     if len(ok) > 1:
         raise SeveralExecuted(f"{selector}: sent, and {len(ok)} nodes answered: each of them executed it; not sent "
@@ -409,15 +416,17 @@ def command(session: zenoh.Session, selector: str, timeout: float, **get_options
 
 def count(answers: list, selector: str) -> list:
     """The successful replies of a read that counts the nodes of a command's key before the command (best effort):
-    RuntimeError, "not sent", unless exactly one node answered and none gave Zenoh's "Timeout" reply (a node that
-    exists but did not answer in time is a second node, not none; or a single node that keeps the query after its
-    reply). TimeoutError when none answered, in time or at all."""
+    RuntimeError, "not sent", unless exactly one node answered and the query ended before its timeout (no "Timeout"
+    reply, ``timed_out``). A query still open at its timeout means a queryable got it and had not finished: a node that
+    exists but did not answer in time is a second node, not none, or a single node keeps the query after its reply.
+    TimeoutError when none answered, in time or at all."""
     ok = [r.ok for r in answers if r.ok is not None]
-    late = any(timed_out(r) for r in answers)
+    still_open = any(timed_out(r) for r in answers)
     if not ok:
-        raise TimeoutError(f"not sent: no node answered {selector}" + (" in time" if late else ""))
-    if late:
-        raise RuntimeError(f"not sent: {len(ok)} node(s) answered {selector}, and a reply came late ({HOLDING})")
+        raise TimeoutError(f"not sent: no node answered {selector}" + (" in time" if still_open else ""))
+    if still_open:
+        raise RuntimeError(f"not sent: {len(ok)} node(s) answered {selector}, and the query was still open at its "
+                           f"timeout ({HOLDING})")
     if len(ok) > 1:
         raise RuntimeError(f"not sent: {len(ok)} nodes answer {selector}: one key, one node")
     return ok

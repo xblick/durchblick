@@ -207,14 +207,16 @@ manager.unload("teleop_arms")
 
 A read (`list`, `states`, `config`, `config_file`) raises `TimeoutError` when nobody answers and `RuntimeError` when
 several managers answer. A command (`create`, `switch`, `unload`, and `torque_step` of a controller) goes out once
-to each queryable of its key. Before it, a read of the same manager or controller must have exactly one answer and
-no late answer, else the command is not sent.
+to each queryable of its key. Zenoh's default query target delivers a query to every queryable of its key, as long
+as none of them is declared complete. No Durchblick queryable is declared complete. Before the command, a read of the
+same manager or controller must have exactly one answer and must end before its timeout, else the command is not
+sent.
 
-This check is best effort. It catches two managers that both answer the read, and one that answers it late. A
-second manager that drops the read, that starts between the read and the command, or that serves a broad key
-expression still gets the command. For `torque_step` the read counts the controller's parameter servers, not its
-torque-step servers. The check can also stop a command that worked before 0.5.2: a manager whose read takes longer
-than the timeout gets nothing ("not sent"). This fails safe.
+This check is best effort. It catches two managers that both answer the read, and one that has not finished the read at
+its timeout. A second manager that drops the read, that starts between the read and the command, or that serves a broad
+key expression still gets the command. For `torque_step` the read counts the controller's parameter servers, not its
+torque-step servers. The check can also stop a command that worked before 0.5.2: a manager whose read takes longer than
+the timeout gets nothing ("not sent"). This fails safe.
 
 A command raises:
 
@@ -222,18 +224,20 @@ A command raises:
 | --- | --- | --- |
 | `xblick.NotReached` (`TimeoutError`) | not sent | no manager or controller became known within the timeout. You may try again. |
 | `TimeoutError` "not sent: no node answered ..." | not sent | nobody answered the read before the command, in time or at all |
-| `RuntimeError` "not sent: ..." | not sent | the read showed several nodes, or a late reply (a second node, or one node holding its query) |
+| `RuntimeError` "not sent: ..." | not sent | the read showed several nodes, or it was still open at its timeout (a second node, or one node holding its query) |
 | `RuntimeError` with the manager's reason | sent | the manager refused it: nothing was done |
 | `xblick.NoAnswer` (`RuntimeError`, no `TimeoutError`) | sent once | no answer within the timeout. The robot may still execute it. It was not sent again. |
-| `xblick.PartlyAnswered` (`NoAnswer`) | sent once | one node answered, and a reply came late: another node may still execute it |
+| `xblick.PartlyAnswered` (`NoAnswer`) | sent once | one node answered, and the query was still open at its timeout: another node may still execute it |
 | `xblick.SeveralExecuted` (`NoAnswer`) | sent once | several nodes answered: each of them executed it |
 
 **A receiver replies and drops the query at once.** A node that serves a command or a parameter (its queryable's
-callback) replies and then ends the callback, without keeping the query object. Do long work outside the callback.
-A node that keeps the query after its reply makes Zenoh send a late "Timeout" reply as well. The caller then takes
-it for a second node: the read before a command gives "not sent", and a command gives `PartlyAnswered`. Durchblick's
-own parameter servers (Python `Parameters`, C++) and the record and play node follow this rule. Check a receiver
-outside this repository, such as a robot's bridge, for it before you command it with 0.5.2.
+callback) replies and then ends the callback, without keeping the query object. Do long work outside the callback. Zenoh
+ends a query when every queryable that received it has dropped the query object. A node that keeps the query after its
+reply therefore keeps the query open. At the query's timeout, the caller's own session ends the query and adds an error
+reply with the text `Timeout`. The caller takes that reply for a second node: the read before a command gives "not
+sent", and a command gives `PartlyAnswered`. Durchblick's own parameter servers (Python `Parameters`, C++) and the
+record and play node follow this rule. Check a receiver outside this repository, such as a robot's bridge, for it before
+you command it with 0.5.2.
 
 **A command has no expiry.** A robot that is busy or briefly unreachable executes a command when it gets it, also
 after the caller got `NoAnswer`. Check the robot's state before you act on a `NoAnswer`, and before you go near the
