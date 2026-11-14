@@ -236,8 +236,8 @@ def test_selection_arguments_and_their_check(zenoh_config):
                            viewer_value="9877", extra="--report 2", connection=tui.Connection(connect=["h1", "h2"], mode="client"))
     assert s.check() == ["--serve", "9877", "robot/x/color", "--stale-after", "5", "--cloud-rate", "2",
                          "--report", "2", "--zenoh-mode", "client", "--connect", "tcp/h1:7447", "tcp/h2:7447"]
-    with pytest.raises(ValueError, match="a peer that only connects receives nothing"):
-        tui.Connection(connect=["h1"])  # the router does not route between peers that do not listen
+    with pytest.raises(ValueError, match="a peer that only connects is refused: it would listen on a loopback port"):
+        tui.Connection(connect=["h1"])  # peers on other PCs cannot reach its loopback port
     with pytest.raises(ValueError, match="nothing to listen on"):
         tui.Connection(connect=["h1"], listen=["127.0.0.1:0"], mode="client")
     assert tui.RerunSelection().check() == ["--spawn"]  # nothing chosen: rerun takes every stream
@@ -592,7 +592,7 @@ def test_the_interface_takes_session_options(monkeypatch):
     assert (c.connect, c.listen, c.mode) == (["tcp/127.0.0.1:7447"], [], "client")
     c = cli._interface_connection(["--connect", "tcp/a:7447", "--listen", "tcp/127.0.0.1:0"], "xblick")
     assert c.mode == "peer" and c.listen == ["tcp/127.0.0.1:0"]
-    with pytest.raises(SystemExit):  # a peer that only connects receives nothing: refused
+    with pytest.raises(SystemExit):  # a peer that only connects: refused
         cli._interface_connection(["--connect", "tcp/a:7447", "--zenoh-mode", "peer"], "xblick")
     assert cli._interface_connection([], "xblick") is None
     started = []

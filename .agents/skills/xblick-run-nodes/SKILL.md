@@ -116,8 +116,8 @@ echo quit | CUDA_MPS_PIPE_DIRECTORY=/tmp/xblick-mps-gpu<N> nvidia-cuda-mps-contr
 
 ## Gotchas
 
-- A peer session that only `--connect`s to a router does not listen, and the router does not route between such
-  sessions: nothing is found. Give no endpoints, add `--listen tcp/127.0.0.1:0`, or use `--zenoh-mode client`.
+- A router does not relay between peers. A peer session that only `--connect`s listens on a free loopback port, so
+  only peers on the same PC reach it. For a router on another PC, use `--zenoh-mode client` or a router per PC.
 - Never stop processes by name pattern on a shared machine. Use the PIDs you started.
 - A background shell starts processes with SIGINT ignored. A node on an xblick older than 0.5.4 then ignores
   SIGINT. Stop programs with SIGTERM.

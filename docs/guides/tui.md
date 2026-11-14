@@ -128,8 +128,11 @@ xblick --connect <host>              # tcp/<host>:7447, as a client: everything 
 xblick --config FILE
 ```
 
-With `--connect`, the interface is a client by default. Add `--listen` or `--zenoh-mode peer` to make it a peer. A
-peer that only connects would receive nothing, so the interface refuses this combination and states the reason.
+With `--connect`, the interface is a client by default. Add `--listen` to make it a peer. The interface refuses a
+peer with `--connect` and without `--listen`, also with `--zenoh-mode peer`, and states the reason. Its rule differs
+from the commands' rule. A command accepts this combination and then listens on a free loopback port of this PC.
+Peers on other PCs or behind an SSH tunnel cannot connect to that port, so such a peer would receive nothing from
+them.
 
 ### Over SSH
 

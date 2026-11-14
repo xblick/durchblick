@@ -103,7 +103,9 @@ def _clock(ns: int | None) -> str:
 class Connection:
     """A Zenoh connection as the commands take it: nothing (this PC's router), ``connect``/``listen`` endpoints in
     ``mode`` peer or client, or a configuration file (absolute, so that a preset works from anywhere). A peer that only
-    connects is refused: the router does not route between peers that do not listen, so it would receive nothing."""
+    connects is refused, unlike in the commands: there it listens on a loopback port of this PC, which peers on other
+    PCs or behind a tunnel cannot reach (the router does not relay between peers), so it would receive nothing from
+    them."""
 
     connect: list[str] = dataclasses.field(default_factory=list)
     listen: list[str] = dataclasses.field(default_factory=list)
@@ -121,8 +123,9 @@ class Connection:
         self.connect = [zsession.endpoint(e) for e in self.connect]
         self.listen = [zsession.endpoint(e) for e in self.listen]
         if self.mode == "peer" and self.connect and not self.listen:
-            raise ValueError("a peer that only connects receives nothing (the router does not route between peers "
-                             "that do not listen): listen too (tcp/127.0.0.1:0 on this PC) or use client mode")
+            raise ValueError("a peer that only connects is refused: it would listen on a loopback port only, which "
+                             "peers on other PCs or behind a tunnel cannot reach (the router does not relay between "
+                             "peers): listen too (tcp/127.0.0.1:0 on this PC) or use client mode")
         if self.config:
             path = expand_path(self.config).resolve()
             if not path.is_file():
