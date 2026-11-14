@@ -8,6 +8,7 @@
     xblick cam /dev/video0                        # a live camera FFmpeg opens as cam/video0/color (needs xblick[cam])
     xblick cam                                    # ... chosen from this PC's cameras with the arrow keys
     xblick rerun --connect …                      # every stream and node result in the Rerun viewer
+    xblick view test/camera/color                 # a stream in VLC or a browser, served as MJPEG (view.py)
     xblick diagnostics test --connect …          # how the cameras' publishers are doing (<camera>/diagnostics)
     xblick mps --pipe-dir /tmp/xblick-mps         # NVIDIA MPS for the nodes on this PC's GPU (mps.py)
     xblick record --dir ~/recordings --connect …  # everything into MCAP files until stopped (recording.py)
@@ -36,7 +37,7 @@ from pathlib import Path
 
 import numpy as np
 
-from . import cam, diagnostics, mps, recording, rerun_bridge, router, survey, topics
+from . import cam, diagnostics, mps, recording, rerun_bridge, router, survey, topics, view
 from . import session as zsession
 from .camera import CameraPublisher, ImageSubscriber, find_streams, wait_for_info
 from .msg import CameraInfo
@@ -624,6 +625,21 @@ def build_parser(prog: str = "xblick") -> argparse.ArgumentParser:
                    help="the routers of other PCs to connect to (zenohd's -e), e.g. tcp/other-pc:7447")
     p.set_defaults(run=lambda a: router.serve(a.listen, a.connect))
 
+    p = commands.add_parser("view", help="show camera streams in VLC (one window per stream) or a browser, served as MJPEG over "
+                                         "HTTP",
+                            description=view.__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("streams", nargs="+", metavar="STREAM", help="the stream bases to show, e.g. test/camera/color")
+    opener = p.add_mutually_exclusive_group()
+    opener.add_argument("--browser", action="store_true",
+                        help="open the grid page in the system's browser instead of VLC: all streams side by side")
+    opener.add_argument("--no-player", action="store_true", help="start no player: serve and print the addresses")
+    p.add_argument("--http", default=view.LISTEN, metavar="ADDRESS:PORT",
+                   help=f"where the HTTP server listens (default {view.LISTEN}: this PC only). 0.0.0.0:{view.PORT} "
+                        "opens it to the network WITHOUT A PASSWORD: anyone who can reach the address can watch")
+    p.add_argument("--seconds", type=float, default=2.0, help="how long to wait for each stream's publisher")
+    zsession.add_arguments(p)
+    p.set_defaults(run=_view)
+
     p = commands.add_parser("diagnostics", help="how the cameras' publishers are doing (<camera>/diagnostics)")
     p.add_argument("prefix", nargs="?", default="", help="only cameras below this prefix, e.g. test")
     p.add_argument("--values", action="store_true", help="every value, not only level and message")
@@ -794,6 +810,15 @@ def build_parser(prog: str = "xblick") -> argparse.ArgumentParser:
     p.add_argument("arguments", nargs=argparse.REMAINDER)
     p.set_defaults(run=lambda a: _relay(a.arguments))
     return parser
+
+
+def _view(args) -> int:
+    session = zsession.open_from_args(args)
+    try:
+        player = "browser" if args.browser else "none" if args.no_player else "vlc"
+        return view.run(session, args.streams, args.http, player, seconds=args.seconds)
+    finally:
+        session.close()
 
 
 def main(argv=None) -> int:

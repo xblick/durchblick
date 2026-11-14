@@ -253,6 +253,7 @@ The controller side, for a simulation that takes the controller's place, is `Com
 | `xblick.node`, `history`, `tensors`, `rgbd` | helpers for nodes | [Writing nodes](../guides/writing-nodes.md), [Pairing streams](../guides/pairing-streams.md) |
 | `xblick.overlay` | a node's drawn results (`--overlay`) and drawing helpers | [Writing nodes](../guides/writing-nodes.md#drawn-results---overlay) |
 | `xblick.weights` | a node's weight download at its start | [Writing nodes](../guides/writing-nodes.md#rules-every-node-keeps) |
+| `xblick.view` | `xblick view`: streams as MJPEG over HTTP (`View`, `to_jpeg`) | [Streams in VLC or a browser](../guides/view.md) |
 | `xblick.parameters` | parameters of a node; `declare_options` makes a node's command-line options its parameters | [Parameters](parameters.md) |
 | `xblick.poses` | poses of a camera or a robot at the stamp of an image, rotations and quaternions | |
 | `xblick.rectify` | `rectify_map(info)`: the rectification map of a CameraInfo, as `cv2.initUndistortRectifyMap` gives it; `rectified_info(info)`: the CameraInfo of the rectified image | [C++](cpp-api.md#rectify-an-image) |

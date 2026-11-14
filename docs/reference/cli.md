@@ -88,6 +88,20 @@ extra `xblick[rerun]`. See the [viewer guide](../guides/viewer.md).
 | `--save FILE` | write an `.rrd` recording |
 | `--report S` | seconds between the status lines |
 
+### `xblick view <streams ...>`
+
+Shows streams in VLC (one window per stream) or in a browser (all streams side by side). It serves them as MJPEG over
+HTTP on 127.0.0.1:8090. Without VLC it asks on a terminal whether to open the browser instead. On a system without a
+display (Linux: neither `DISPLAY` nor `WAYLAND_DISPLAY` set) it starts no player and prints how to open the addresses
+from another PC. See the [view guide](../guides/view.md).
+
+| Option | Meaning |
+| --- | --- |
+| `--browser` | open the page with all streams in the system's browser instead of VLC |
+| `--no-player` | start no player; print the addresses only |
+| `--http ADDRESS:PORT` | where the HTTP server listens. The default is `127.0.0.1:8090`, this PC only. `0.0.0.0:8090` opens it to the network **without a password**. |
+| `--seconds S` | how long to wait for each stream's publisher (default 2 s) |
+
 ## Cameras
 
 ### `xblick cam [source]`
