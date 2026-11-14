@@ -11,8 +11,9 @@ xblick view test/camera/color
 xblick view: serving 1 stream(s) on http://127.0.0.1:8090/ (this PC only; --http 0.0.0.0:PORT opens it to the network)
 xblick view: test/camera/color: http://127.0.0.1:8090/test/camera/color.mjpg
 xblick view: all of them: http://127.0.0.1:8090/
+xblick view: by hand: vlc --network-caching=100 http://127.0.0.1:8090/test/camera/color.mjpg
 xblick view: started VLC (1 window(s))
-xblick view: serving; Ctrl-C to stop
+xblick view: serving; press v for VLC, b for the browser view, Ctrl-C to end
 ```
 
 ## Which player starts
@@ -27,6 +28,21 @@ xblick view: serving; Ctrl-C to stop
 | any of these on a system without a display | no player and no question; the addresses and how to open them from another PC |
 
 In every case the command keeps serving until Ctrl-C.
+
+**Keys.** While the command serves on a terminal, two keys work without Enter, also with `--no-player`:
+
+| Key | Action |
+| --- | --- |
+| `v` | open the VLC windows that are not open (any more), with the same arguments as at the start |
+| `b` | open the browser view |
+| Ctrl-C | end the command |
+
+On a system without a display both keys print one line and start nothing. Without a terminal (stdin a pipe or a
+file) there are no keys, and the command reads nothing from stdin. When you close all VLC windows, the command says
+so in one line and keeps serving; press `v` to open them again.
+
+The start lines give, once per stream, the command that opens it in VLC by hand, for example
+`vlc --network-caching=100 http://127.0.0.1:8090/test/camera/color.mjpg`.
 
 ```bash
 xblick view test/camera/color                                 # VLC
@@ -94,6 +110,6 @@ On a system without a display, the command prints both ways with its own port an
 Each client gets the newest frame whenever it can take one. A slow client skips frames. It holds up neither the
 subscriber nor the other clients. A client that takes no frame for 10 s is dropped, and a client that disconnects is
 cleaned up at once. Ctrl-C ends the command, also while clients watch. VLC windows that the command started end with
-it. When you close all of them yourself, the command says so in one line and keeps serving until Ctrl-C.
+it.
 
 The [command line reference](../reference/cli.md#xblick-view-streams-) lists all options.

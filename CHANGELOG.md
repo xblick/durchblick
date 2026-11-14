@@ -17,7 +17,7 @@ or newer. 0.4.0 to 0.4.3 speak the protocol of 0.3.59 to 0.3.68: their programs 
   terminal whether to open the browser instead; on a system without a display (Linux: neither `DISPLAY` nor
   `WAYLAND_DISPLAY` set) it starts no player and prints how to open the addresses from another PC. `--http
   0.0.0.0:PORT` opens it to the network without a password. `--no-player` serves only. A slow client skips frames
-  and holds up nobody else.
+  and holds up nobody else. On a terminal, the key `v` opens the VLC windows again and `b` the browser view.
   `xblick.weights`: the weight download that every node repository carried as its own copy (`Store`,
   `HuggingFace`, `Url`, `Weight`, `add_arguments`). The nodes move to it with their next versions.
   `xblick.overlay` and the convention for drawn results: a node's `--overlay` (off by default) publishes

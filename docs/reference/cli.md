@@ -93,7 +93,8 @@ extra `xblick[rerun]`. See the [viewer guide](../guides/viewer.md).
 Shows streams in VLC (one window per stream) or in a browser (all streams side by side). It serves them as MJPEG over
 HTTP on 127.0.0.1:8090. Without VLC it asks on a terminal whether to open the browser instead. On a system without a
 display (Linux: neither `DISPLAY` nor `WAYLAND_DISPLAY` set) it starts no player and prints how to open the addresses
-from another PC. See the [view guide](../guides/view.md).
+from another PC. On a terminal, the key `v` opens the VLC windows that are not open (any more) and `b` the browser
+view. See the [view guide](../guides/view.md).
 
 | Option | Meaning |
 | --- | --- |

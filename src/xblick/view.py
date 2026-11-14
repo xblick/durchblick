@@ -17,6 +17,10 @@ nothing. On a system without a display (Linux: neither DISPLAY nor WAYLAND_DISPL
 browser and asks nothing: it prints the addresses and how to open them from another PC (``--http``, or
 ``ssh -L PORT:127.0.0.1:PORT <this PC>``), and keeps serving.
 
+While it serves on a terminal, the key v opens the VLC windows that are not open (any more) and b the browser view,
+without Enter, also with --no-player; on a headless system they start nothing. Without a terminal nothing reads
+stdin. The start lines give, per stream, the command to open it in VLC by hand.
+
 Each client gets the newest frame whenever it can take one: a slow client skips frames and holds up neither the
 subscriber nor the other clients. It listens on 127.0.0.1 by default (this PC only); ``--http 0.0.0.0:PORT`` opens
 it to the network WITHOUT A PASSWORD: anyone who can reach the address can watch.
@@ -280,11 +284,97 @@ def _ask(question: str) -> bool:
     return sys.stdin.readline().strip().lower() in ("y", "yes")
 
 
+NO_DISPLAY = "this system has no display (neither DISPLAY nor WAYLAND_DISPLAY is set)"
+
+
+class _Players:
+    """The VLC windows, one per stream; ``open`` starts those that are not open (any more)."""
+
+    def __init__(self, view: View, prog: str):
+        self.view, self.prog = view, prog
+        self.processes: dict[str, subprocess.Popen] = {}
+        self.closed_said = False
+
+    def open_vlc(self, asked: bool):
+        """The windows that are not open; ``asked``: by the key v (then one line also when nothing is to start)."""
+        if headless():
+            print(f"{self.prog}: {NO_DISPLAY}: nothing started", flush=True)
+            return
+        vlc = shutil.which("vlc")
+        if vlc is None:
+            print(f"{self.prog}: VLC is not installed (no vlc on PATH)", flush=True)
+            return
+        missing = [b for b in self.view.feeds if b not in self.processes or self.processes[b].poll() is not None]
+        for base, process in zip(missing, start_vlc(vlc, [self.view.url(b) for b in missing])):
+            self.processes[base] = process
+        if missing or asked:
+            print(f"{self.prog}: started VLC ({len(missing)} window(s))" if missing else
+                  f"{self.prog}: the VLC windows are open", flush=True)
+        self.closed_said = False
+
+    def all_closed(self) -> bool:
+        return bool(self.processes) and all(p.poll() is not None for p in self.processes.values())
+
+    def close(self):
+        for process in self.processes.values():
+            if process.poll() is None:
+                process.terminate()
+        for process in self.processes.values():
+            try:
+                process.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                process.kill()
+
+
+def browser(view: View, prog: str):
+    if headless():
+        print(f"{prog}: {NO_DISPLAY}: nothing started", flush=True)
+    else:
+        open_browser(view.url(), prog)
+
+
+class _Keys:
+    """Single keys from the terminal on stdin (cbreak: no Enter, no echo, Ctrl-C stays a signal); the terminal's mode
+    restored by ``close``. Without a terminal on stdin nothing reads it."""
+
+    def __init__(self):
+        self.fd = sys.stdin.fileno() if sys.stdin is not None and sys.stdin.isatty() else None
+        self.saved = None
+        if self.fd is not None:
+            import termios
+            import tty
+
+            self.saved = termios.tcgetattr(self.fd)
+            tty.setcbreak(self.fd)
+
+    def get(self, timeout: float) -> str:
+        """A key pressed within ``timeout`` seconds, else ""; without a terminal it only waits."""
+        if self.fd is None:
+            time.sleep(timeout)
+            return ""
+        import select
+
+        if not select.select([self.fd], [], [], timeout)[0]:
+            return ""
+        return os.read(self.fd, 1).decode(errors="replace").lower()
+
+    def close(self):
+        if self.saved is not None:
+            import termios
+
+            termios.tcsetattr(self.fd, termios.TCSADRAIN, self.saved)
+            self.saved = None
+
+
+KEYS = "press v for VLC, b for the browser view, Ctrl-C to end"
+
+
 def run(session, bases: list[str], listen: str = LISTEN, player: str = "vlc",
         depth_range: tuple[float, float] = DEPTH_RANGE, seconds: float = 2.0, prog: str = "xblick view") -> int:
     """The command: serve until Ctrl-C or SIGTERM (KeyboardInterrupt); the exit code. ``player``: "vlc" (the
     default: VLC if ``vlc`` is on PATH, else ask whether to open the browser instead; without a terminal never asks),
-    "browser" (the grid page in the system's browser) or "none" (serve only)."""
+    "browser" (the grid page in the system's browser) or "none" (serve only). On a terminal the keys v (VLC windows
+    that are not open) and b (the browser view) work in every case."""
     if player not in ("vlc", "browser", "none"):
         raise ValueError(f"player {player!r}: vlc, browser or none")
     try:
@@ -292,7 +382,8 @@ def run(session, bases: list[str], listen: str = LISTEN, player: str = "vlc",
     except ViewError as error:
         print(f"{prog}: {error}", file=sys.stderr, flush=True)
         return 1
-    players = []
+    players = _Players(view, prog)
+    keys = None
     try:
         local = view.host in ("127.0.0.1", "localhost", "::1")
         print(f"{prog}: serving {len(bases)} stream(s) on http://{view.host}:{view.port}/ "
@@ -302,42 +393,44 @@ def run(session, bases: list[str], listen: str = LISTEN, player: str = "vlc",
         for base in bases:
             print(f"{prog}: {base}: {view.url(base)}", flush=True)
         print(f"{prog}: all of them: {view.url()}", flush=True)
+        for base in bases:
+            print(f"{prog}: by hand: vlc --network-caching={VLC_CACHE_MS} {view.url(base)}", flush=True)
+        terminal = sys.stdin is not None and sys.stdin.isatty()
         if player == "none":
             pass
         elif headless():
-            print(f"{prog}: this system has no display (neither DISPLAY nor WAYLAND_DISPLAY is set), so no player is "
-                  f"started; {remote_hint(view)}", flush=True)
+            print(f"{prog}: {NO_DISPLAY}, so no player is started; {remote_hint(view)}", flush=True)
         elif player == "browser":
             open_browser(view.url(), prog)
-        elif (vlc := shutil.which("vlc")) is not None:
-            players = start_vlc(vlc, [view.url(b) for b in bases])
-            print(f"{prog}: started VLC ({len(players)} window(s))", flush=True)
-        elif sys.stdin.isatty() and sys.stdout.isatty():
+        elif shutil.which("vlc") is not None:
+            players.open_vlc(asked=False)
+        elif terminal and sys.stdout.isatty():
             print(f"{prog}: VLC is not installed (no vlc on PATH)", flush=True)
             if _ask(f"{prog}: open the browser view instead? [y/N] "):
                 open_browser(view.url(), prog)
         else:
             print(f"{prog}: VLC is not installed (no vlc on PATH); --browser opens the browser view", flush=True)
-        print(f"{prog}: serving; Ctrl-C to stop", flush=True)
-        closed = False
+        keys = _Keys()  # after the question: it reads a line
+        print(f"{prog}: serving; " + (KEYS if keys.fd is not None else "Ctrl-C to stop"), flush=True)
         while True:
-            time.sleep(0.5)
+            key = keys.get(0.5)
             view.check()
-            if players and not closed and all(process.poll() is not None for process in players):
-                closed = True
-                print(f"{prog}: the VLC windows were closed; still serving at {view.url()} (and the addresses "
-                      "above) until Ctrl-C", flush=True)
+            if key == "v":
+                players.open_vlc(asked=True)
+            elif key == "b":
+                browser(view, prog)
+            if players.all_closed() and not players.closed_said:
+                players.closed_said = True
+                print(f"{prog}: the VLC windows were closed; still serving. "
+                      + (KEYS[0].upper() + KEYS[1:] + "." if keys.fd is not None else
+                         f"At {view.url()} until Ctrl-C."), flush=True)
     except KeyboardInterrupt:
         return 0
     except ViewError as error:
         print(f"{prog}: {error}", file=sys.stderr, flush=True)
         return 1
     finally:
-        for process in players:
-            process.terminate()
-        for process in players:
-            try:
-                process.wait(timeout=2)
-            except subprocess.TimeoutExpired:
-                process.kill()
+        if keys is not None:
+            keys.close()
+        players.close()
         view.close()
