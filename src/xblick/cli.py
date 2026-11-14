@@ -184,8 +184,9 @@ def _test_camera(args) -> int:
         publisher = CameraPublisher(z, base, encoding="rgb8", frame_id=args.frame_id, camera_info=info,
                                     source="test")
         print(f"xblick test-camera: {w}x{h} rgb8 at {args.fps:g} Hz (Ctrl-C to stop)", flush=True)
-        print(f"xblick test-camera: publishing {base}", flush=True)
-        print(f"xblick test-camera: for a node: --camera {base.rpartition('/')[0]}", flush=True)
+        print(f"xblick test-camera: publishing the stream {base}", flush=True)
+        print(f"xblick test-camera: start a node with --camera {base.rpartition('/')[0]} (the camera, not the stream)",
+              flush=True)
         period, start = 1.0 / args.fps, time.monotonic()
         try:
             while True:

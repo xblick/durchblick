@@ -721,10 +721,12 @@ def run_for(argv, seconds, until):
 def test_the_stream_and_the_camera_for_a_node_are_printed(argv, stream, camera):
     """Both publishers say on lines of their own what they publish and what a node takes (nodes take the camera
     explicitly); a session that reached no router and no other session gets a hint once at the start."""
-    lines, code = run_for([*argv, "--listen", f"tcp/127.0.0.1:{free_port()}"], 30, "for a node:")
+    lines, code = run_for([*argv, "--listen", f"tcp/127.0.0.1:{free_port()}"], 30, "start a node with")
     prog = "xblick " + argv[0]
     assert code == 0, lines
-    assert f"{prog}: publishing {stream}" in lines and f"{prog}: for a node: --camera {camera}" in lines, lines
+    # the camera to copy directly after the stream, so that the two are not taken for each other
+    at = lines.index(f"{prog}: publishing the stream {stream}")
+    assert lines[at + 1] == f"{prog}: start a node with --camera {camera} (the camera, not the stream)", lines
     hints = [line for line in lines if "nobody can receive this stream yet" in line]
     assert len(hints) == 1 and hints[0].startswith(f"{prog}: ") and \
         "start a router on this PC with xblick router" in hints[0], lines
@@ -738,8 +740,8 @@ def test_no_hint_when_the_session_reaches_another(sessions):  # noqa: F811
     router = open_router(port)
     try:
         lines, code = run_for(["test-camera", "--connect", f"tcp/127.0.0.1:{port}", "--listen", "tcp/127.0.0.1:0"],
-                              30, "for a node:")
+                              30, "start a node with")
     finally:
         router.close()
-    assert code == 0 and "xblick test-camera: publishing test/camera/color" in lines, lines
+    assert code == 0 and "xblick test-camera: publishing the stream test/camera/color" in lines, lines
     assert not any("nobody can receive" in line for line in lines), lines

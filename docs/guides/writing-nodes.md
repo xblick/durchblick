@@ -113,6 +113,8 @@ Nodes, cameras and routers start and stop in any order. You do not write code fo
 the readers do.
 
 - A reader waits for its publisher. It finds the publisher again after a restart.
+- A node that was given a stream as its camera ends with one line that names the camera, exit code 1
+  (`camera.StreamGivenAsCamera`). Your node needs no code for this when it reads with `transport="auto"`.
 - A ring disappears with its publisher. The reader counts a frame from such a ring as stale and continues.
 - A camera that returns with another resolution or calibration sends its new `camera_info` first. The nodes skip
   frames whose size does not match it. They count these frames in their diagnostics. They use the new camera model

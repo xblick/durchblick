@@ -26,6 +26,14 @@ or newer. 0.4.0 to 0.4.3 speak the protocol of 0.3.59 to 0.3.68: their programs 
   `zenoh.open`, which cannot be interrupted. On CI such an open did not return for more than 90 s. The interface
   now ends at once and gives the terminal back. The process ends when the open returns, and the thread that opened
   the session closes it. `sessions.md` states that a program in client mode needs its router at the start.
+  **Added:** a node that was given a stream as its camera ends with one line and exit code 1. Started with
+  `--camera cam/video2/color`, a node read `cam/video2/color/color` and waited for good. Now a subscriber with
+  `transport="auto"` whose stream nobody publishes checks whether the name before its last part answers as a
+  stream. It then raises `camera.StreamGivenAsCamera`, a `SystemExit` whose line names the camera (`cam/video2`).
+  It never reads the camera in its place. Nodes need no change. A subscriber that has found no publisher after 5 s
+  logs one line: the camera may not have started yet, or the name may be wrong.
+  **Changed:** `xblick cam` and `xblick test-camera` print `publishing the stream <stream>` and, on the next line,
+  `start a node with --camera <camera> (the camera, not the stream)`.
   **Changed:** the documentation uses Zenoh's terms. A router routes data. "Relay" names only our program.
   `sessions.md` introduces gossip scouting, the peer-to-peer region below a router, the clique and the gateway.
   `--connect` takes a Zenoh endpoint, and `--key` of `xblick play` and `xblick recorder` takes a key expression

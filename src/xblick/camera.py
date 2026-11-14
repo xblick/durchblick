@@ -556,6 +556,7 @@ AUTO = "auto"
 # behind it is the same frame
 HANDOVER_S = 2.0
 HANDOVER_NS = int(HANDOVER_S * 1_000_000_000)  # the window in stamp time, an integer as C++'s
+WAIT_HINT_S = 5.0  # a subscription that has no publisher this long says once what may be wrong
 SETTLE_ROUNDS = 3  # info queries after a publisher came or went (its queryable can be known later than its token)
 LOCAL = ("auto", "shm", "cuda")
 REMOTE = ("compressed", "raw")
@@ -593,6 +594,22 @@ def _info_records(base: str, answers: list) -> list[dict]:
 
 
 _not_info: set[str] = set()  # keys whose answer to <key>/info was no info record (logged once)
+
+
+class StreamGivenAsCamera(SystemExit):
+    """A stream given where its camera belongs, such as a node's ``--camera cam/video2/color``: nothing answers the
+    stream the program reads (``cam/video2/color/color``), and the name before its last part answers as a stream
+    itself. A SystemExit with one line (exit code 1): the program ends, it does not read the camera in its place."""
+
+
+def stream_given_as_camera(base: str) -> str:
+    """The line of StreamGivenAsCamera for a stream ``base`` whose parent is a stream."""
+    stream = base.rpartition("/")[0]
+    camera = stream.rpartition("/")[0]
+    return (f"{base}: no publisher answers it, and {stream} is a stream: the camera is {camera}. A node takes the "
+            f"camera: --camera {camera}" if camera else
+            f"{base}: no publisher answers it, and {stream} is a stream (a node takes the camera, the name before a "
+            "stream's last part)")
 
 
 def find_streams(session: zenoh.Session, prefix: str = "", timeout: float = 2.0) -> list[tuple[str, dict]]:
@@ -947,11 +964,22 @@ class Subscription:
         liveliness token, such as a camera program on an embedded board, is found this way)."""
         try:
             settle = 0
+            waiting_since = time.monotonic()
+            hinted = False
             while True:
                 self._recheck.clear()
                 if self._closed.is_set():  # after the clear: close() sets closed, then recheck
                     break
                 records = query_info(self._session, self.base)
+                if not records and not self._closed.is_set():
+                    self._check_not_below_a_stream()
+                    if not hinted and time.monotonic() - waiting_since >= WAIT_HINT_S:
+                        hinted = True
+                        log.info(f"{self.base}: no publisher answers within {WAIT_HINT_S:g} s, waiting for it: a "
+                                 "camera that has not started yet, or a wrong name (a node's --camera is the camera, "
+                                 "such as cam/video0; its streams are below it, such as cam/video0/color)")
+                elif records:
+                    waiting_since, hinted = time.monotonic(), False
                 if records and not self._closed.is_set():
                     self._tell_relay(records)
                     chosen, gpu, why, local = self._choice(records)
@@ -970,6 +998,14 @@ class Subscription:
         except BaseException as error:  # noqa: BLE001 - raised in the caller's thread by latest()
             self._error = error
             self._chosen.set()
+
+    def _check_not_below_a_stream(self):
+        """While no publisher answers the stream: StreamGivenAsCamera when the name before its last part answers as a
+        stream (a node given a stream as its camera reads ``<stream>/color``, which nobody publishes). Else the
+        subscription waits: the camera may not have started yet."""
+        stream = self.base.rpartition("/")[0]
+        if stream and query_info(self._session, stream):
+            raise StreamGivenAsCamera(stream_given_as_camera(self.base))
 
     def _own_uuid(self) -> str:
         """The UUID of the GPU this subscriber works on (empty without one)."""

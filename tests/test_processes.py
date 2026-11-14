@@ -131,6 +131,56 @@ def test_view_serves_frames_through_the_router(camera):
         assert end(view) == 0
 
 
+READER = """
+import sys
+
+from xblick import node, session, topics
+from xblick.camera import ImageSubscriber
+
+node.start("xblick-test-reader")
+camera = topics.check_name(sys.argv[2])
+with session.open_session(connect=[sys.argv[1]]) as s:
+    color = ImageSubscriber(s, f"{camera}/color", transport="auto")
+    try:
+        while color.latest(timeout=1.0) is None:
+            pass
+        print(f"xblick-test-reader: a frame of {camera}/color", flush=True)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        color.close()
+"""
+
+
+def test_a_node_given_a_stream_as_its_camera_ends_with_one_line(camera):
+    """A node started with the stream that xblick test-camera prints (test/camera/color) instead of its camera reads
+    test/camera/color/color, which nobody publishes: it ends with one line that names the camera, exit code 1. With
+    the camera it reads its frames. With a camera that nothing publishes yet it waits, and says once what may be
+    wrong."""
+    reader = [sys.executable, "-c", READER, camera]
+    started = time.monotonic()
+    done = subprocess.run([*reader, "test/camera/color"], capture_output=True, text=True, timeout=60, env=ENV)
+    took = time.monotonic() - started
+    assert done.returncode == 1 and done.stderr.splitlines() == [
+        "test/camera/color/color: no publisher answers it, and test/camera/color is a stream: the camera is "
+        "test/camera. A node takes the camera: --camera test/camera"], done.stdout + done.stderr
+    assert took < 15.0, took
+    done = subprocess.run([*reader, "test/camera"], capture_output=True, text=True, timeout=60, env=ENV)
+    assert done.returncode == 0 and "xblick-test-reader: a frame of test/camera/color" in done.stdout, \
+        done.stdout + done.stderr
+    waiting = subprocess.Popen([*reader, "not/started"], stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                               stderr=subprocess.STDOUT, text=True, env=ENV)
+    try:
+        time.sleep(7.0)
+        assert waiting.poll() is None
+    finally:
+        waiting.send_signal(signal.SIGTERM)
+        out, _ = waiting.communicate(timeout=20)
+    assert waiting.returncode == 0, out
+    hints = [line for line in out.splitlines() if "no publisher answers within 5 s" in line]
+    assert len(hints) == 1 and "a camera that has not started yet, or a wrong name" in hints[0], out
+
+
 def port_free(port: int) -> bool:
     """Nothing listens on the port (a connection attempt is refused); a bind test would also fail on connections
     of earlier tests that are still in TIME_WAIT."""

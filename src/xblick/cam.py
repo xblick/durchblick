@@ -325,9 +325,10 @@ class LiveCamera:
         jpeg = "; JPEG: the camera's own" if self.passthrough else ""
         print(f"{self.prog}: {self.source} -> {self.base}: {self.delivered.text()}, published as {encoding}{jpeg}; "
               f"{said}", flush=True)
-        # on lines of their own: what a node is started with (nodes take the camera explicitly)
-        print(f"{self.prog}: publishing {self.base}", flush=True)
-        print(f"{self.prog}: for a node: --camera {self.camera}", flush=True)
+        # on lines of their own, one after the other: the stream, and the camera to copy into a node's start
+        # (nodes take the camera explicitly; a node given the stream ends with camera.StreamGivenAsCamera)
+        print(f"{self.prog}: publishing the stream {self.base}", flush=True)
+        print(f"{self.prog}: start a node with --camera {self.camera} (the camera, not the stream)", flush=True)
         self._ready.set()
 
     # ------------------------------------------------------------------------------------------ the main thread

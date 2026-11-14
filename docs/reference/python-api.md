@@ -64,6 +64,12 @@ frame = images.latest(timeout=1.0)
 
 `latest()` returns the newest frame, or `None` after the timeout.
 
+With `transport="auto"` the subscriber waits for a publisher of its stream. After 5 s without one it logs a single
+line: the camera may not have started yet, or the name may be wrong. When nobody publishes the stream but the name
+before its last part answers as a stream, `latest()` raises `camera.StreamGivenAsCamera`. This happens to a node that
+was given a stream as its camera, such as `--camera cam/video2/color`. The exception is a `SystemExit` with one line
+that names the camera, so the program ends with exit code 1. The subscriber never reads the camera in its place.
+
 | Attribute of a frame | Content |
 | --- | --- |
 | `image` | the pixels, H × W × channels |
