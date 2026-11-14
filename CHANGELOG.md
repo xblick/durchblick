@@ -7,6 +7,17 @@ Within 0.3.x, 0.3.59 changed the rings' keys and the info record's version (3): 
 or newer. 0.4.0 to 0.4.3 speak the protocol of 0.3.59 to 0.3.68: their programs and those of 0.3.68 work together.
 0.5.0 renamed every name on the wire and on disk: programs of 0.5 do not work with programs of 0.3 or 0.4.
 
+* **0.5.4** Nothing on the wire changed: programs of 0.5.4 work with those of 0.5.0 to 0.5.3.
+  **Fixed:** a node ends on SIGINT also as a background job of a script (issue #11). `xblick.node.start` now restores
+  Python's SIGINT handler, as the commands did since 0.5.3: a non-interactive shell starts background jobs with SIGINT
+  ignored, so `kill -INT` and Ctrl-C on the script did not end the node. One function does it for the commands and
+  the nodes (`xblick.node.end_on_signals`). `xblick-cpp-probe` restores SIGINT's default action for the same reason.
+  `xblick-cpp-camera` and `xblick-points` already installed their own handler.
+  **Added:** `xblick.weights`: `Store.ensure` and `Store.download_only` take `options`, the node's options that
+  select the weights (`options=["--model", "s"]`). The lines for `--no-download` and for a failed download name the
+  command with them, so that it downloads exactly the missing files. Without `options` the lines are as before.
+  **Docs:** the terminal interface guide said that a peer that only connects would receive nothing. It now states the
+  interface's own rule: it refuses such a peer, while a command accepts it and listens on a loopback port.
 * **0.5.3** Nothing on the wire changed: programs of 0.5.3 work with those of 0.5.0 to 0.5.2.
   **Fixed:** a peer session with `--connect` and without `--listen` (Python and C++) now listens on a free loopback
   port, as a session without endpoints always did. Behind a Zenoh 1.10 router (`zenohd` or `xblick router`) peers
