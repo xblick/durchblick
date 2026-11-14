@@ -7,6 +7,23 @@ Within 0.3.x, 0.3.59 changed the rings' keys and the info record's version (3): 
 or newer. 0.4.0 to 0.4.3 speak the protocol of 0.3.59 to 0.3.68: their programs and those of 0.3.68 work together.
 0.5.0 renamed every name on the wire and on disk: programs of 0.5 do not work with programs of 0.3 or 0.4.
 
+* **0.5.3** Nothing on the wire changed: programs of 0.5.3 work with those of 0.5.0 to 0.5.2.
+  **Added:** `xblick router`, the Zenoh router from the Zenoh library in the package, instead of `zenohd`
+  (`--listen`, default `tcp/0.0.0.0:7447`; `--connect` for the routers of other PCs, `zenohd`'s `-e`). It has no
+  plugins and reads no configuration file; a taken port ends it with one line. `zenohd` works as before.
+  `xblick view STREAM ...` shows camera streams in VLC (one window per stream) or with `--browser` in the browser
+  (all streams side by side), served as MJPEG over HTTP from Python's standard library on 127.0.0.1:8090: the
+  JPEGs unchanged, depth coloured with a fixed range (red at 300 mm to blue at 5000 mm). Without VLC it asks on a
+  terminal whether to open the browser instead; on a system without a display (Linux: neither `DISPLAY` nor
+  `WAYLAND_DISPLAY` set) it starts no player and prints how to open the addresses from another PC. `--http
+  0.0.0.0:PORT` opens it to the network without a password. `--no-player` serves only. A slow client skips frames
+  and holds up nobody else.
+  `xblick.weights`: the weight download that every node repository carried as its own copy (`Store`,
+  `HuggingFace`, `Url`, `Weight`, `add_arguments`). The nodes move to it with their next versions.
+  `xblick.overlay` and the convention for drawn results: a node's `--overlay` (off by default) publishes
+  `<camera>/<node>/overlay` (rgb8, the colour frame's stamp, frame id and camera_info), drawn in a thread of its own
+  only while somebody subscribes; drawing helpers for boxes, masks, keypoints, tracks and depth colours. The rules
+  every node keeps are in the [node guide](docs/guides/writing-nodes.md#rules-every-node-keeps).
 * **0.5.2** **Fixed (safety):** 0.5.1's parameter client (Python and C++ `ParameterClient`) sent a parameter set again
   every 250 ms, up to the client's timeout (default 2 s: up to about 8 times), when the query ended without a reply. A
   node that drops a set without replying (a bridge, or a node closing with sets in its queue) applied it several
