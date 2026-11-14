@@ -7,6 +7,32 @@ Within 0.3.x, 0.3.59 changed the rings' keys and the info record's version (3): 
 or newer. 0.4.0 to 0.4.3 speak the protocol of 0.3.59 to 0.3.68: their programs and those of 0.3.68 work together.
 0.5.0 renamed every name on the wire and on disk: programs of 0.5 do not work with programs of 0.3 or 0.4.
 
+* **0.5.7** Nothing on the wire changed: programs of 0.5.7 work with those of 0.5.0 to 0.5.6. 0.5.6 was not
+  released, because a test failed on CI.
+  **Fixed:** the documentation described Zenoh's `Timeout` reply wrongly. It said that a node which keeps a query
+  after its reply makes Zenoh send a late `Timeout` reply. In fact a queryable ends its part of a query when it drops
+  the query object, and at the query's timeout the caller's own session ends a query that is still open and adds the
+  error reply `Timeout`. Nothing comes over the network for it. The docs, `AGENTS.md`, the build-node skill,
+  docstrings and comments now say so. The check before a command is unchanged: a `Timeout` reply still means that a
+  queryable got the query and had not finished it. Its messages now say "the query was still open at its timeout"
+  instead of "a reply came late" (Python `session.count` and `session.command`, C++ `ParameterClient`).
+  **Fixed:** a client whose `--connect` endpoints do not answer ended with a Python traceback (`zenoh.ZError: Unable
+  to connect to any of [...]`), and the C++ programs printed `Failed to open session(Error code: -4 )`. Every command,
+  every node that opens its session with `session.open_from_args` and the C++ programs now end with one line and
+  exit code 1. The line names the endpoints and says that a client needs its router there. Other errors at the
+  start of a session, such as a taken `--listen` port, give Zenoh's text in one line. `session.open_session` raises
+  `session.OpenError`, a `zenoh.ZError`.
+  **Changed:** the documentation uses Zenoh's terms. A router routes data. "Relay" names only our program.
+  `sessions.md` introduces gossip scouting, the peer-to-peer region below a router, the clique and the gateway.
+  `--connect` takes a Zenoh endpoint, and `--key` of `xblick play` and `xblick recorder` takes a key expression
+  (`KEY_EXPR`). The pages link Zenoh's documentation, and the glossary has a table of Zenoh's terms. Its Router row
+  said that the router is the program `zenohd`. A router is a session in router mode: `xblick router` or `zenohd`.
+  A stated guarantee now names its condition: a command reaches every queryable of its key because Zenoh's default
+  query target does so while no queryable is declared complete, and a test pins that none is.
+  **Tests:** the tests of the notice for a peer across PCs no longer wait for a session to an address that does not
+  answer. Where such packets are dropped, as on CI, the close of that session took more than 5 s.
+  **Docs:** the README has shields. The recipe for programs without a router in `video.md` was replaced by one that
+  was tried.
 * **0.5.6** Nothing on the wire changed: programs of 0.5.6 work with those of 0.5.0 to 0.5.5.
   **Added:** a notice for a peer that connects only to other PCs and listens on loopback only. Behind a Zenoh 1.10
   router the programs of the other PC then usually cannot reach it. Every `xblick` command, every node that opens its

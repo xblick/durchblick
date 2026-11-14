@@ -15,7 +15,7 @@
 # The Python wheel builds only xblick::core and the module (Python has its own Zenoh).
 cmake_minimum_required(VERSION 3.24)
 # the one place of the package version: pyproject.toml reads it from here, C++ gets it as xblick/version.hpp
-project(xblick VERSION 0.5.6 LANGUAGES CXX)
+project(xblick VERSION 0.5.7 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
