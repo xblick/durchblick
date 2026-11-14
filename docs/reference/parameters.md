@@ -34,6 +34,12 @@ In a program, use a client:
 | Python | `parameters.ParameterClient(session, "<namespace>/<name>")` with `list`, `describe`, `get`, `types`, `set`, `set_atomically`, `all` and `on_event`. `parameters.find_nodes(session)` finds the nodes. |
 | C++ | `xblick::ParameterClient` |
 
+A set is a command: the node may act on it. The client sends it once, and only after a read of the node
+(`list_parameters`) had exactly one answer, because two nodes of one name would both apply it. A set raises
+`NotReached` (a `TimeoutError`) when it was not sent, and `NoAnswer` when it was sent once and no answer came. The
+node may still apply the set then, and it was not sent again. C++ throws `xblick::NotReached` and
+`xblick::NoAnswer`. Reads are asked again until a node answers.
+
 The client raises an error when no node answers, or when more than one node answers.
 
 ## Set values at start

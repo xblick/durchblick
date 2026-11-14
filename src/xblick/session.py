@@ -195,37 +195,67 @@ def ask(session: zenoh.Session, selector: str, timeout: float, **get_options) ->
 
 
 def timed_out(reply) -> bool:
-    """The error reply by which Zenoh ends a query whose timeout passed before a queryable answered (its text is
-    "Timeout"); the queryable may still be working on it."""
+    """The error reply by which Zenoh ends a query whose timeout passed before a queryable answered: its text is
+    "Timeout" (eclipse-zenoh 1.10; tests/test_queries.py pins it). The queryable may still be working on it."""
     return reply.err is not None and reply.err.payload.to_string() == "Timeout"
 
 
 class NotReached(TimeoutError):
-    """No queryable for a command's key became known to the session within the timeout: nothing was sent."""
+    """A command was not sent: no queryable for its key became known to the session within the timeout. Safe to try
+    again (a TimeoutError, as before)."""
+
+
+class NoAnswer(RuntimeError):
+    """A command was sent once and no answer came within the timeout: it may still be executed (a busy or briefly
+    unreachable receiver executes it when it gets it; a command has no expiry on the wire), and it was not sent
+    again. Deliberately no TimeoutError, so that ``except TimeoutError: try again`` does not send it a second time;
+    a RuntimeError, as a refusal, which callers do not repeat."""
 
 
 def ask_once(session: zenoh.Session, selector: str, timeout: float, **get_options) -> list:
-    """The replies to a command (a parameter set, a controller switch, a torque step, a recorder command): sent
-    exactly once, after the session knows a queryable for ``selector``. Waits at most ``timeout`` for the queryable
-    (NotReached: nothing sent), then at most ``timeout`` for the replies. An empty result is returned as it is.
+    """The replies to a command (a parameter set, a controller switch, a torque step, a recorder command): sent once
+    to each queryable of ``selector``, after the session knows one. NotReached when none became known within
+    ``timeout`` (nothing sent). The replies as they came, possibly none; ``command`` interprets them.
+
+    Once per queryable: two queryables on the key (two nodes, two bridges) both get it and both may execute it. The
+    callers refuse a command before sending it where the protocol lets them count the servers first (``command``'s
+    callers: a read of the same node that must have one answer).
 
     Why the command is never sent again: Zenoh ends a query without any reply in cases that the sender cannot tell
     apart. The session knew no queryable, so nothing went out (the case of a session just opened). Or a queryable
-    got the query and dropped it without a reply, which also ends it at once. Or its reply came after the query's
-    timeout, or a connection on the way was lost. A command sent again in the later cases would run twice. Instead,
-    ask_once waits until a querier on the key reports a matching queryable (Zenoh's own routing knowledge, also
-    through a router) and then sends the command once. A queryable slower than the timeout gives Zenoh's error reply
-    "Timeout" (``timed_out``), which is no empty result either."""
+    got the query and dropped it without a reply, which also ends it at once. Or a connection on the way was lost.
+    A command sent again in the later cases would run twice. Instead, ask_once waits until a querier on the key
+    reports a matching queryable (Zenoh's own routing knowledge, also through a router) and then sends the command
+    once. A queryable slower than the timeout gives Zenoh's error reply "Timeout" (``timed_out``).
+
+    Time: up to ``timeout`` for the queryable, then the query's own timeout ``timeout``; when Zenoh does not end the
+    query by then, ``collect`` waits up to ``deadline_of(timeout)`` (``timeout + max(0.5, timeout)``) and 1 s more
+    for the cancellation. At most about 3 x timeout + 1 s in all (measured in tests/test_queries.py)."""
     end = time.monotonic() + timeout
     querier = session.declare_querier(selector)
     try:
         while not querier.matching_status.matching:
             if time.monotonic() >= end:
-                raise NotReached(f"no queryable for {selector} became known within {timeout:g} s: nothing was sent")
+                raise NotReached(f"not sent: no node serves {selector} (none became known within {timeout:g} s)")
             time.sleep(0.01)
     finally:
         querier.undeclare()
     return replies(session, selector, timeout, **get_options)
+
+
+def command(session: zenoh.Session, selector: str, timeout: float, **get_options) -> list:
+    """A command sent with ``ask_once`` and its answers checked: the successful replies (one or more), else
+    NotReached (not sent), RuntimeError with the first error reply's text (an error reply other than Zenoh's own
+    timeout), or NoAnswer (sent once, no answer within ``timeout``: it may still be executed; not sent again)."""
+    answers = ask_once(session, selector, timeout, **get_options)
+    errors = [r.err.payload.to_string() for r in answers if r.err is not None and not timed_out(r)]
+    if errors:
+        raise RuntimeError(errors[0])
+    ok = [r.ok for r in answers if r.ok is not None]
+    if not ok:
+        raise NoAnswer(f"{selector}: sent once, no answer within {timeout:g} s: it may still be executed; not sent "
+                       "again")
+    return ok
 
 
 CLOSE_TIMEOUT_S = 5.0  # how long a close waits for Zenoh (Session, close)

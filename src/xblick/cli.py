@@ -802,7 +802,12 @@ def main(argv=None) -> int:
     _interrupt_on_sigterm()
     try:
         return args.run(args)
-    except TimeoutError as error:  # a node or stream that did not answer: one line, not a traceback
+    except (TimeoutError, zsession.NoAnswer) as error:  # did not answer, or a command sent once: one line
+        print(f"{prog} {args.command}: {error}", file=sys.stderr)
+        return 1
+    except RuntimeError as error:
+        if args.command not in ("param", "recorder"):  # a node's refusal or "not sent" there; elsewhere a fault
+            raise
         print(f"{prog} {args.command}: {error}", file=sys.stderr)
         return 1
 

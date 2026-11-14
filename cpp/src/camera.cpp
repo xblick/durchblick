@@ -947,6 +947,11 @@ namespace xblick
         }
     }
 
+    bool timed_out(const zenoh::Reply& reply)
+    {
+        return not reply.is_ok() and reply.get_err().get_payload().as_string() == "Timeout";
+    }
+
     std::vector<zenoh::Reply> ask_once(const zenoh::Session& session, const std::string& selector,
                                        std::chrono::milliseconds timeout,
                                        const std::optional<std::vector<std::uint8_t>>& payload)
@@ -959,8 +964,8 @@ namespace xblick
             {
                 if (clock::now() >= end)
                 {
-                    throw NotReached("no queryable for " + selector + " became known within " +
-                                     std::to_string(timeout.count()) + " ms: nothing was sent");
+                    throw NotReached("not sent: no node serves " + selector + " (none became known within " +
+                                     std::to_string(timeout.count()) + " ms)");
                 }
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
             }

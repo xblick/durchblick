@@ -45,7 +45,7 @@ from .msg import (DescribeParametersRequest, DescribeParametersResponse, Floatin
                   ParameterType, ParameterValue, SetParametersAtomicallyRequest, SetParametersAtomicallyResponse,
                   SetParametersRequest, SetParametersResponse, SetParametersResult, Time)
 from .paths import expand_path
-from .session import ASK_PERIOD, ask, ask_once, replies, timed_out
+from .session import ASK_PERIOD, ask, command, replies, timed_out
 
 P = _core.protocol
 SERVICES = {P.LIST_PARAMETERS: (ListParametersRequest, ListParametersResponse),
@@ -543,7 +543,9 @@ def _under(name: str, prefixes: list[str], depth: int) -> bool:
 
 class ParameterClient:
     """Another node's parameters over Zenoh (``key``: its ``<namespace>/<name>``): ROS 2's services, and its events
-    (``on_event``). TimeoutError when it does not answer within ``timeout``, RuntimeError when several do."""
+    (``on_event``). Reads: TimeoutError when it does not answer within ``timeout``, RuntimeError when several do.
+    Sets: not sent unless exactly one node answers first (``_call``); then sent once: NotReached (a TimeoutError,
+    nothing sent), NoAnswer (no TimeoutError: sent once, no answer, it may still be applied; not sent again)."""
 
     def __init__(self, session: zenoh.Session, key: str, timeout: float = 2.0):
         self.key = topics.check_name(key.strip("/"))
@@ -553,23 +555,32 @@ class ParameterClient:
         self._subscribers = []
 
     def _call(self, service: str, request):
-        """One service call: a read (list, describe, get, types) asked again while nothing answers (session.ask), a
-        set sent exactly once (session.ask_once: a node may act on a set, so it must not get it twice)."""
+        """One service call: a read (list, describe, get, types) asked again while nothing answers (session.ask);
+        a set (a command: a node may act on it) sent once (session.command), and only after a read (list_parameters)
+        had exactly one answer: two nodes on the key would both apply it, so nothing is sent then. NotReached,
+        NoAnswer: as session.command."""
         _, response_type = SERVICES[service]
-        command = service in (P.SET_PARAMETERS, P.SET_PARAMETERS_ATOMICALLY)
-        answers = (ask_once if command else ask)(self._session, f"{self.key}/{service}", self.timeout,
-                                                 payload=bytes(request.serialize()))
+        key = f"{self.key}/{service}"
+        if service in (P.SET_PARAMETERS, P.SET_PARAMETERS_ATOMICALLY):
+            try:
+                self.list()
+            except RuntimeError as error:
+                raise RuntimeError(f"not sent: {key}: {error}") from None
+            except TimeoutError as error:
+                raise TimeoutError(f"not sent: {key}: {error}") from None
+            ok = command(self._session, key, self.timeout, payload=bytes(request.serialize()))
+            if len(ok) > 1:
+                raise RuntimeError(f"{len(ok)} nodes answered {key}: each of them got it; one name, one node")
+            return response_type.deserialize(ok[0].payload.to_bytes())
+        answers = ask(self._session, key, self.timeout, payload=bytes(request.serialize()))
         errors = [reply.err.payload.to_string() for reply in answers if reply.err is not None and not timed_out(reply)]
         if errors:
             raise RuntimeError(errors[0])
         ok = [reply.ok for reply in answers if reply.ok is not None]
         if not ok:
-            if command:
-                raise TimeoutError(f"{self.key}/{service}: sent once, no answer within {self.timeout:g} s (the node "
-                                   "may have taken it; not sent again)")
-            raise TimeoutError(f"no answer from {self.key}/{service} within {self.timeout:g} s")
+            raise TimeoutError(f"no answer from {key} within {self.timeout:g} s")
         if len(ok) > 1:
-            raise RuntimeError(f"{len(ok)} nodes answer {self.key}/{service}: one name, one node")
+            raise RuntimeError(f"{len(ok)} nodes answer {key}: one name, one node")
         return response_type.deserialize(ok[0].payload.to_bytes())
 
     def list(self, prefixes=(), depth: int = 0) -> list[str]:

@@ -80,17 +80,31 @@ namespace xblick
                                   std::chrono::milliseconds timeout,
                                   const std::optional<std::vector<std::uint8_t>>& payload = std::nullopt);
 
-    // No queryable for a command's key became known within the timeout: nothing was sent.
+    // A command was not sent: no queryable for its key became known within the timeout. Safe to try again.
     class NotReached : public std::runtime_error
     {
     public:
         using std::runtime_error::runtime_error;
     };
 
-    // The replies to a command (a parameter set): sent exactly once, after the session knows a queryable for
-    // `selector` (a querier's matching status). Waits at most `timeout` for it (NotReached: nothing sent), then at
-    // most `timeout` for the replies; an empty result is returned as it is. Never sent again: an empty result does
-    // not tell "no queryable got it" from "a queryable got it and gave no reply in time" (Python's session.ask_once).
+    // A command was sent once and no answer came within the timeout: it may still be executed (a command has no
+    // expiry on the wire), and it was not sent again (Python's session.NoAnswer). A type of its own, so that a
+    // caller can tell it from NotReached without reading the text.
+    class NoAnswer : public std::runtime_error
+    {
+    public:
+        using std::runtime_error::runtime_error;
+    };
+
+    // The error reply by which Zenoh ends a query whose timeout passed before a queryable answered (its text is
+    // "Timeout"; Python's session.timed_out). The queryable may still be working on it.
+    bool timed_out(const zenoh::Reply& reply);
+
+    // The replies to a command (a parameter set): sent once to each queryable of `selector`, after the session knows
+    // one (a querier's matching status). Waits at most `timeout` for it (NotReached: nothing sent), then for the
+    // replies up to `timeout` and max(500 ms, timeout) more if Zenoh does not end the query (replies()); an empty
+    // result is returned as it is. Never sent again: an empty result does not tell "no queryable got it" from "a
+    // queryable got it and gave no reply" (Python's session.ask_once). Two queryables on the key both get it.
     std::vector<zenoh::Reply> ask_once(const zenoh::Session& session, const std::string& selector,
                                        std::chrono::milliseconds timeout,
                                        const std::optional<std::vector<std::uint8_t>>& payload = std::nullopt);

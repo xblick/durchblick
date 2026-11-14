@@ -135,6 +135,23 @@ left 3 x 3, the distortion is zero, R is the identity and P is unchanged. The ri
 `rectify_map` and `remap` are in `xblick::core` and need no messages. `rectify_camera` and `rectified_info` take a
 CameraInfo and are in `xblick::xblick`. Python has the same as `xblick.rectify`.
 
+## Queries and commands
+
+`camera.hpp` has the two kinds of query that a program sends to other nodes. `xblick::ask` sends a read, such as
+an info record or a node's parameter values. It asks again until a first reply comes or the timeout passed.
+`xblick::ask_once` sends a command, such as a parameter set. It waits until the session knows a queryable for the
+key and then sends the command once to each queryable of the key. It never sends the command again.
+`xblick::ParameterClient` sends a set only after a read had exactly one answer.
+
+| Exception | Meaning |
+| --- | --- |
+| `xblick::NotReached` | not sent: no queryable became known within the timeout. You may try again. |
+| `xblick::NoAnswer` | sent once, no answer within the timeout. The receiver may still execute it. It was not sent again. |
+| `xblick::ParameterError` | the node refused, several nodes answer, or a read got no answer |
+
+A command has no expiry. A busy or briefly unreachable receiver executes it when it gets it, also after the
+caller got `NoAnswer`.
+
 ## Messages
 
 `xblick/msg.hpp` contains the message types with the names of ROS. Tests compare their bytes with the ROS

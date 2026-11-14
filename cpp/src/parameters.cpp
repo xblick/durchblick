@@ -1276,40 +1276,66 @@ namespace xblick
     std::vector<std::uint8_t> ParameterClient::call(const std::string& service,
                                                     const std::vector<std::uint8_t>& request)
     {
-        // a read asked again while nothing answers (ask); a set sent exactly once (ask_once): a node may act on it
-        const bool command = service == p::kSetParameters or service == p::kSetParametersAtomically;
+        const std::string key = key_ + "/" + service;
         const auto timeout = std::chrono::milliseconds(static_cast<std::int64_t>(timeout_ms_));
-        std::vector<zenoh::Reply> answers;
-        try
+        if (service == p::kSetParameters or service == p::kSetParametersAtomically)
         {
-            answers = command ? ask_once(session_, key_ + "/" + service, timeout, request)
-                              : ask(session_, key_ + "/" + service, timeout, request);
-        }
-        catch (const NotReached& e)
-        {
-            throw ParameterError(e.what());
+            // a set is a command (a node may act on it): not sent unless exactly one node answers a read first (two
+            // would both apply it); then sent once (ask_once). NotReached: nothing sent; NoAnswer: sent once, no
+            // answer, it may still be applied, not sent again (Python's ParameterClient._call).
+            try
+            {
+                call(std::string(p::kListParameters), ListParametersRequest{}.serialize());
+            }
+            catch (const ParameterError& e)
+            {
+                throw ParameterError("not sent: " + key + ": " + e.what());
+            }
+            std::vector<std::vector<std::uint8_t>> ok;
+            for (const auto& reply : ask_once(session_, key, timeout, request))
+            {
+                if (not reply.is_ok())
+                {
+                    if (timed_out(reply))
+                    {
+                        continue;
+                    }
+                    throw ParameterError(reply.get_err().get_payload().as_string());
+                }
+                ok.push_back(reply.get_ok().get_payload().as_vector());
+            }
+            if (ok.empty())
+            {
+                throw NoAnswer(key + ": sent once, no answer within " + std::to_string(timeout_ms_) +
+                               " ms: it may still be executed; not sent again");
+            }
+            if (ok.size() > 1)
+            {
+                throw ParameterError(std::to_string(ok.size()) + " nodes answered " + key +
+                                     ": each of them got it; one name, one node");
+            }
+            return ok.front();
         }
         std::vector<std::vector<std::uint8_t>> ok;
-        for (const auto& reply : answers)
+        for (const auto& reply : ask(session_, key, timeout, request))
         {
             if (not reply.is_ok())
             {
+                if (timed_out(reply))
+                {
+                    continue;
+                }
                 throw ParameterError(reply.get_err().get_payload().as_string());
             }
             ok.push_back(reply.get_ok().get_payload().as_vector());
         }
         if (ok.empty())
         {
-            throw ParameterError(command ? key_ + "/" + service + ": sent once, no answer within " +
-                                               std::to_string(timeout_ms_) + " ms (the node may have taken it; not sent "
-                                               "again)"
-                                         : "no answer from " + key_ + "/" + service + " within " +
-                                               std::to_string(timeout_ms_) + " ms");
+            throw ParameterError("no answer from " + key + " within " + std::to_string(timeout_ms_) + " ms");
         }
         if (ok.size() > 1)
         {
-            throw ParameterError(std::to_string(ok.size()) + " nodes answer " + key_ + "/" + service +
-                                 ": one name, one node");
+            throw ParameterError(std::to_string(ok.size()) + " nodes answer " + key + ": one name, one node");
         }
         return ok.front();
     }

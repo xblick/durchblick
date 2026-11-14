@@ -7,7 +7,18 @@ Within 0.3.x, 0.3.59 changed the rings' keys and the info record's version (3): 
 or newer. 0.4.0 to 0.4.3 speak the protocol of 0.3.59 to 0.3.68: their programs and those of 0.3.68 work together.
 0.5.0 renamed every name on the wire and on disk: programs of 0.5 do not work with programs of 0.3 or 0.4.
 
-* **0.5.2** The protocol is 0.5.0's: programs of 0.5.0, 0.5.1 and 0.5.2 work together. `xblick cam`: `--reconnect
+* **0.5.2** **Fixed (safety):** 0.5.1's parameter client (Python and C++ `ParameterClient`) sent a parameter set again
+  every 250 ms, up to the client's timeout (default 2 s: up to about 8 times), when the query ended without a reply. A
+  node that drops a set without replying (a bridge, or a node closing with sets in its queue) applied it several
+  times. Controller manager and recorder commands were sent once in 0.5.1 as well. Do not use 0.5.1 to set parameters
+  of a robot's controllers: update. Now every command (a parameter set, the controller manager's create, switch and
+  unload, a torque step, a record and play node's command) is sent once to each queryable of its key, after the
+  session knows one (`session.command`, `session.ask_once`, C++ `xblick::ask_once`), and only after a read of the same
+  node had exactly one answer: two nodes on one key get nothing (refused before sending). `xblick.NotReached` (a
+  `TimeoutError`): not sent. `xblick.NoAnswer` (a `RuntimeError`, deliberately no `TimeoutError`): sent once, no
+  answer, it may still be executed, not sent again (C++ `xblick::NoAnswer`; Zenoh's own `Timeout` reply is handled in
+  C++ as in Python). A command has no expiry: a busy or briefly unreachable receiver may execute it after the caller
+  gave up. The protocol is 0.5.0's: programs of 0.5.0, 0.5.1 and 0.5.2 work together. `xblick cam`: `--reconnect
   [SECONDS]` opens a camera that stopped or cannot be opened (also at the start) again every SECONDS (default 2) until
   it delivers; each loss and return is a log line, a WARN diagnostics status while it is away; it must come back in
   its first mode. `--option KEY=VALUE` passes FFmpeg input options and refuses one FFmpeg does not have for the source
@@ -15,15 +26,11 @@ or newer. 0.4.0 to 0.4.3 speak the protocol of 0.3.59 to 0.3.68: their programs 
   camera's JPEG unchanged on the compressed transport, with the standard Huffman tables inserted where a frame has
   none. `CameraPublisher.publish_compressed` takes the decoded frame (`image=`). Queries of a session just opened:
   reads (`session.ask`, C++ `xblick::ask`) are asked again until the first reply: `xblick hz`'s check for point
-  clouds, the rays of compressed clouds, the controller manager's reads. **Commands are sent exactly once**
-  (`session.ask_once`, C++ `xblick::ask_once`): parameter sets, the controller manager's create, switch and unload, a
-  torque step and the record and play node's commands wait until the session knows the queryable and are never sent
-  again. 0.5.1 sent parameter sets again while no reply came, which a node that dropped a set without replying got
-  several times. Examples in the documentation and help texts use the test camera's `test/camera` and the device
-  nodes' `cam/rc_visard` and `cam/azurekinect` in place of `robot/camera`. `xblick cam` and `xblick test-camera` print
-  the stream they publish and the camera for a node (`--camera ...`) on lines of their own, and a hint at the start
-  when their session reached no router and no other session. `xblick test-camera`'s first line no longer names the
-  stream; the next one does.
+  clouds, the rays of compressed clouds, the controller manager's reads. Examples in the documentation and help texts
+  use the test camera's `test/camera` and the device nodes' `cam/rc_visard` and `cam/azurekinect` in place of
+  `robot/camera`. `xblick cam` and `xblick test-camera` print the stream they publish and the camera for a node
+  (`--camera ...`) on lines of their own, and a hint at the start when their session reached no router and no other
+  session. `xblick test-camera`'s first line no longer names the stream; the next one does.
 * **0.5.1** **Changed default:** `xblick test-camera` publishes `test/camera/color`, no longer
   `robot/test_camera/color`. `xblick-cpp-camera` and `xblick-cpp-probe` default to `test/camera/color` and
   `test/camera/points`. A script that subscribes to the old name needs the new one, or the test camera started with

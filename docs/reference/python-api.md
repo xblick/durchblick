@@ -205,8 +205,20 @@ manager.switch(deactivate=["teleop_arms"])
 manager.unload("teleop_arms")
 ```
 
-Every call raises `RuntimeError` with the manager's reason when it refuses, `TimeoutError` when nobody answers, and
-`RuntimeError` when several managers answer.
+A read (`list`, `states`, `config`, `config_file`) raises `TimeoutError` when nobody answers and `RuntimeError` when
+several managers answer. A command (`create`, `switch`, `unload`, and `torque_step` of a controller) goes out once,
+and only after a read of the same manager or controller had exactly one answer. Two managers on one key would both
+execute it, so the command is refused before anything is sent. A command raises:
+
+| Exception | Meaning |
+| --- | --- |
+| `xblick.NotReached` (a `TimeoutError`) | not sent: no manager or controller became known within the timeout. You may try again. |
+| `RuntimeError` | not sent (several managers answer the read), or the manager refused it with its reason |
+| `xblick.NoAnswer` (a `RuntimeError`, no `TimeoutError`) | sent once, no answer within the timeout. The robot may still execute it. It was not sent again. |
+
+**A command has no expiry.** A robot that is busy or briefly unreachable executes a command when it gets it, also
+after the caller got `NoAnswer`. Check the robot's state before you act on a `NoAnswer`, and before you go near the
+robot. The `timeout` of `torque_step` is how long the caller waits. It is no deadline for the step.
 
 The controller side, for a simulation that takes the controller's place, is `CommandSubscriber` and
 `ControllerPublisher` in the same module.

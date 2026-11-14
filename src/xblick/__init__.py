@@ -12,7 +12,7 @@ from .msg import (BoundingBox2D, BoundingBox3D, CameraInfo, Classification, Cloc
                   Wrench, WrenchStamped)
 from .points import XYZ, XYZRGB, PointCloudFrame, PointCloudPublisher, PointCloudSubscriber, points_dtype
 from .robot import RobotStatePublisher, RobotStateSubscriber
-from .session import open_session
+from .session import NoAnswer, NotReached, open_session
 from .sim import SimPublisher
 
 # the descriptors of the ring transports (msg.ShmImage, msg.CudaImage) stay in msg: gpu.CudaImage is the frame
@@ -28,4 +28,4 @@ __all__ = ["XYZ", "XYZRGB", "BoundingBox2D", "BoundingBox3D", "CameraInfo", "Cam
            "Transform", "TransformPublisher", "TransformStamped", "TransformSubscriber", "Twist", "TwistWithCovariance", "Vector3", "Wrench",
            "WrenchStamped", "Float64MultiArray", "MultiArrayDimension", "MultiArrayLayout", "MultiDOFJointState",
            "RobotState", "gpu",
-           "open_session", "points_dtype", "query_info", "topics"]
+           "NoAnswer", "NotReached", "open_session", "points_dtype", "query_info", "topics"]

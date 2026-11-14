@@ -85,7 +85,8 @@ from .codecs import parse_format
 from .msg import CameraInfo, Clock, CompressedImage, Message, Time
 from .msgdefs import MSGDEFS
 from .parameters import Parameters
-from .session import ask_once, replies
+from .session import command as send_once
+from .session import replies
 from .stamps import header_stamp  # recording.header_stamp: its old home
 
 STATUS_VERSION = 3
@@ -990,17 +991,22 @@ def send_command(session: zenoh.Session, name: str, command: str, **options) -> 
 def request(session: zenoh.Session, name: str, command: str, timeout: float = 30.0, **options) -> dict:
     """Send a command to a record and play node as a query and return its result once it took effect: ``record``'s
     ready, ``stop``'s numbers, ``play``'s and ``step``'s playback status. A refusal is a RuntimeError, a recording
-    that failed its check a RecordingError (with the numbers in ``result``), no answer within ``timeout`` s a
-    TimeoutError. The node is found first (query_status), so that the command is sent once."""
+    that failed its check a RecordingError (with the numbers in ``result``). Not sent unless exactly one node of
+    that name answers its status first (RuntimeError for several, TimeoutError for none); then sent once
+    (session.command): NotReached (a TimeoutError, nothing sent), NoAnswer (no TimeoutError: sent once, no answer
+    within ``timeout`` s; it may still be executed; not sent again), RuntimeError for an error reply."""
     payload = json.dumps({"command": command, **options})
     parse_command(payload.encode())  # bad ones fail here, not in the node
-    query_status(session, name, timeout=min(timeout, 10.0))
-    # exactly once (session.ask_once): a record or play command must not run twice
-    answers = [r for r in ask_once(session, control_key(name), timeout, payload=payload) if r.ok is not None]
-    if not answers:
-        raise TimeoutError(f"{name!r} did not answer {command} within {timeout} s (a node of Durchblick 0.3.28 or "
-                           "newer answers commands sent as queries)")
-    reply = json.loads(answers[0].ok.payload.to_bytes())
+    # one node of that name, else nothing is sent (two would both execute it); then exactly once (session.command)
+    try:
+        nodes = status_replies(session, name, timeout=min(timeout, 10.0))
+    except TimeoutError as error:
+        raise TimeoutError(f"not sent: {error}") from None
+    if len(nodes) > 1:
+        raise RuntimeError(f"not sent: {len(nodes)} record and play nodes answer {status_key(name)}: one name, one "
+                           "node")
+    answers = send_once(session, control_key(name), timeout, payload=payload)
+    reply = json.loads(answers[0].payload.to_bytes())
     if not isinstance(reply, dict) or reply.get("v") != REPLY_VERSION:
         raise ProtocolError(f"{name}: {reply!r} is no reply of version {REPLY_VERSION}")
     if reply["ok"]:
@@ -1013,11 +1019,17 @@ def request(session: zenoh.Session, name: str, command: str, timeout: float = 30
 def query_status(session: zenoh.Session, name: str, timeout: float = 2.0) -> dict:
     """The node's status. Asked again every FIND_PERIOD seconds until ``timeout``: a session just opened knows no
     queryable yet (find_streams)."""
+    return json.loads(status_replies(session, name, timeout)[0].payload.to_string())
+
+
+def status_replies(session: zenoh.Session, name: str, timeout: float = 2.0) -> list:
+    """The successful replies of the first status query that has any (one per node of that name), asked again every
+    FIND_PERIOD seconds until ``timeout``; TimeoutError when none answers."""
     end = time.monotonic() + timeout
     while (remaining := end - time.monotonic()) > 0:
-        answers = [r for r in replies(session, status_key(name), min(remaining, 1.0)) if r.ok is not None]
+        answers = [r.ok for r in replies(session, status_key(name), min(remaining, 1.0)) if r.ok is not None]
         if answers:
-            return json.loads(answers[0].ok.payload.to_string())
+            return answers
         time.sleep(min(FIND_PERIOD, max(0.0, end - time.monotonic())))
     raise TimeoutError(f"no record and play node {name!r} answered on {status_key(name)}")
 
