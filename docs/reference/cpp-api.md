@@ -143,7 +143,8 @@ sends a command, such as a parameter set. It waits until the session knows a que
 command once to each queryable of the key. It never sends the command again. Zenoh's default query target delivers a
 query to every queryable of its key, as long as none of them is declared complete. No Durchblick queryable is declared
 complete. `xblick::ParameterClient` sends a set only after a read had exactly one answer and ended before its timeout.
-This check is best effort. A second node that drops the read or starts after it still gets the set.
+This check is best effort. A second node that drops the read or starts after it still gets the set. So does a second
+node that a session just opened has not linked to yet.
 
 | Exception (base) | Sent? | Meaning |
 | --- | --- | --- |

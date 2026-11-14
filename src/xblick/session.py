@@ -446,7 +446,9 @@ def count(answers: list, selector: str) -> list:
     RuntimeError, "not sent", unless exactly one node answered and the query ended before its timeout (no "Timeout"
     reply, ``timed_out``). A query still open at its timeout means a queryable got it and had not finished: a node that
     exists but did not answer in time is a second node, not none, or a single node keeps the query after its reply.
-    TimeoutError when none answered, in time or at all."""
+    TimeoutError when none answered, in time or at all. A session just opened links to the serving sessions one after
+    the other: for a short time the read can miss a second node (the command then reaches it too, if known by then)
+    or reach only a busy one (TimeoutError, although another node serves the key)."""
     ok = [r.ok for r in answers if r.ok is not None]
     still_open = any(timed_out(r) for r in answers)
     if not ok:

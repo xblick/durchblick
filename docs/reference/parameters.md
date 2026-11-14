@@ -38,7 +38,8 @@ A set is a command: the node may act on it. The client sends it once to each nod
 node (`list_parameters`) must have exactly one answer and must end before its timeout, else the set is not sent. This
 check is best effort. It catches two nodes of one name that both answer the read, and a busy one that has not finished
 the read at its timeout. A second node that drops the read or that starts between the read and the set still gets the
-set. A node whose read takes longer than the timeout gets no set ("not sent"); this fails safe.
+set. So does a second node that a session just opened has not linked to yet, because a new session links to the
+serving sessions one after the other. A node whose read takes longer than the timeout gets no set ("not sent"); this fails safe.
 
 **A receiver replies and drops the query at once.** A node that serves a command or a parameter (its queryable's
 callback) replies and then ends the callback, without keeping the query object. Do long work outside the callback. Zenoh

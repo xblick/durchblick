@@ -575,8 +575,12 @@ def test_a_second_manager_that_answers_its_read_late_or_not_at_all(network, read
                   name="second list")
     network.serve(f"{M}/switch_controller", lambda q: bytes(SwitchControllerResponse(True, "b").serialize()),
                   server=second, name="second switch")
+    # declared last on each serving session: a session that reaches both has their managers' queryables too (one link
+    # per serving session, its declarations in order); the second's list cannot tell (late, or no reply)
+    for server, name in ((network.server, "known"), (second, "second known")):
+        network.serve("t/known", server=server, name=name)
     with network.new_session() as s:
-        time.sleep(0.5)  # the second manager was declared just now: known to the router first (else it "appears later")
+        knows_all(s, "t/known", 2)  # else the second manager "appears later" to the check (best effort)
         m = controller_manager.ControllerManager(s, "robot", timeout=1.0)
         if read == "slow":
             with pytest.raises(RuntimeError, match="not sent: 1 node\\(s\\) answered .*list_controllers, and the "

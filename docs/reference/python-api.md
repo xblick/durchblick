@@ -214,7 +214,9 @@ sent.
 
 This check is best effort. It catches two managers that both answer the read, and one that has not finished the read at
 its timeout. A second manager that drops the read, that starts between the read and the command, or that serves a broad
-key expression still gets the command. For `torque_step` the read counts the controller's parameter servers, not its
+key expression still gets the command. A session that was just opened links to the serving sessions one after the other.
+For a short time its read can miss a second manager, which may then get the command too, or reach only a busy one and
+refuse with "no node answered in time". For `torque_step` the read counts the controller's parameter servers, not its
 torque-step servers. The check can also stop a command that worked before 0.5.2: a manager whose read takes longer than
 the timeout gets nothing ("not sent"). This fails safe.
 

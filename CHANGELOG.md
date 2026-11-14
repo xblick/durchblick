@@ -35,6 +35,10 @@ or newer. 0.4.0 to 0.4.3 speak the protocol of 0.3.59 to 0.3.68: their programs 
   query target does so while no queryable is declared complete, and a test pins that none is.
   **Tests:** the tests of the notice for a peer across PCs no longer wait for a session to an address that does not
   answer. Where such packets are dropped, as on CI, the close of that session took more than 5 s.
+  **Docs:** the check before a command has a limit that the pages did not name. A session that was just opened
+  links to the serving sessions one after the other. For a short time its read can miss a second node, which may then
+  get the command too, or reach only a busy one and refuse with "no node answered in time". The command path is
+  unchanged. `python-api.md`, `parameters.md`, `cpp-api.md`, `AGENTS.md` and `session.count` say so.
   **Docs:** the README has shields. The recipe for programs without a router in `video.md` was replaced by one that
   was tried.
 * **0.5.6** Nothing on the wire changed: programs of 0.5.6 work with those of 0.5.0 to 0.5.5.
