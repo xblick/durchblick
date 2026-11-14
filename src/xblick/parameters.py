@@ -573,8 +573,6 @@ class ParameterClient:
             except TimeoutError as error:
                 raise TimeoutError(f"{error} (the set to {key})") from None
             ok = command(self._session, key, self.timeout, payload=bytes(request.serialize()))
-            if len(ok) > 1:
-                raise RuntimeError(f"{len(ok)} nodes answered {key}: each of them got it; one name, one node")
             return response_type.deserialize(ok[0].payload.to_bytes())
         answers = ask(self._session, key, self.timeout, payload=bytes(request.serialize()))
         errors = [reply.err.payload.to_string() for reply in answers if reply.err is not None and not timed_out(reply)]

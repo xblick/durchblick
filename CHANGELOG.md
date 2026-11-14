@@ -21,27 +21,32 @@ or newer. 0.4.0 to 0.4.3 speak the protocol of 0.3.59 to 0.3.68: their programs 
   servers, not its torque_step servers. The check can also stop a command that worked before: a node whose read takes
   longer than the timeout now gets nothing ("not sent"), which fails safe. `xblick.NotReached` (a `TimeoutError`): not
   sent. `xblick.NoAnswer` (a `RuntimeError`, deliberately no `TimeoutError`): sent once, no answer, it may still be
-  executed, not sent again. `xblick.PartlyAnswered` (a `NoAnswer`): answered by one node while another got it and did
-  not answer in time. C++ has the same types; Zenoh's own `Timeout` reply is handled in C++ as in Python. A command
-  has no expiry: a busy or briefly unreachable receiver may execute it after the caller gave up. The protocol is
-  0.5.0's: programs of 0.5.0, 0.5.1 and 0.5.2 work together. `xblick cam`: `--reconnect [SECONDS]` opens a camera that
-  stopped or cannot be opened (also at the start) again every SECONDS (default 2) until it delivers; each loss and
-  return is a log line, a WARN diagnostics status while it is away; it must come back in its first mode. `--option
-  KEY=VALUE` passes FFmpeg input options and refuses one FFmpeg does not have for the source (FFmpeg and PyAV would
-  ignore it). `--mjpeg passthrough` (opt-in, not tested on a real camera) sends an MJPEG camera's JPEG unchanged on
-  the compressed transport, with the standard Huffman tables inserted where a frame has none.
-  `CameraPublisher.publish_compressed` takes the decoded frame (`image=`). Queries of a session just opened: reads
-  (`session.ask`, C++ `xblick::ask`) are asked again until the first reply: `xblick hz`'s check for point clouds, the
-  rays of compressed clouds, the controller manager's reads. Examples in the documentation and help texts use the test
-  camera's `test/camera` and the device nodes' `cam/rc_visard` and `cam/azurekinect` in place of `robot/camera`.
-  `xblick cam` and `xblick test-camera` print the stream they publish and the camera for a node (`--camera ...`) on
-  lines of their own, and a hint at the start when their session reached no router and no other session. `xblick
-  test-camera`'s first line no longer names the stream; the next one does. **Changed:** C++ `ParameterClient` throws
-  `xblick::NotReached` and `xblick::NoAnswer` (with `xblick::PartlyAnswered`), which derive from `std::runtime_error`
-  and not from `ParameterError` (also a `std::runtime_error`); a caller that catches only `ParameterError` must add
-  them, or catch `std::runtime_error`. `recording.send_command` sends its command as `request` does (a query, checked,
-  sent once) and then returns the node's status; it put the command on the control key before, which a session just
-  opened could lose.
+  executed, not sent again. `xblick.PartlyAnswered` (a `NoAnswer`): sent once, answered, and a reply came late:
+  another node may still execute it. `xblick.SeveralExecuted` (a `NoAnswer`): sent once, several nodes answered and
+  each executed it. A receiver must reply and drop the query at once: one that keeps the query after its reply makes
+  Zenoh send a late "Timeout" reply, which the check takes for a second node ("not sent"); Durchblick's own parameter
+  servers and record and play node do so, a receiver outside this repository (a robot's bridge) must be checked before
+  0.5.2 commands it. C++ has the same types; Zenoh's own `Timeout` reply is handled in C++ as in Python. A command has
+  no expiry: a busy or briefly unreachable receiver may execute it after the caller gave up. The protocol is 0.5.0's:
+  programs of 0.5.0, 0.5.1 and 0.5.2 work together. `xblick cam`: `--reconnect [SECONDS]` opens a camera that stopped
+  or cannot be opened (also at the start) again every SECONDS (default 2) until it delivers; each loss and return is a
+  log line, a WARN diagnostics status while it is away; it must come back in its first mode. `--option KEY=VALUE`
+  passes FFmpeg input options and refuses one FFmpeg does not have for the source (FFmpeg and PyAV would ignore it).
+  `--mjpeg passthrough` (opt-in, not tested on a real camera) sends an MJPEG camera's JPEG unchanged on the compressed
+  transport, with the standard Huffman tables inserted where a frame has none. `CameraPublisher.publish_compressed`
+  takes the decoded frame (`image=`). Queries of a session just opened: reads (`session.ask`, C++ `xblick::ask`) are
+  asked again until the first reply: `xblick hz`'s check for point clouds, the rays of compressed clouds, the
+  controller manager's reads. Examples in the documentation and help texts use the test camera's `test/camera` and the
+  device nodes' `cam/rc_visard` and `cam/azurekinect` in place of `robot/camera`. `xblick cam` and `xblick
+  test-camera` print the stream they publish and the camera for a node (`--camera ...`) on lines of their own, and a
+  hint at the start when their session reached no router and no other session. `xblick test-camera`'s first line no
+  longer names the stream; the next one does. **Changed:** C++ `ParameterClient` throws `xblick::NotReached` and
+  `xblick::NoAnswer` (with `xblick::PartlyAnswered` and `xblick::SeveralExecuted`), which derive from
+  `std::runtime_error` and not from `ParameterError` (also a `std::runtime_error`); a caller that catches only
+  `ParameterError` must add them, or catch `std::runtime_error`. `recording.send_command` sends its command as
+  `request` does (a query, checked, sent once) and then returns the node's status; it put the command on the control
+  key before, which a session just opened could lose. With `request` its timeout is 30 s (was 10 s), and a `stop`
+  whose check fails raises `RecordingError` instead of returning the status.
 * **0.5.1** **Changed default:** `xblick test-camera` publishes `test/camera/color`, no longer
   `robot/test_camera/color`. `xblick-cpp-camera` and `xblick-cpp-probe` default to `test/camera/color` and
   `test/camera/points`. A script that subscribes to the old name needs the new one, or the test camera started with

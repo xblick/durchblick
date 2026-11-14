@@ -1299,13 +1299,18 @@ namespace xblick
                     late = true;
                 }
             }
+            const char* holding = "a second node, or the answering node still holding the query after its reply";
+            if (answered == 0)
+            {
+                throw ParameterError("not sent: no node answered " + list_key + (late ? " in time" : "") +
+                                     " (the set to " + key + ")");
+            }
             if (late)
             {
-                throw ParameterError("not sent: a node did not answer " + list_key + " in time (" +
-                                     std::to_string(answered) + " answered): it may be a second node of the key (the "
-                                     "set to " + key + ")");
+                throw ParameterError("not sent: " + std::to_string(answered) + " node(s) answered " + list_key +
+                                     ", and a reply came late (" + holding + ") (the set to " + key + ")");
             }
-            if (answered != 1)
+            if (answered > 1)
             {
                 throw ParameterError("not sent: " + std::to_string(answered) + " nodes answer " + list_key +
                                      " (the set to " + key + ")");
@@ -1327,9 +1332,9 @@ namespace xblick
             }
             if (not ok.empty() and unanswered)
             {
-                throw PartlyAnswered(key + ": answered by " + std::to_string(ok.size()) + " node(s), and at least one "
-                                     "more node got it and did not answer within " + std::to_string(timeout_ms_) +
-                                     " ms: that node may still execute it; not sent again");
+                throw PartlyAnswered(key + ": answered by " + std::to_string(ok.size()) + " node(s), and a reply came "
+                                     "late after " + std::to_string(timeout_ms_) + " ms (" + holding +
+                                     "): a second node may still execute it; not sent again");
             }
             if (ok.empty())
             {
@@ -1338,8 +1343,8 @@ namespace xblick
             }
             if (ok.size() > 1)
             {
-                throw ParameterError(std::to_string(ok.size()) + " nodes answered " + key +
-                                     ": each of them got it; one name, one node");
+                throw SeveralExecuted(key + ": sent, and " + std::to_string(ok.size()) +
+                                      " nodes answered: each of them executed it; not sent again (one key, one node)");
             }
             return ok.front();
         }

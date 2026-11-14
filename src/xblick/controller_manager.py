@@ -84,8 +84,6 @@ def _read(session: zenoh.Session, key: str, request, response_type, timeout: flo
 def _command(session: zenoh.Session, key: str, request, response_type, timeout: float):
     """A command, sent once (session.command); its one answer."""
     ok = command(session, key, timeout, payload=bytes(request.serialize()))
-    if len(ok) > 1:
-        raise RuntimeError(f"{len(ok)} nodes answered {key}: each of them got the command; one robot, one manager")
     return response_type.deserialize(ok[0].payload.to_bytes())
 
 

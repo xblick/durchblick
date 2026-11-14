@@ -40,10 +40,18 @@ is best effort: it catches two nodes of one name that both answer the read, and 
 second node that drops the read or that starts between the read and the set still gets the set. A node whose read
 takes longer than the timeout gets no set ("not sent"); this fails safe.
 
+**A receiver replies and drops the query at once.** A node that serves a command or a parameter (its queryable's
+callback) replies and then ends the callback, without keeping the query object. Do long work outside the callback.
+A node that keeps the query after its reply makes Zenoh send a late "Timeout" reply as well. The caller then takes
+it for a second node: the read before a command gives "not sent", and a command gives `PartlyAnswered`. Durchblick's
+own parameter servers (Python `Parameters`, C++) and the record and play node follow this rule. Check a receiver
+outside this repository, such as a robot's bridge, for it before you command it with 0.5.2.
+
 A set raises `NotReached` (a `TimeoutError`) when it was not sent, `NoAnswer` when it was sent once and no answer
-came, and `PartlyAnswered` (a `NoAnswer`) when one node answered and another did not. A node may still apply the
-set then, and it was not sent again. C++ throws `xblick::NotReached`, `xblick::NoAnswer` and
-`xblick::PartlyAnswered`. Reads are asked again until a node answers.
+came, `PartlyAnswered` (a `NoAnswer`) when one node answered and a reply came late, and `SeveralExecuted` (a
+`NoAnswer`) when several nodes answered and each applied it. A node may still apply the set then, and it was not
+sent again. C++ throws `xblick::NotReached`, `xblick::NoAnswer`, `xblick::PartlyAnswered` and
+`xblick::SeveralExecuted`. Reads are asked again until a node answers.
 
 The client raises an error when no node answers, or when more than one node answers.
 

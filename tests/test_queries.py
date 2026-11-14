@@ -122,7 +122,7 @@ import json  # noqa: E402
 from xblick import recording  # noqa: E402
 from xblick.msg import (CreateControllerResponse, ListParametersResponse, SwitchControllerResponse,  # noqa: E402
                         TorqueStepResponse, UnloadControllerResponse)
-from xblick.session import NoAnswer, command, timed_out  # noqa: E402
+from xblick.session import NoAnswer, SeveralExecuted, command, timed_out  # noqa: E402
 
 M = "robot/controller_manager"
 STATE = ControllerState(name="arms", state="active", type="Impedance")
@@ -521,8 +521,8 @@ def test_a_busy_second_node_gets_no_set(network):
         time.sleep(0.5)
         busy(b)
         with network.new_session() as s:
-            with pytest.raises(RuntimeError, match="not sent: a node did not answer t/busy/node/list_parameters in "
-                                                   "time \\(1 answered\\)"):
+            with pytest.raises(RuntimeError, match="not sent: 1 node\\(s\\) answered t/busy/node/list_parameters, and "
+                                                   "a reply came late \\(a second node, or the answering node"):
                 ParameterClient(s, "t/busy/node", 1.0).set({"x": 2.0})
         time.sleep(3.0)
         assert writes == {"a": [], "b": [1.0]}
@@ -541,8 +541,8 @@ def test_a_command_answered_by_one_node_while_another_is_late(network):
     network.serve("t/both", lambda q: b"late", delay=1.5, server=second, name="slow")
     with network.new_session() as s:
         time.sleep(0.5)
-        with pytest.raises(PartlyAnswered, match="t/both: answered by 1 node\\(s\\), and at least one more node got it "
-                                                 "and did not answer within 0.5 s"):
+        with pytest.raises(PartlyAnswered, match="t/both: answered by 1 node\\(s\\), and a reply came late after 0.5 s "
+                                                 ".*a second node may still execute it"):
             command(s, "t/both", 0.5)
     time.sleep(1.5)
     assert network.calls == {"fast": 1, "slow": 1}
@@ -564,11 +564,12 @@ def test_a_second_manager_that_answers_its_read_late_or_not_at_all(network, read
         time.sleep(0.5)  # the second manager was declared just now: known to the router first (else it "appears later")
         m = controller_manager.ControllerManager(s, "robot", timeout=1.0)
         if read == "slow":
-            with pytest.raises(RuntimeError, match="not sent: a node did not answer .*list_controllers in time"):
+            with pytest.raises(RuntimeError, match="not sent: 1 node\\(s\\) answered .*list_controllers, and a reply "
+                                                   "came late"):
                 m.switch(activate=["arms"])
         else:
-            with pytest.raises(RuntimeError, match="2 nodes answered .*switch_controller: each of them got the "
-                                                   "command"):
+            with pytest.raises(SeveralExecuted, match="switch_controller: sent, and 2 nodes answered: each of them "
+                                                      "executed it"):
                 m.switch(activate=["arms"])
     time.sleep(0.5)
     ran = 0 if read == "slow" else 1
@@ -583,7 +584,7 @@ def test_a_second_torque_step_server_without_parameters_gets_the_step(network):
     network.serve("robot/controller/arms/torque_step", lambda q: bytes(TorqueStepResponse(True, "").serialize()),
                   server=second, name="second step")
     with network.new_session() as s:
-        with pytest.raises(RuntimeError, match="2 nodes answered robot/controller/arms/torque_step"):
+        with pytest.raises(SeveralExecuted, match="robot/controller/arms/torque_step: sent, and 2 nodes answered"):
             controller_manager.torque_step(s, "robot/controller/arms", "j", 1.0, 0.1)
     assert network.calls["robot/controller/arms/torque_step"] == 1 and network.calls["second step"] == 1
 
@@ -595,7 +596,8 @@ def test_a_read_slower_than_its_timeout_stops_the_command(network):
     network.serve(f"{M}/switch_controller", lambda q: bytes(SwitchControllerResponse(True, "").serialize()))
     with network.new_session() as s:
         started = time.monotonic()
-        with pytest.raises(RuntimeError, match="not sent: a node did not answer"):
+        with pytest.raises(TimeoutError, match="not sent: no node answered robot/controller_manager/"
+                                               "list_controllers in time"):
             controller_manager.ControllerManager(s, "robot", timeout=1.0).switch(activate=["arms"])
         took = time.monotonic() - started
     assert took < 1.0 + 0.6, took
@@ -634,10 +636,55 @@ def test_a_cpp_set_with_a_busy_second_node(network):
         busy(b)
         out = subprocess.run([probe, "--connect", network.endpoint[0], "--listen", "tcp/127.0.0.1:0", "--params",
                               "t/cbusy/node", "--set", "x:=2.0"], capture_output=True, text=True, timeout=30)
-        assert out.returncode != 0 and "not sent: a node did not answer t/cbusy/node/list_parameters in time" in \
+        assert out.returncode != 0 and "not sent: 1 node(s) answered t/cbusy/node/list_parameters, and a reply " \
+                                       "came late" in \
             out.stderr, out.stderr
         time.sleep(5.0)
         assert writes == {"a": [], "b": [1.0]}
     finally:
         a.close()
         b.close()
+
+
+def test_one_slow_node_is_not_taken_for_a_second(network):
+    """A single node whose count read answers only late: "not sent: no node answered ... in time", a TimeoutError
+    that names no second node; its command ran 0 times."""
+    from xblick.parameters import ParameterClient, Parameters
+
+    writes = []
+    a = Parameters(network.server, "node", "t/slow1")
+    a.declare("x", 0.0, write=lambda v: (writes.append(v), time.sleep(3.0)))
+    try:
+        time.sleep(0.5)
+        busy(a)
+        with network.new_session() as s:
+            with pytest.raises(TimeoutError, match="not sent: no node answered t/slow1/node/list_parameters in time"):
+                ParameterClient(s, "t/slow1/node", 1.0).set({"x": 2.0})
+        time.sleep(3.0)
+        assert writes == [1.0]  # its own local set only
+    finally:
+        a.close()
+
+
+def test_a_node_that_holds_the_query_after_its_reply(network):
+    """The receiver rule, pinned: a single manager that replies at once and then keeps working inside the query's
+    callback makes Zenoh send a late "Timeout" reply as well; the check takes it for a possible second node and sends
+    nothing ("a second node, or the answering node still holding the query"). Its switch ran 0 times."""
+    def reply_then_hold(payload):
+        def handle(query):
+            query.reply(query.key_expr, payload)
+            time.sleep(1.5)  # still inside the callback: the query is not finalized
+
+        return handle
+
+    network.server.declare_queryable(f"{M}/list_controllers",
+                                     reply_then_hold(bytes(ListControllersResponse([STATE]).serialize())))
+    network.serve(f"{M}/switch_controller", lambda q: bytes(SwitchControllerResponse(True, "").serialize()))
+    with network.new_session() as s:
+        time.sleep(0.5)
+        with pytest.raises(RuntimeError, match="not sent: 1 node\\(s\\) answered .*list_controllers, and a reply came "
+                                               "late \\(a second node, or the answering node still holding the "
+                                               "query after its reply\\)"):
+            controller_manager.ControllerManager(s, "robot", timeout=0.5).switch(activate=["arms"])
+    time.sleep(1.5)
+    assert network.calls[f"{M}/switch_controller"] == 0

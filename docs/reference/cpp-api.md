@@ -144,12 +144,14 @@ key and then sends the command once to each queryable of the key. It never sends
 `xblick::ParameterClient` sends a set only after a read had exactly one answer and no late answer. This check is
 best effort. A second node that drops the read or starts after it still gets the set.
 
-| Exception | Meaning |
-| --- | --- |
-| `xblick::NotReached` | not sent: no queryable became known within the timeout. You may try again. |
-| `xblick::NoAnswer` | sent once, no answer within the timeout. The receiver may still execute it. It was not sent again. |
-| `xblick::PartlyAnswered` (a `NoAnswer`) | one node answered, and another got it and did not answer in time |
-| `xblick::ParameterError` | the node refused, several nodes answer, or a read got no answer |
+| Exception (base) | Sent? | Meaning |
+| --- | --- | --- |
+| `xblick::NotReached` (`std::runtime_error`) | not sent | no queryable became known within the timeout. You may try again. |
+| `xblick::ParameterError` "not sent: ..." (`std::runtime_error`) | not sent | the read before the set showed no node, several nodes, or a late reply |
+| `xblick::ParameterError` with the node's reason | sent | the node refused it, or a read got no answer |
+| `xblick::NoAnswer` (`std::runtime_error`) | sent once | no answer within the timeout. The receiver may still execute it. It was not sent again. |
+| `xblick::PartlyAnswered` (`NoAnswer`) | sent once | one node answered, and a reply came late: another node may still execute it |
+| `xblick::SeveralExecuted` (`NoAnswer`) | sent once | several nodes answered: each of them executed it |
 
 All of them derive from `std::runtime_error`. `NotReached` and `NoAnswer` do not derive from `ParameterError`: a
 caller that catches only `ParameterError` must catch them as well.

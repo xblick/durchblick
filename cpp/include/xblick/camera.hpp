@@ -104,6 +104,14 @@ namespace xblick
         using NoAnswer::NoAnswer;
     };
 
+    // A command sent and answered by more than one node: each of them executed it. Not sent again (Python's
+    // session.SeveralExecuted).
+    class SeveralExecuted : public NoAnswer
+    {
+    public:
+        using NoAnswer::NoAnswer;
+    };
+
     // The error reply by which Zenoh ends a query whose timeout passed before a queryable answered (its text is
     // "Timeout"; Python's session.timed_out). The queryable may still be working on it.
     bool timed_out(const zenoh::Reply& reply);

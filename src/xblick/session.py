@@ -217,6 +217,14 @@ class PartlyAnswered(NoAnswer):
     "Timeout" reply): that node may still execute it. Not sent again. A NoAnswer, so no TimeoutError."""
 
 
+class SeveralExecuted(NoAnswer):
+    """A command was sent and answered by more than one node: each of them executed it (two nodes on one key, which
+    the check before the command did not see). Not sent again. A NoAnswer, so no TimeoutError."""
+
+
+HOLDING = "a second node, or the answering node still holding the query after its reply"  # why a late reply comes
+
+
 def ask_once(session: zenoh.Session, selector: str, timeout: float, **get_options) -> list:
     """The replies to a command (a parameter set, a controller switch, a torque step, a recorder command): sent once
     to each queryable of ``selector``, after the session knows one. NotReached when none became known within
@@ -251,8 +259,10 @@ def ask_once(session: zenoh.Session, selector: str, timeout: float, **get_option
 def command(session: zenoh.Session, selector: str, timeout: float, **get_options) -> list:
     """A command sent with ``ask_once`` and its answers checked: the successful replies (one or more), else
     NotReached (not sent), RuntimeError with the first error reply's text (an error reply other than Zenoh's own
-    timeout), NoAnswer (sent once, no answer within ``timeout``: it may still be executed; not sent again), or
-    PartlyAnswered (answered, and another node got it and did not answer in time: it may still execute it)."""
+    timeout), NoAnswer (sent once, no answer within ``timeout``: it may still be executed; not sent again),
+    PartlyAnswered (answered, and a late reply came too: another node may still execute it), or SeveralExecuted
+    (answered by several nodes: each executed it). A receiver replies and drops the query at once: one that keeps
+    the query after its reply makes Zenoh send a late "Timeout" reply, which looks like a second node."""
     answers = ask_once(session, selector, timeout, **get_options)
     errors = [r.err.payload.to_string() for r in answers if r.err is not None and not timed_out(r)]
     if errors:
@@ -262,21 +272,25 @@ def command(session: zenoh.Session, selector: str, timeout: float, **get_options
         raise NoAnswer(f"{selector}: sent once, no answer within {timeout:g} s: it may still be executed; not sent "
                        "again")
     if any(timed_out(r) for r in answers):
-        raise PartlyAnswered(f"{selector}: answered by {len(ok)} node(s), and at least one more node got it and did "
-                             f"not answer within {timeout:g} s: that node may still execute it; not sent again")
+        raise PartlyAnswered(f"{selector}: answered by {len(ok)} node(s), and a reply came late after "
+                             f"{timeout:g} s ({HOLDING}): a second node may still execute it; not sent again")
+    if len(ok) > 1:
+        raise SeveralExecuted(f"{selector}: sent, and {len(ok)} nodes answered: each of them executed it; not sent "
+                              "again (one key, one node)")
     return ok
 
 
 def count(answers: list, selector: str) -> list:
     """The successful replies of a read that counts the nodes of a command's key before the command (best effort):
     RuntimeError, "not sent", unless exactly one node answered and none gave Zenoh's "Timeout" reply (a node that
-    exists but did not answer in time is a second node, not none). TimeoutError when none answered."""
+    exists but did not answer in time is a second node, not none; or a single node that keeps the query after its
+    reply). TimeoutError when none answered, in time or at all."""
     ok = [r.ok for r in answers if r.ok is not None]
-    if any(timed_out(r) for r in answers):
-        raise RuntimeError(f"not sent: a node did not answer {selector} in time ({len(ok)} answered): it may be a "
-                           "second node of the key")
+    late = any(timed_out(r) for r in answers)
     if not ok:
-        raise TimeoutError(f"not sent: no node answered {selector}")
+        raise TimeoutError(f"not sent: no node answered {selector}" + (" in time" if late else ""))
+    if late:
+        raise RuntimeError(f"not sent: {len(ok)} node(s) answered {selector}, and a reply came late ({HOLDING})")
     if len(ok) > 1:
         raise RuntimeError(f"not sent: {len(ok)} nodes answer {selector}: one key, one node")
     return ok

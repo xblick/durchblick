@@ -218,12 +218,22 @@ than the timeout gets nothing ("not sent"). This fails safe.
 
 A command raises:
 
-| Exception | Meaning |
-| --- | --- |
-| `xblick.NotReached` (a `TimeoutError`) | not sent: no manager or controller became known within the timeout. You may try again. |
-| `RuntimeError` | not sent (several managers answer the read), or the manager refused it with its reason |
-| `xblick.NoAnswer` (a `RuntimeError`, no `TimeoutError`) | sent once, no answer within the timeout. The robot may still execute it. It was not sent again. |
-| `xblick.PartlyAnswered` (a `NoAnswer`) | one node answered, and another node got it and did not answer in time. That node may still execute it. |
+| Exception (base) | Sent? | Meaning |
+| --- | --- | --- |
+| `xblick.NotReached` (`TimeoutError`) | not sent | no manager or controller became known within the timeout. You may try again. |
+| `TimeoutError` "not sent: no node answered ..." | not sent | nobody answered the read before the command, in time or at all |
+| `RuntimeError` "not sent: ..." | not sent | the read showed several nodes, or a late reply (a second node, or one node holding its query) |
+| `RuntimeError` with the manager's reason | sent | the manager refused it: nothing was done |
+| `xblick.NoAnswer` (`RuntimeError`, no `TimeoutError`) | sent once | no answer within the timeout. The robot may still execute it. It was not sent again. |
+| `xblick.PartlyAnswered` (`NoAnswer`) | sent once | one node answered, and a reply came late: another node may still execute it |
+| `xblick.SeveralExecuted` (`NoAnswer`) | sent once | several nodes answered: each of them executed it |
+
+**A receiver replies and drops the query at once.** A node that serves a command or a parameter (its queryable's
+callback) replies and then ends the callback, without keeping the query object. Do long work outside the callback.
+A node that keeps the query after its reply makes Zenoh send a late "Timeout" reply as well. The caller then takes
+it for a second node: the read before a command gives "not sent", and a command gives `PartlyAnswered`. Durchblick's
+own parameter servers (Python `Parameters`, C++) and the record and play node follow this rule. Check a receiver
+outside this repository, such as a robot's bridge, for it before you command it with 0.5.2.
 
 **A command has no expiry.** A robot that is busy or briefly unreachable executes a command when it gets it, also
 after the caller got `NoAnswer`. Check the robot's state before you act on a `NoAnswer`, and before you go near the
