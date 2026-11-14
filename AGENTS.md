@@ -119,6 +119,14 @@ Reference check: `tools/check_references.sh` (no internal or robot-framework nam
 
 ## Node repositories
 
+Rules every node keeps (docs/guides/writing-nodes.md, "Rules every node keeps"): the name identifies the model
+(`xblick-yolox`, not `xblick-detect`); `--camera` explicit and required, nothing guessed; fixed, documented defaults
+only (nothing that depends on the machine, the installed packages or a measurement; convenience goes into the
+`xblick` command); weights downloaded at the start through `xblick.weights` with `--download-only` and
+`--no-download`, the terms notice before a download; a queryable replies and drops the query at once; drawn results
+only with `--overlay` (off by default, a start option): `<camera>/<node>/overlay`, rgb8, the colour frame's size,
+stamp, frame id and camera_info, results published first, drawn by `xblick.overlay.Overlay` only while subscribed.
+
 Same pattern in each: a uv project pinned to a version of `xblick` (`pyproject.toml`, `uv.lock`), `tools/setup.sh`
 for `.venv` and checkpoints, a console script `xblick-<name>`, outputs below `<camera>/<node>/`, diagnostics on
 `<camera>/diagnostics`, its own `AGENTS.md`. A change here that nodes need: release it, then raise their pin and

@@ -154,6 +154,59 @@ The start log states each stream's transport and the reason, as soon as the subs
 repeats it as the value `transport <stream>` for the subscriptions that you gave `Reporter.watch`.
 [Transports](../concepts/transports.md) explains the transports.
 
+## Rules every node keeps
+
+These rules hold for every node, so that a user who knows one node knows how all of them behave.
+
+- **The name identifies the model.** A node is called after its model or method, for example `xblick-yolox`, not
+  after its task (`xblick-detect`). Two nodes for one task can then exist side by side.
+- **`--camera` is explicit and required.** A node never guesses the camera or a stream. The user names them.
+- **Fixed defaults only.** A default is a fixed, documented value. A default that depends on the machine, on the
+  installed packages or on a measurement is not allowed: the same command line must do the same everywhere.
+  Convenience that chooses for the user belongs into the `xblick` command, not into a node.
+- **Weights are downloaded at the start**, with `xblick.weights`: a node keeps its list of files and its terms notice,
+  prints the notice before a download, and offers `--download-only` (for setup scripts) and `--no-download` (for
+  machines that must not download).
+- **A queryable replies and drops the query at once.** A node that serves a command or a parameter replies in the
+  query's callback and ends it. It does long work outside the callback and keeps no query object. A node that keeps
+  the query after its reply makes Zenoh send a late "Timeout" reply as well, and a caller takes that for a second
+  node and sends nothing. `node.Parameters` does this right.
+
+## Drawn results (`--overlay`)
+
+A node may offer an image with its results drawn on the colour frame, for a person to look at. It is off by default,
+because every such stream is one more topic.
+
+| What | The convention |
+| --- | --- |
+| option | `--overlay` (`xblick.overlay.add_argument`). Off by default. A start option, read-only as a parameter: "off" means the topic does not exist. |
+| stream | `<camera>/<node>/overlay`, rgb8, the colour frame's size, stamp, frame id and camera_info |
+| without the option | no publisher: no topic and no info record |
+| order | the node publishes its results first, then hands the frame to the overlay |
+| drawing | in a thread of its own with a one-frame slot: a newer frame replaces the waiting one. It draws only while somebody subscribes. |
+
+```python
+# a sketch (untested as such): `found` stands for the node's own results
+from xblick import overlay
+
+overlay.add_argument(parser)
+...
+drawn = None
+if args.overlay:   # without the option no publisher exists
+    drawn = overlay.Overlay(session, camera, NODE, draw=lambda rgb, found: overlay.draw_boxes(
+        rgb, found.boxes, [f"{n} {s:.2f}" for n, s in zip(found.names, found.scores)],
+        [overlay.colour(c) for c in found.classes]))
+...
+detections.publish(...)                              # the results first
+if drawn is not None:
+    drawn.put(frame.stamp_ns, frame.header.frame_id, rgb, found, camera_info=color.camera_info)
+    drawn.check()                                    # the drawing thread's error, raised in the loop
+```
+
+`xblick.overlay` has drawing helpers for boxes with labels (`draw_boxes`), instances of a label image
+(`draw_masks`), keypoints with a skeleton (`draw_points`), point tracks (`draw_tracks`), a fixed colour per class
+(`colour`) and depth as colours (`depth_colours`, the map that `xblick view` uses as well).
+
 ## Before you release a node
 
 1. **Stamp each result with the stamp of its input.** Pass the capture stamp of the frame that you computed the

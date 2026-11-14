@@ -50,6 +50,7 @@ every GPU of its host.
 | `<camera>/<node>/<name>` | `vision_msgs/msg/Detection2DArray` | boxes in pixels | one message per processed image, with the stamp of the image |
 | | `vision_msgs/msg/Detection3DArray` | box poses in a frame of the camera's `tf_static` | the same |
 | | `Classification` | classes without a place, for example the actions in a clip | the same. A clip uses the stamp of its newest image. |
+| `<camera>/<node>/overlay` | an image stream, rgb8 | the colour frame with the node's results drawn on it, its size, stamp, frame id and camera_info | only when the node was started with `--overlay`, drawn only while somebody subscribes |
 
 Example: `test/camera/boxer/boxes_3d`. Each node repository lists its topics in its README.
 

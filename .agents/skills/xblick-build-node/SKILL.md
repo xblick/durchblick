@@ -44,7 +44,9 @@ Follow the pattern of the existing node repositories:
 
 - a uv project pinned to a Durchblick minor version (`pyproject.toml`, `uv.lock`), with the model's own dependencies,
 - `tools/setup.sh`, which builds `.venv` and fetches the checkpoints, so that a workspace build step can call it,
-- one console script `xblick-<name>`,
+- one console script `xblick-<name>`, named after the model, not the task (`xblick-yolox`, not `xblick-detect`),
+- the weights in `weights.py` as a list of `xblick.weights.Weight` and a `xblick.weights.Store` with the model's
+  terms notice: downloaded at the start, `--download-only` for `tools/setup.sh`, `--no-download`,
 - README, `docs/`, AGENTS.md and a one-line CLAUDE.md as
   [Writing documentation](../../../docs/project/writing-docs.md#a-node-repository) describes.
 
@@ -72,7 +74,13 @@ Check, in this order:
 6. Its options are parameters, the live ones applied while it runs ("Options as parameters" below). The terminal
    interface shows a node without them as offering nothing.
 7. A wrong option, a missing checkpoint or an unreadable input stops the node with a message that says what to do.
+   `--camera` is required: the node guesses no camera and no stream. Every default is fixed and documented, never
+   chosen from the machine, the installed packages or a measurement.
 8. The node survives a restart of the camera and of the router, and a camera that comes back with another size.
+9. Drawn results only with `--overlay` (off by default, a start option, not a live parameter):
+   `xblick.overlay.Overlay` on `<camera>/<node>/overlay`, put after the results are published, with the colour
+   frame's stamp, frame id and camera_info. Without the option no publisher exists; test that
+   `query_info(session, f"{camera}/<node>/overlay") == []`.
 
 ### Options as parameters
 
@@ -157,6 +165,11 @@ README catalogue in the core repository.
 - Looped playback moves all stamps forward on every pass. A node must accept stamps that only grow, and never assume
   that a stamp repeats.
 - A Zenoh query can stay open past its timeout. Use `session.replies(...)`, never iterate `session.get(...)`.
+- A queryable must reply and drop the query at once (end the callback, keep no `Query`). A node that keeps working
+  inside the callback makes Zenoh send a late "Timeout" reply, and since 0.5.2 a caller takes that for a second node
+  and refuses to send commands to it ("not sent ... a reply came late").
+- An overlay drawn in the result loop delays every result. Hand it to `xblick.overlay.Overlay` after publishing the
+  results; it drops frames instead of queueing them.
 - A queryable with a Python callback runs it in zenoh-python's own thread, which is no daemon. A node that ends with
   an exception before it undeclares it (an interrupt while the model loads) then hangs for good. The parameters'
   services avoid it since Durchblick 0.3.56. Give a node's own queryables a channel (`declare_queryable(key)`, then
