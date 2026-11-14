@@ -177,7 +177,11 @@ def test_a_background_job_of_a_script_ends_on_sigint_and_sigterm(camera, name, s
         pytest.skip("PyAV without lavfi (xblick[cam])")
     argv = " ".join(f"'{a}'" for a in [*XBLICK, *commands(camera)[name]])
     script = ("sleep 30 &\ngrep '^SigIgn' /proc/$!/status\nkill $!\n"  # a background job: SIGINT ignored
-              f"{argv} > /dev/null 2>&1 &\npid=$!\nsleep 4\nkill -{sig} $pid\nwait $pid\necho exit=$?\n")
+              f"{argv} > /dev/null 2>&1 &\npid=$!\nsleep 4\nkill -{sig} $pid\n"
+              # at most 5 s; a job that does not end is killed, so that no test leaves it running
+              "for i in $(seq 50); do kill -0 $pid 2>/dev/null || break; sleep 0.1; done\n"
+              "if kill -0 $pid 2>/dev/null; then kill -KILL $pid; wait $pid; echo exit=hung; "
+              "else wait $pid; echo exit=$?; fi\n")
     started = time.monotonic()
     out = subprocess.run(["bash", "-c", script], capture_output=True, text=True, timeout=60, env=ENV)
     ignored = int(out.stdout.split()[1], 16)
