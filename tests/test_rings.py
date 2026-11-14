@@ -493,9 +493,13 @@ def test_auto_takes_the_ring_on_the_same_host(sessions):
     sub = ImageSubscriber(b, "t/a1/color", "auto", copy=False)  # before the publisher exists
     assert sub.transport is None and sub.latest() is None
     pub = CameraPublisher(a, "t/a1/color", encoding="rgb8", frame_id="cam")
-    frame = publish_until(pub, pattern(4), sub)
-    assert sub.transport == "shm" and frame.is_valid()
-    np.testing.assert_array_equal(frame.image, pattern(4))
+    try:
+        frame = publish_until(pub, pattern(4), sub)
+        assert sub.transport == "shm" and frame.is_valid()
+        np.testing.assert_array_equal(frame.image, pattern(4))
+    finally:
+        sub.close()  # its chooser thread ends with it
+        pub.close()
 
 
 def test_auto_takes_the_network_for_another_host(sessions):
@@ -503,6 +507,10 @@ def test_auto_takes_the_network_for_another_host(sessions):
     pub = CameraPublisher(a, "t/a2/color", encoding="rgb8", frame_id="cam")
     pub._host = "another-host"  # as a publisher on another machine announces itself
     sub = ImageSubscriber(b, "t/a2/color", "auto", remote="raw")
-    frame = publish_until(pub, pattern(5), sub)
-    assert sub.transport == "raw"
-    np.testing.assert_array_equal(frame.image, pattern(5))
+    try:
+        frame = publish_until(pub, pattern(5), sub)
+        assert sub.transport == "raw"
+        np.testing.assert_array_equal(frame.image, pattern(5))
+    finally:
+        sub.close()  # its chooser thread ends with it
+        pub.close()
