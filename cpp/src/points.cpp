@@ -4,6 +4,7 @@
 #include <atomic>
 #include <cmath>
 #include <cstring>
+#include <thread>
 #include <mutex>
 #include <set>
 
@@ -629,28 +630,37 @@ namespace xblick
         {
             const std::string& base = subscription.base();
             const std::string rays_key = key(base, p::kCloudRays);
-            for (const zenoh::Reply& reply : ask(session, rays_key, std::chrono::milliseconds(5000)))
+            // asked again until these rays come (another publisher's, or older ones, may answer first) or 5 s passed
+            using clock = std::chrono::steady_clock;
+            const auto end = clock::now() + std::chrono::milliseconds(5000);
+            while (clock::now() < end)
             {
-                if (not reply.is_ok())
+                const auto left = std::chrono::duration_cast<std::chrono::milliseconds>(end - clock::now());
+                for (const zenoh::Reply& reply : ask(session, rays_key, std::max(left, std::chrono::milliseconds(10))))
                 {
-                    continue;
+                    if (not reply.is_ok())
+                    {
+                        continue;
+                    }
+                    const std::vector<std::uint8_t> payload = reply.get_ok().get_payload().as_vector();
+                    const Rays rays = Rays::deserialize(payload);
+                    if (rays.id != name)
+                    {
+                        continue;  // another publisher of the stream, or rays that changed meanwhile
+                    }
+                    if (rays.directions.size() != static_cast<std::size_t>(rays.height) * rays.width * 12)
+                    {
+                        throw ProtocolError(base + ": the rays " + name + " do not have their size");
+                    }
+                    directions.resize(rays.directions.size() / 4);
+                    std::memcpy(directions.data(), rays.directions.data(), rays.directions.size());
+                    rays_height = rays.height;
+                    rays_width = rays.width;
+                    rays_id = name;
+                    return;
                 }
-                const std::vector<std::uint8_t> payload = reply.get_ok().get_payload().as_vector();
-                const Rays rays = Rays::deserialize(payload);
-                if (rays.id != name)
-                {
-                    continue;  // another publisher of the stream, or rays that changed meanwhile
-                }
-                if (rays.directions.size() != static_cast<std::size_t>(rays.height) * rays.width * 12)
-                {
-                    throw ProtocolError(base + ": the rays " + name + " do not have their size");
-                }
-                directions.resize(rays.directions.size() / 4);
-                std::memcpy(directions.data(), rays.directions.data(), rays.directions.size());
-                rays_height = rays.height;
-                rays_width = rays.width;
-                rays_id = name;
-                return;
+                std::this_thread::sleep_for(
+                    std::min<clock::duration>(std::chrono::milliseconds(250), end - clock::now()));
             }
             throw ProtocolError(base + ": no publisher answered the rays " + name + " of its compressed clouds within "
                                 "5 s (" + rays_key + ")");

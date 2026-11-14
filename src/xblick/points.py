@@ -33,7 +33,7 @@ from .codecs import JPEG, RVL, compress, decompress
 from .gpu import CudaArray, CudaImage, cuda_array, is_cuda_array, write_ring
 from .msg import (POINT_FIELD_DTYPES, CompressedImage, CompressedPointCloud2, CudaPointCloud2, Header, PointCloud2,
                   PointField, Rays, ShmPointCloud2, Time)
-from .session import ask
+from .session import ASK_PERIOD, ask
 
 XYZ = ([PointField("x", 0, PointField.FLOAT32), PointField("y", 4, PointField.FLOAT32),
         PointField("z", 8, PointField.FLOAT32)], 16)
@@ -398,8 +398,14 @@ class PointCloudSubscriber(Subscription):
 
     def _rays_of(self, name: str) -> np.ndarray:
         """The rays of this name, asked from the publisher at the first cloud that names them."""
-        if self._rays is None or self._rays[0] != name:
-            for reply in ask(self._session, topics.cloud_rays(self.base), self.RAYS_TIMEOUT_S):
+        end = time.monotonic() + self.RAYS_TIMEOUT_S
+        # asked again until these rays come (another publisher's, or older ones, may answer first) or the deadline
+        while self._rays is None or self._rays[0] != name:
+            remaining = end - time.monotonic()
+            if remaining <= 0:
+                raise ProtocolError(f"{self.base}: no publisher answered the rays {name} of its compressed clouds "
+                                    f"within {self.RAYS_TIMEOUT_S:g} s ({topics.cloud_rays(self.base)})")
+            for reply in ask(self._session, topics.cloud_rays(self.base), remaining):
                 if reply.ok is None:
                     continue
                 rays = Rays.deserialize(reply.ok.payload.to_bytes())
@@ -411,8 +417,7 @@ class PointCloudSubscriber(Subscription):
                 self._rays = (name, directions.reshape(rays.height, rays.width, 3))
                 break
             else:
-                raise ProtocolError(f"{self.base}: no publisher answered the rays {name} of its compressed clouds "
-                                    f"within {self.RAYS_TIMEOUT_S:g} s ({topics.cloud_rays(self.base)})")
+                time.sleep(min(ASK_PERIOD, max(0.0, end - time.monotonic())))
         return self._rays[1]
 
     def latest(self, consume: bool = True, timeout: float | None = None) -> PointCloudFrame | None:
