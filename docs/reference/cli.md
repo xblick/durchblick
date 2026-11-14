@@ -12,12 +12,13 @@ Every command accepts the same options for its Zenoh session.
 | --- | --- |
 | none | Connect to the router of this PC at `127.0.0.1:7447`. |
 | `--connect <endpoint>` | Connect to another router or program. An endpoint is a host, `host:port`, or a locator such as `tcp/10.0.0.5:7447`. |
-| `--listen <endpoint>` | Listen on this endpoint. |
+| `--listen <endpoint>` | Listen on this endpoint. A peer without it listens on a free loopback port. |
 | `--zenoh-mode peer\|client` | `peer` is the default. Use `client` for a program on another PC that only connects to a router. |
 | `--config FILE` | A Zenoh JSON5 configuration. It replaces the other options. |
 
-A peer that only connects does not listen, and a router does not route between such peers. A program on another PC
-that only connects to a router therefore uses `--zenoh-mode client`.
+A router does not relay between peers: peers reach each other directly, so a peer always listens (on a free
+loopback port unless `--listen` says otherwise). A program on another PC that only connects to a router therefore
+uses `--zenoh-mode client`.
 [Sessions and routers](../concepts/sessions.md) explains the background.
 
 ## Router
@@ -26,7 +27,8 @@ that only connects to a router therefore uses `--zenoh-mode client`.
 
 Runs a Zenoh router from the Zenoh library in the package, until Ctrl-C or SIGTERM. Every PC needs one router; this
 one replaces `zenohd`. Nothing starts it on its own. It has no plugins (REST, storage) and reads no Zenoh
-configuration file. A port that is taken ends it with one line: a router may run there already.
+configuration file. A port that is taken ends it with one line: a router may run there already. On a loopback
+address (`--listen tcp/127.0.0.1:PORT`) the start line says that other PCs cannot connect.
 
 | Option | Meaning |
 | --- | --- |

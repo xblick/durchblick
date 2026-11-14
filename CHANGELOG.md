@@ -8,6 +8,11 @@ or newer. 0.4.0 to 0.4.3 speak the protocol of 0.3.59 to 0.3.68: their programs 
 0.5.0 renamed every name on the wire and on disk: programs of 0.5 do not work with programs of 0.3 or 0.4.
 
 * **0.5.3** Nothing on the wire changed: programs of 0.5.3 work with those of 0.5.0 to 0.5.2.
+  **Fixed:** a peer session with `--connect` and without `--listen` (Python and C++) now listens on a free loopback
+  port, as a session without endpoints always did. Behind a Zenoh 1.10 router (`zenohd` or `xblick router`) peers
+  reach each other only directly, and such peers found nothing (`xblick list --connect tcp/127.0.0.1:PORT`). The
+  commands end on SIGINT also as background jobs of a script (a non-interactive shell starts those with SIGINT
+  ignored).
   **Added:** `xblick router`, the Zenoh router from the Zenoh library in the package, instead of `zenohd`
   (`--listen`, default `tcp/0.0.0.0:7447`; `--connect` for the routers of other PCs, `zenohd`'s `-e`). It has no
   plugins and reads no configuration file; a taken port ends it with one line. `zenohd` works as before.

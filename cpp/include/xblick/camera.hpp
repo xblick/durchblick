@@ -55,7 +55,8 @@ namespace xblick
         bool multicast_scouting = false;
         std::string config_file;  // a Zenoh JSON5 configuration instead of the options above
         // Neither connect nor listen: the PC's router (127.0.0.1:7447), listening on a free loopback port, as
-        // Python's session.py; false: such a session reaches nobody.
+        // Python's session.py; false: such a session reaches nobody. A peer with connect and no listen listens on a
+        // free loopback port as well (peers behind a router reach each other only directly).
         bool local_router = true;
     };
 

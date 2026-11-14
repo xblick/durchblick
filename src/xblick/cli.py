@@ -531,6 +531,13 @@ def _interrupt_on_sigterm():
     signal.signal(signal.SIGTERM, interrupt)
 
 
+def _interrupt_on_sigint():
+    """SIGINT ends the commands as Ctrl-C, also when the command was started as a background job of a script: a
+    non-interactive shell starts those with SIGINT ignored, and Python then never installs its handler, so
+    ``kill -INT`` did nothing (0.5.3 and before)."""
+    signal.signal(signal.SIGINT, signal.default_int_handler)
+
+
 RELAY = "xblick-relay"      # the relay program (github.com/xblick/xblick-relay)
 
 
@@ -835,6 +842,7 @@ def main(argv=None) -> int:
         return tui.run(_interface_connection(argv, prog))
     args = parse(argv, prog)
     _interrupt_on_sigterm()
+    _interrupt_on_sigint()
     try:
         return args.run(args)
     except (TimeoutError, zsession.NoAnswer) as error:  # did not answer, or a command sent once: one line

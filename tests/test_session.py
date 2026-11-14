@@ -1,4 +1,5 @@
-"""Sessions: without endpoints the PC's router, explicit endpoints exactly as given."""
+"""Sessions: without endpoints the PC's router, explicit endpoints as given (a peer that only connects listens on a
+free loopback port as well)."""
 
 import json
 import threading
@@ -22,7 +23,9 @@ def test_without_endpoints_the_pcs_router():
 
 def test_explicit_endpoints_replace_the_router():
     assert endpoints(make_config(listen=["127.0.0.1:7500"])) == ([], ["tcp/127.0.0.1:7500"])
-    assert endpoints(make_config(connect=["robot-pc-4"])) == (["tcp/robot-pc-4:7447"], [])
+    assert endpoints(make_config(connect=["robot-pc-4"])) == (["tcp/robot-pc-4:7447"], [LOCAL_LISTEN])  # a peer listens
+    assert endpoints(make_config(connect=["robot-pc-4"], listen=["0.0.0.0:7500"])) == (["tcp/robot-pc-4:7447"],
+                                                                                       ["tcp/0.0.0.0:7500"])
     assert endpoints(make_config(local_router=False)) == ([], [])
 
 

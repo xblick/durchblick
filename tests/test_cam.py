@@ -726,7 +726,8 @@ def test_the_stream_and_the_camera_for_a_node_are_printed(argv, stream, camera):
     assert code == 0, lines
     assert f"{prog}: publishing {stream}" in lines and f"{prog}: for a node: --camera {camera}" in lines, lines
     hints = [line for line in lines if "nobody can receive this stream yet" in line]
-    assert len(hints) == 1 and hints[0].startswith(f"{prog}: ") and "start zenohd" in hints[0], lines
+    assert len(hints) == 1 and hints[0].startswith(f"{prog}: ") and \
+        "start a router on this PC with xblick router" in hints[0], lines
 
 
 def test_no_hint_when_the_session_reaches_another(sessions):  # noqa: F811

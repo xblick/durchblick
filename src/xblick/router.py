@@ -49,6 +49,12 @@ def open_router(listen: list[str], connect: list[str] = ()) -> zsession.Session:
         raise RouterError(f"cannot start a router on {', '.join(listen)}: {text.split(' at /')[0]}") from None
 
 
+def _loopback(locator: str) -> bool:
+    """A locator such as tcp/127.0.0.1:7447 on a loopback address (127.0.0.0/8, ::1, localhost)."""
+    host = locator.split("/", 1)[-1].rsplit(":", 1)[0].strip("[]")
+    return host == "localhost" or host == "::1" or host.startswith("127.")
+
+
 def serve(listen: list[str], connect: list[str] = (), prog: str = "xblick router") -> int:
     """Runs the router until Ctrl-C or SIGTERM (KeyboardInterrupt); the exit code."""
     try:
@@ -56,11 +62,17 @@ def serve(listen: list[str], connect: list[str] = (), prog: str = "xblick router
     except RouterError as error:
         print(f"{prog}: {error}", file=sys.stderr, flush=True)
         return 1
-    port = zsession.endpoint(listen[0]).rsplit(":", 1)[1]
+    first = zsession.endpoint(listen[0])
+    port = first.rsplit(":", 1)[1]
     here = ("programs on this PC find it without options" if port == str(zsession.DEFAULT_PORT)
             else f"programs on this PC connect with --connect tcp/127.0.0.1:{port}")
-    print(f"{prog}: listening on {', '.join(zsession.endpoint(e) for e in listen)}; {here}; other PCs connect with "
-          f"--connect tcp/<this PC>:{port} (this PC: {socket.gethostname()}); Ctrl-C to stop", flush=True)
+    if all(_loopback(zsession.endpoint(e)) for e in listen):
+        others = (f"other PCs cannot connect (it listens on a loopback address only; --listen tcp/0.0.0.0:{port} "
+                  "opens it to them)")
+    else:
+        others = f"other PCs connect with --connect tcp/<this PC>:{port} (this PC: {socket.gethostname()})"
+    print(f"{prog}: listening on {', '.join(zsession.endpoint(e) for e in listen)}; {here}; {others}; Ctrl-C to stop",
+          flush=True)
     try:
         while True:
             time.sleep(1.0)

@@ -75,6 +75,12 @@ namespace xblick
                 listen = {"tcp/127.0.0.1:0"};
             }
         }
+        else if (o.mode == "peer" and not connect.empty() and listen.empty())
+        {
+            // A peer always listens: behind a Zenoh 1.10 router peers reach each other only by connecting directly
+            // (gossip); the router does not relay between them (as session.py).
+            listen = {"tcp/127.0.0.1:0"};
+        }
         if (o.mode == "client" and connect.empty())
         {
             throw std::invalid_argument("client mode needs an endpoint to connect to (a router or a peer)");

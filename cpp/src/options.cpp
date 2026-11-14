@@ -168,7 +168,9 @@ namespace xblick
         add_list("connect", {}, {.help = "Zenoh endpoints to connect to: host, host:port or a locator like "
                                          "tcp/192.0.2.10:7447 (default, without --listen: this PC's router)",
                                  .metavar = "ENDPOINT"});
-        add_list("listen", {}, {.help = "Zenoh endpoints to listen on, e.g. 0.0.0.0:7448", .metavar = "ENDPOINT"});
+        add_list("listen", {},
+                 {.help = "Zenoh endpoints to listen on, e.g. 0.0.0.0:7448 (default for a peer: a free loopback port)",
+                  .metavar = "ENDPOINT"});
         add("zenoh-mode", "peer",
             {.help = "peer, or client (everything through the router --connect names)",
              .parameter = {.choices = {ParameterValue::of("peer"), ParameterValue::of("client")}}});

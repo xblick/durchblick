@@ -86,9 +86,15 @@ Tested with Zenoh 1.10.1 on one host on 2026-10-30, with up to three routers tha
 
 ## Four properties of Zenoh that you must know
 
-**A session that only connects does not listen.** If you give a peer session only `--connect` to a router, the
-session does not listen, and the router does not route between such sessions. The programs then find nothing.
-Either give no endpoints, or add `--listen tcp/127.0.0.1:0`, or connect as a client with `--zenoh-mode client`.
+**A router does not relay between peers.** Behind a Zenoh 1.10 router (`zenohd` or `xblick router`), peer
+sessions reach each other only by connecting directly: the router tells them each other's listen addresses. A peer
+session therefore always listens. With `--connect` and without `--listen` it listens on a free loopback port, as
+without endpoints (since 0.5.3; before, such a session did not listen and found nothing). Two consequences:
+
+- A peer that connects to the router of another PC cannot reach that PC's programs through it, because they cannot
+  connect to its loopback port. Connect as a client (`--zenoh-mode client`), or run a router on this PC as well and
+  let the routers connect to each other.
+- A session in client mode does not listen; the router relays everything for it.
 
 **A query can stay open after its timeout.** Zenoh ends a query after its timeout in almost all cases. In one CI
 job, a query with a timeout of 1 s was still open after 5 minutes. Code that iterates over the replies waits that

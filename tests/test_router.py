@@ -21,9 +21,9 @@ def start(port: int) -> subprocess.Popen:
     process = subprocess.Popen([sys.executable, "-m", "xblick.cli", "router", "--listen", f"tcp/127.0.0.1:{port}"],
                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     line = process.stdout.readline()
-    assert line.startswith(f"xblick router: listening on tcp/127.0.0.1:{port}; programs on this PC connect with "
-                           f"--connect tcp/127.0.0.1:{port}; other PCs connect with --connect tcp/<this PC>:{port}"), \
-        line + process.stderr.read()
+    assert line == (f"xblick router: listening on tcp/127.0.0.1:{port}; programs on this PC connect with --connect "
+                    f"tcp/127.0.0.1:{port}; other PCs cannot connect (it listens on a loopback address only; --listen "
+                    f"tcp/0.0.0.0:{port} opens it to them); Ctrl-C to stop\n"), line + process.stderr.read()
     return process
 
 

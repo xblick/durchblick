@@ -53,7 +53,8 @@ def make_config(connect: Sequence[str] = (), listen: Sequence[str] = (), mode: s
                 multicast_scouting: bool = False, config_file: str | None = None,
                 local_router: bool = True) -> zenoh.Config:
     """Neither ``connect`` nor ``listen`` (nor a config file), with ``local_router``: the PC's router (``ROUTER``),
-    listening on ``LOCAL_LISTEN``. ``local_router=False`` without endpoints: a session that reaches nobody."""
+    listening on ``LOCAL_LISTEN``. A peer with ``connect`` and no ``listen`` listens on ``LOCAL_LISTEN`` as well.
+    ``local_router=False`` without endpoints: a session that reaches nobody."""
     if config_file:
         if connect or listen:
             raise ValueError("give either a Zenoh config file or connect/listen endpoints, not both")
@@ -62,6 +63,11 @@ def make_config(connect: Sequence[str] = (), listen: Sequence[str] = (), mode: s
         raise ValueError(f"mode {mode!r}: peer or client")
     if local_router and not connect and not listen:
         connect, listen = [ROUTER], [LOCAL_LISTEN] if mode == "peer" else []
+    elif mode == "peer" and connect and not listen:
+        # A peer always listens: behind a Zenoh 1.10 router (zenohd or xblick router) peers reach each other only by
+        # connecting directly (gossip), the router does not relay between them; a peer that only connected found
+        # nothing (before 0.5.3).
+        listen = [LOCAL_LISTEN]
     if mode == "client" and not connect:
         raise ValueError("client mode needs an endpoint to connect to (a router or a peer)")
     if mode == "client" and listen:
@@ -89,12 +95,12 @@ def add_arguments(parser, prefix: str = ""):
                         help="Zenoh endpoints to connect to: host, host:port or a locator like tcp/192.0.2.10:7447 "
                              "(default, without --listen: this PC's router, 127.0.0.1:7447)")
     parser.add_argument(f"{p}listen", nargs="*", default=[], metavar="ENDPOINT",
-                        help="Zenoh endpoints to listen on, e.g. 0.0.0.0:7448 (default, without --connect: a free "
-                             "loopback port)")
+                        help="Zenoh endpoints to listen on, e.g. 0.0.0.0:7448 (default for a peer: a free loopback "
+                             "port, so that the PC's other sessions connect to it directly)")
     parser.add_argument(f"{p}zenoh-mode", choices=("peer", "client"), default="peer",
                         help="peer (default): listens, and the PC's sessions connect to it directly; client: everything "
-                             "through the router --connect names, which a session that only connects needs (a router "
-                             "does not route between peers that do not listen)")
+                             "through the router --connect names, which a session needs that connects to another PC's "
+                             "router (a router does not relay between peers)")
     parser.add_argument(f"{p}config", default=None, metavar="FILE",
                         help="a Zenoh JSON5 configuration file instead of the endpoints")
 
@@ -113,8 +119,9 @@ def alone(session) -> str:
     Empty when it reached one."""
     if list(session.info.routers_zid()) or list(session.info.peers_zid()):
         return ""
-    return ("this session reached no Zenoh router and no other session: start zenohd on this PC (a session "
-            f"without --connect looks for it at {ROUTER}), or name the router or session with --connect")
+    return ("this session reached no Zenoh router and no other session: start a router on this PC with xblick router "
+            f"(or zenohd; a session without --connect looks for it at {ROUTER}), or name the router or session with "
+            "--connect")
 
 
 # ---------------------------------------------------------------------------------------------- queries
