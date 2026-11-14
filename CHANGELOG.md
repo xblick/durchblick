@@ -7,6 +7,20 @@ Within 0.3.x, 0.3.59 changed the rings' keys and the info record's version (3): 
 or newer. 0.4.0 to 0.4.3 speak the protocol of 0.3.59 to 0.3.68: their programs and those of 0.3.68 work together.
 0.5.0 renamed every name on the wire and on disk: programs of 0.5 do not work with programs of 0.3 or 0.4.
 
+* **0.5.6** Nothing on the wire changed: programs of 0.5.6 work with those of 0.5.0 to 0.5.5.
+  **Added:** a notice for a peer that connects only to other PCs and listens on loopback only. Behind a Zenoh 1.10
+  router the programs of the other PC then usually cannot reach it. Every `xblick` command, every node that opens its
+  session with `session.open_from_args`, `xblick mps`, and the C++ programs `xblick-cpp-camera`, `xblick-cpp-probe` and
+  `xblick-points` print one line on stderr at the start. The line names three ways out with the given endpoints:
+  `--zenoh-mode client`, a router on this PC (`xblick router --connect <endpoint>`), or `--listen tcp/0.0.0.0:0`.
+  The rule uses the options alone (`xblick.session.across_pcs`, C++ `xblick::across_pcs`). A connect endpoint on this
+  PC (loopback, `localhost`, its name or one of its interface addresses), a listen endpoint on a network address,
+  client mode and a Zenoh config file each turn it off. The session keeps the result. The messages for an empty result
+  (`no stream answered`, `nothing received`, `xblick view`'s `no publisher answers`) then name the same cause
+  (`session.why_nothing`). `xblick rerun`'s `no stream answered` names a cause now as well. The C++ programs accept
+  `--zenoh-mode peer|client`, and C++ `SessionOptions` has `program`, which `Options::session_options` sets.
+  **Docs:** a table "Which mode when" in [Sessions and routers](docs/concepts/sessions.md), in brief in the
+  [command line reference](docs/reference/cli.md). The examples that watch another PC's streams connect as a client.
 * **0.5.5** Nothing on the wire changed: programs of 0.5.5 work with those of 0.5.0 to 0.5.4.
   **Added:** a fixed place for the files of nodes (issue #11), the same for a checkout and a pip install. The cache
   (weights, engines, compiled kernels) is `~/.cache/xblick/<node>/`, the data a user made is
