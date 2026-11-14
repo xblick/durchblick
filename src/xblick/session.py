@@ -14,6 +14,7 @@ from __future__ import annotations
 import ipaddress
 import json
 import logging
+import re
 import socket
 import sys
 import threading
@@ -88,9 +89,29 @@ def make_config(connect: Sequence[str] = (), listen: Sequence[str] = (), mode: s
 def open_session(connect: Sequence[str] = (), listen: Sequence[str] = (), mode: str = "peer",
                  multicast_scouting: bool = False, config_file: str | None = None,
                  local_router: bool = True) -> Session:
-    """A session (``make_config``). It keeps the endpoints of ``across_pcs`` for ``why_nothing``."""
+    """A session (``make_config``). It keeps the endpoints of ``across_pcs`` for ``why_nothing``. OpenError (a
+    zenoh.ZError) when Zenoh cannot open it, with a message that says why in one line."""
     config = make_config(connect, listen, mode, multicast_scouting, config_file, local_router)
-    return Session(zenoh.open(config), across_pcs(connect, listen, mode, config_file))
+    try:
+        opened = zenoh.open(config)
+    except zenoh.ZError as error:
+        raise OpenError(open_error_text(str(error), connect, mode)) from error
+    return Session(opened, across_pcs(connect, listen, mode, config_file))
+
+
+class OpenError(zenoh.ZError):
+    """Zenoh could not open a session (``open_session``). A zenoh.ZError, as zenoh.open raises."""
+
+
+def open_error_text(zenoh_text: str, connect: Sequence[str], mode: str) -> str:
+    """One line for a session that Zenoh could not open: in client mode, that none of the ``connect`` endpoints
+    answered and that a client needs its router there (Zenoh's "Unable to connect to any of ..."); otherwise Zenoh's
+    own text, without the source locations it appends (`` at /.../file.rs:123.``)."""
+    if mode == "client" and zenoh_text.startswith("Unable to connect"):
+        return (f"could not connect to {' '.join(endpoint(e) for e in connect)}: a session in client mode needs its "
+                "router there. Start xblick router (or zenohd) on that PC, or check the address and the port")
+    text = re.sub(r"\s+at \S+\.rs:\d+\.?", "", zenoh_text).strip()
+    return f"could not open the Zenoh session: {text}"
 
 
 # ---------------------------------------------------------------------------------------------- across PCs
@@ -207,15 +228,20 @@ def add_arguments(parser, prefix: str = ""):
 def open_from_args(args, prefix: str = "", prog: str | None = None) -> Session:
     """The session of a script's options (``add_arguments``). A peer that connects only to other PCs and listens on
     loopback only (``across_pcs``) is said on stderr first, as ``<prog>: ...`` (default: ``program_name()``). Only a
-    notice: the session opens as given."""
+    notice: the session opens as given. A session that Zenoh cannot open (OpenError) ends the program with one line,
+    ``<prog>: ...``, and exit code 1."""
     key = prefix.replace("-", "_")
     mode = getattr(args, f"{key}zenoh_mode")
     connect, listen, config_file = getattr(args, f"{key}connect"), getattr(args, f"{key}listen"), getattr(
         args, f"{key}config")
     if config_file and mode != "peer":
         raise ValueError("give the mode in the Zenoh config file, not --zenoh-mode")
-    say_across_pcs(connect, listen, mode, config_file, prog or program_name(), prefix)
-    return open_session(connect=connect, listen=listen, mode=mode, config_file=config_file)
+    prog = prog or program_name()
+    say_across_pcs(connect, listen, mode, config_file, prog, prefix)
+    try:
+        return open_session(connect=connect, listen=listen, mode=mode, config_file=config_file)
+    except OpenError as error:
+        raise SystemExit(f"{prog}: {error}") from None
 
 
 def say_across_pcs(connect: Sequence[str], listen: Sequence[str], mode: str, config_file: str | None, prog: str,

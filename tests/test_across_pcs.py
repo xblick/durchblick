@@ -7,7 +7,8 @@ at once; where they are dropped (as on CI's runners), a peer opens after 0.5 s a
 connection (up to 10 s, Zenoh's transport/unicast/open_timeout), and a client fails after 10 s. The tests here
 therefore never wait for such a session: a process is read up to its first line on stderr (the notice comes before
 the session opens) and then ended, and the commands' texts are checked in this process with a session that reaches
-nobody (``nowhere``)."""
+nobody (``nowhere``). The one-line error of a client that reaches nothing is tested with a closed port of this PC,
+which refuses at once, and with 192.0.2.10, which Zenoh's open_timeout bounds."""
 
 import os
 import select
@@ -26,7 +27,9 @@ NOTICE = ("connecting as a peer to another PC (tcp/192.0.2.10:7447): programs th
           "which listens on loopback only. Use --zenoh-mode client, or start a router on this PC with: xblick router "
           "--connect tcp/192.0.2.10:7447, and this program without --connect, or make this program reachable from there "
           "with --listen tcp/0.0.0.0:0 (any program on the network can then connect to it)")
-TIMEOUT_S = 60  # a process here takes about 2 s
+TIMEOUT_S = 60  # a process here takes about 2 s; a client to 192.0.2.10 up to 10 s more where packets are dropped
+CONNECT_FAILED = ("could not connect to {}: a session in client mode needs its router there. Start xblick router (or "
+                  "zenohd) on that PC, or check the address and the port")
 
 
 def own_address() -> str | None:
@@ -210,3 +213,50 @@ def test_a_cpp_program_says_it_by_the_same_rule():
                        "1", "--timeout", "0.5"])
     assert "connecting as a peer" not in line  # its first line comes after the probe's timeout
 
+
+# ------------------------------------------------------------------- a session that Zenoh cannot open: one line
+
+def closed_port() -> int:
+    """A port of this PC on which nothing listens: a connection to it is refused at once."""
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        return s.getsockname()[1]
+
+
+@pytest.mark.parametrize("host", ["127.0.0.1:{port}", "192.0.2.10"])
+def test_a_client_that_reaches_nothing_ends_with_one_line(tmp_path, host):
+    """A command and a node in client mode whose endpoint does not answer: one line on stderr (which endpoint, that a
+    client needs its router there) and exit code 1, no traceback. A closed port of this PC refuses at once; 192.0.2.10
+    is rejected or dropped, depending on the network, and Zenoh gives up after its open_timeout (10 s) at most."""
+    address = host.format(port=closed_port())
+    given = session.endpoint(address)
+    done = xblick("list", "--connect", address, "--zenoh-mode", "client")
+    assert done.returncode == 1 and done.stderr.splitlines() == [f"xblick list: {CONNECT_FAILED.format(given)}"], \
+        done.stderr
+    script = tmp_path / "xblick-testnode"
+    script.write_text(NODE)
+    done = run([sys.executable, str(script), "--connect", address, "--zenoh-mode", "client"])
+    assert done.returncode == 1 and done.stdout == "", done.stdout
+    assert done.stderr.splitlines() == [f"xblick-testnode: {CONNECT_FAILED.format(given)}"], done.stderr
+
+
+def test_other_open_errors_are_zenohs_text_in_one_line():
+    """A listen endpoint that is taken: Zenoh's text, without the source locations it appends."""
+    with socket.socket() as taken:
+        taken.bind(("127.0.0.1", 0))
+        taken.listen()
+        port = taken.getsockname()[1]
+        with pytest.raises(session.OpenError, match=f"could not open the Zenoh session: Can not create a new TCP "
+                                                    f"listener bound to tcp/127.0.0.1:{port}") as error:
+            session.open_session(listen=[f"tcp/127.0.0.1:{port}"], local_router=False)
+    assert ".rs:" not in str(error.value) and "\n" not in str(error.value)
+    assert isinstance(error.value, session.zenoh.ZError)
+
+
+@pytest.mark.skipif(not os.environ.get("XBLICK_CPP_BUILD"), reason="XBLICK_CPP_BUILD (the C++ build directory) is not set")
+def test_a_cpp_client_that_reaches_nothing_ends_with_one_line():
+    probe = str(Path(os.environ["XBLICK_CPP_BUILD"]) / "xblick-cpp-probe")
+    port = closed_port()
+    done = run([probe, "--connect", f"127.0.0.1:{port}", "--zenoh-mode", "client", "--params", "t/x"])
+    assert done.returncode == 1 and done.stderr.splitlines() == [
+        f"xblick-cpp-probe: {CONNECT_FAILED.format(f'tcp/127.0.0.1:{port}')}"], done.stderr

@@ -34,6 +34,11 @@ result (`no stream answered`, `nothing received`, `no publisher answers`) then n
 `xblick-cpp-camera`, `xblick-cpp-probe` and `xblick-points` print the same line and accept `--zenoh-mode`.
 [Sessions and routers](../concepts/sessions.md) explains the background.
 
+A client whose `--connect` endpoints do not answer ends with one line and exit code 1. The line names the endpoints
+and says that a client needs its router there. In our tests Zenoh gave up within 10 s. Another error at the start of a
+session, such as a `--listen` port that is taken, also ends with one line. Nodes that open their session with
+`session.open_from_args` and the C++ programs do the same.
+
 ## Router
 
 ### `xblick router`

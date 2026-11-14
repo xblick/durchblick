@@ -143,6 +143,37 @@ namespace xblick
         return "tcp/" + host + ":" + std::to_string(port);
     }
 
+    namespace
+    {
+        // Session::open, its ZException ("Failed to open session(Error code: -4 )") turned into one line that says
+        // why (Python's session.open_error_text): in client mode a network error means that no connect endpoint
+        // answered.
+        zenoh::Session open_or_say_why(zenoh::Config config, const std::string& mode,
+                                       const std::vector<std::string>& connect)
+        {
+            try
+            {
+                return zenoh::Session::open(std::move(config));
+            }
+            catch (const zenoh::ZException& e)
+            {
+                if (mode == "client" and e.e == Z_ENETWORK)
+                {
+                    std::string endpoints;
+                    for (const auto& c : connect)
+                    {
+                        endpoints += (endpoints.empty() ? "" : " ") + endpoint(c, p::kDefaultPort);
+                    }
+                    throw std::runtime_error("could not connect to " + endpoints +
+                                             ": a session in client mode needs its router there. Start xblick router "
+                                             "(or zenohd) on that PC, or check the address and the port");
+                }
+                throw std::runtime_error("could not open the Zenoh session (Zenoh error code " + std::to_string(e.e) +
+                                         ")");
+            }
+        }
+    }  // namespace
+
     zenoh::Session open_session(const SessionOptions& o)
     {
         if (not o.config_file.empty())
@@ -151,7 +182,7 @@ namespace xblick
             {
                 throw std::invalid_argument("give either a Zenoh config file or connect/listen endpoints, not both");
             }
-            return zenoh::Session::open(zenoh::Config::from_file(o.config_file));
+            return open_or_say_why(zenoh::Config::from_file(o.config_file), "", {});
         }
         if (o.mode != "peer" and o.mode != "client")
         {
@@ -201,7 +232,7 @@ namespace xblick
         {
             config.insert_json5("listen/endpoints", endpoints(listen));
         }
-        return zenoh::Session::open(std::move(config));
+        return open_or_say_why(std::move(config), o.mode, connect);
     }
 
     bool this_pc(const std::string& host)
