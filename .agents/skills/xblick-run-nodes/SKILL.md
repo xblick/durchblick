@@ -116,7 +116,7 @@ echo quit | CUDA_MPS_PIPE_DIRECTORY=/tmp/xblick-mps-gpu<N> nvidia-cuda-mps-contr
 
 ## Gotchas
 
-- A router does not relay between peers. A peer session that only `--connect`s listens on a free loopback port, so
+- A router does not route data between peers. A peer session that only `--connect`s listens on a free loopback port, so
   only peers on the same PC reach it. For a router on another PC, use `--zenoh-mode client` or a router per PC.
   Programs print one line at the start in that case.
 - Never stop processes by name pattern on a shared machine. Use the PIDs you started.

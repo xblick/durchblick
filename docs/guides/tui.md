@@ -166,7 +166,7 @@ appears as "unknown".
 | Value | Meaning |
 | --- | --- |
 | `shm`, `cuda` | the consumer reads the ring on the publisher's host |
-| `<protocol>-raw`, `<protocol>-compressed` | the consumer receives the frames over Zenoh. The protocol is that of its link to its router, such as `tcp`, `udp` or `unix`. |
+| `<protocol>-raw`, `<protocol>-compressed` | the consumer receives the frames over Zenoh. The protocol is that of its link to its router, such as `tcp`, `udp` or `unixsock-stream`. |
 | `unknown` | the routers know no link of this session. The interface states the reason. |
 
 For a network transport, the interface also shows the address that the router sees and the path of the data. The

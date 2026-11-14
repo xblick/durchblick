@@ -33,7 +33,7 @@ We found no project that combines the following properties of Durchblick in one 
 
 | Project | What it does | Limits |
 | --- | --- | --- |
-| [Zenoh shared memory](https://zenoh-cpp.readthedocs.io/en/1.9.0/shared_memory.html) | zero-copy payloads on one host | host memory only |
+| [Zenoh shared memory](https://zenoh-cpp.readthedocs.io/en/1.10.1/shared_memory.html) | zero-copy payloads on one host | host memory only |
 | [hiroz](https://discourse.openrobotics.org/t/introducing-hiroz-by-zettascale/55081) (ZettaScale, formerly ROS-Z) | ROS 2 in Rust on Zenoh. An open pull request adds a CUDA IPC tensor transport (`zenoh-cuda`). | Not merged. It depends on an open Zenoh pull request (eclipse-zenoh/zenoh#2463). |
 | [dora-rs](https://github.com/dora-rs/dora) | a dataflow framework. Zenoh shared memory for host data, CUDA IPC handles for GPU data ([issue #1872](https://github.com/dora-rs/dora/issues/1872)). | The GPU path is an example. Frames that are made on the CPU and used on the GPU are a known gap. |
 

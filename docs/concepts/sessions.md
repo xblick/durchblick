@@ -6,12 +6,17 @@ when you write a program.
 
 ## One router per PC
 
-Every PC that runs Durchblick programs runs one Zenoh router, `zenohd`, on port 7447. A program that opens a
-session without options connects to the router at `127.0.0.1:7447` and listens on a free loopback port.
+Every PC that runs Durchblick programs runs one Zenoh router on port 7447: `xblick router` or `zenohd`. A program that
+opens a session without options connects to the router at `127.0.0.1:7447` and listens on a free loopback port.
 
 The router works like a switchboard. It tells the programs of the PC about each other, and the programs then
-connect directly. The frames themselves do not pass through the router: on one PC they travel through a
-[ring](rings.md), and only the descriptors travel from program to program.
+connect directly. Zenoh calls this gossip scouting. The frames themselves do not pass through the router: on one PC
+they travel through a [ring](rings.md), and only the descriptors travel from program to program.
+
+In Zenoh's terms, the programs of one PC form a peer-to-peer region below their router. In such a region every peer
+connects to every other peer. Zenoh calls this a clique. The router is the region's gateway to the routers of the other
+PCs. It routes data between the PCs. It does not route data from one of its peers to another. Zenoh 1.9 removed that
+function, which was called failover brokering.
 
 ```mermaid
 flowchart LR
@@ -57,7 +62,7 @@ through `--connect <pc> --zenoh-mode client`. `<pc>` means port 7447 of that PC.
 | Setup | Options | What follows |
 | --- | --- | --- |
 | a router on every PC, programs as peers | none on the programs. On one PC of each pair: `xblick router --connect tcp/<other PC>:7447` | the standard. On one PC the frames travel through rings. Between PCs they travel from router to router. |
-| a visiting program, for example a viewer on a laptop | `--connect tcp/<other PC>:7447 --zenoh-mode client` | The router of the other PC relays everything for it. Nothing changes on that PC. |
+| a visiting program, for example a viewer on a laptop | `--connect tcp/<other PC>:7447 --zenoh-mode client` | The router of the other PC routes all its data. Nothing changes on that PC. |
 | a peer on a PC without a router of its own | `--connect tcp/<other PC>:7447 --listen tcp/0.0.0.0:0` | Only on purpose. The peers there learn its address through their router and connect to it. Every program on that network can connect to it, and Zenoh in this setup has no access control. |
 | two programs without any router, for example in a test | `--listen tcp/127.0.0.1:<port>` on one, `--connect tcp/127.0.0.1:<port>` on the other | They connect directly. |
 
@@ -101,16 +106,16 @@ Tested with Zenoh 1.10.1 on one host on 2026-10-30, with up to three routers tha
 
 ## Four properties of Zenoh that you must know
 
-**A router does not relay between peers.** Behind a Zenoh 1.10 router (`zenohd` or `xblick router`), peer
-sessions reach each other only by connecting directly: the router tells them each other's listen addresses. A peer
-session therefore always listens. With `--connect` and without `--listen` it listens on a free loopback port, as
-without endpoints (since 0.5.3; before, such a session did not listen and found nothing). Two consequences:
+**Peers connect to each other directly.** A Zenoh 1.10 router does not route data between its peers, as
+[One router per PC](#one-router-per-pc) explains. The router tells the peers each other's listen addresses. Zenoh calls
+such an address a locator, for example `tcp/127.0.0.1:41464`. A Durchblick peer therefore always listens. With
+`--connect` and without `--listen` it listens on a free loopback port, as without endpoints. Two consequences:
 
 - A peer that connects to the router of another PC cannot reach that PC's programs through it, because they cannot
   connect to its loopback port. Connect as a client (`--zenoh-mode client`), or run a router on this PC as well and
   let the routers connect to each other. A third way is `--listen` on a network address, which opens the program to
   the whole network.
-- A session in client mode does not listen; the router relays everything for it.
+- A Durchblick session in client mode does not listen. Its router routes all its data.
 
 **A query can stay open after its timeout.** A queryable ends its part of a query when it drops the query object. At the
 query's timeout, the caller's own session ends a query that is still open. It then adds an error reply with the text

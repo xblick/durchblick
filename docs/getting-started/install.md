@@ -9,7 +9,7 @@ every PC needs.
 | --- | --- | --- |
 | Linux, x86-64 | | everything. Wheels for aarch64 do not exist yet. |
 | Python | 3.10 to 3.13 | the Python package and the command line |
-| Zenoh router `zenohd` | 1.10 | programs on one PC that find each other without addresses |
+| A Zenoh router: `xblick router` from the package, or `zenohd` | 1.10 | programs on one PC that find each other without addresses |
 | NVIDIA GPU with its driver | | CUDA rings. The package loads without a GPU. |
 | CMake and a C++20 compiler | | C++ programs, or a build from source |
 | CUDA toolkit with `nvcc` | 12.8 tested | only the point cloud node `xblick-points` |

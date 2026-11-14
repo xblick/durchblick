@@ -4,7 +4,7 @@ client-mode session and ``xblick view``; the default port without any option (sk
 long-running commands, a node (``xblick.node.start``) and the C++ tools ending on SIGTERM and on SIGINT as background
 jobs of a script (a non-interactive shell starts those with SIGINT ignored).
 
-0.5.3 found nothing here: a peer that only connected did not listen, and a Zenoh 1.10 router does not relay between
+0.5.3 found nothing here: a peer that only connected did not listen, and a Zenoh 1.10 router does not route between
 peers (they reach each other directly), while the earlier router tests used sessions that listened."""
 
 import os

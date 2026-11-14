@@ -756,7 +756,8 @@ def build_parser(prog: str = "xblick") -> argparse.ArgumentParser:
             q.add_argument("--prefix", default="", help="publish below this prefix (default: on the recorded topics)")
             q.add_argument("--rate", type=float, default=1.0, help="times the recorded pace")
             q.add_argument("--loop", action="store_true", help="from the beginning again at the end")
-            q.add_argument("--key", action="append", metavar="PATTERN", help="only topics matching this pattern")
+            q.add_argument("--key", action="append", metavar="KEY_EXPR",
+                           help="only topics that match this key expression")
             q.add_argument("--cuda-device", type=int, default=None, metavar="ORDINAL",
                            help="image streams also in a CUDA ring on this device")
             q.add_argument("--pace", choices=recording.PACES, default="wall",
@@ -778,8 +779,8 @@ def build_parser(prog: str = "xblick") -> argparse.ArgumentParser:
     p.add_argument("--prefix", default="", help="publish below this prefix (default: on the recorded topics)")
     p.add_argument("--rate", type=float, default=1.0, help="times the recorded pace")
     p.add_argument("--loop", action="store_true")
-    p.add_argument("--key", action="append", metavar="PATTERN",
-                   help="only topics matching this pattern, e.g. 'test/camera/*' (repeat for more)")
+    p.add_argument("--key", action="append", metavar="KEY_EXPR",
+                   help="only topics that match this key expression, e.g. 'test/camera/*' (repeat for more)")
     p.add_argument("--cuda-device", type=int, default=None, metavar="ORDINAL",
                    help="image streams also in a CUDA ring on this device, as a camera with a GPU offers them "
                         "(default: shared memory only)")

@@ -11,14 +11,14 @@ Every command accepts the same options for its Zenoh session.
 | Option | Meaning |
 | --- | --- |
 | none | Connect to the router of this PC at `127.0.0.1:7447`. |
-| `--connect <endpoint>` | Connect to another router or program. An endpoint is a host, `host:port`, or a locator such as `tcp/10.0.0.5:7447`. |
+| `--connect <endpoint>` | Connect to another router or program. The option takes a Zenoh endpoint, such as `tcp/10.0.0.5:7447`. A host alone means `tcp/<host>:7447`, and `host:port` means `tcp/<host>:<port>`. |
 | `--listen <endpoint>` | Listen on this endpoint. A peer without it listens on a free loopback port. |
 | `--zenoh-mode peer\|client` | `peer` is the default. Use `client` for a program on another PC that only connects to a router. |
 | `--config FILE` | A Zenoh JSON5 configuration. It replaces the other options. |
 
-A router does not relay between peers: peers reach each other directly, so a peer always listens (on a free
-loopback port unless `--listen` says otherwise). A program on another PC that only connects to a router therefore
-uses `--zenoh-mode client`.
+A router does not route data between peers. Peers reach each other directly, so a Durchblick peer always listens.
+Without `--listen` it listens on a free loopback port. A program on another PC that only connects to a router
+therefore uses `--zenoh-mode client`.
 
 | Setup | Options |
 | --- | --- |
@@ -213,7 +213,7 @@ sequences, one stream each, on one clock.
 | `--rate R` | a multiple of the recorded pace |
 | `--pace wall\|step\|clock` | what drives the playback. `--clock KEY` names the clock for `--pace clock`. |
 | `--prefix P` | publish below this prefix. The default is the recorded names. |
-| `--key PATTERN` | only topics that match this pattern |
+| `--key KEY_EXPR` | only topics that match this key expression |
 | `--cuda-device N` | also offer the frames in a CUDA ring on this GPU |
 | `--dir DIR`, `--name NAME` | the directory and the name of the node, for its control topics |
 | `--exit` | end when the playback has ended |

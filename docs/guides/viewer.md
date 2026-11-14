@@ -85,7 +85,7 @@ rate. `--no-ages` removes all of these. [Timestamps](../concepts/timestamps.md#a
   subscribes to every stream that it shows for as long as it runs. A publisher that renders only for subscribers
   renders all that time.
 - **A point cloud from another host arrives compressed only where its publisher has rays**, as the point cloud node has. Other clouds arrive whole and are large. See [point clouds](point-clouds.md).
-- **A publisher must be reachable.** Zenoh peers do not forward each other's data. A publisher to which the viewer
+- **A publisher must be reachable.** Zenoh peers do not route data for each other. A publisher to which the viewer
   has no direct connection must listen on an endpoint of its own.
 - **Rerun sends anonymous usage data** unless you turn it off once per machine with `rerun analytics disable`.
 - **The viewer binary.** `--spawn` starts the `rerun` program that `rerun-sdk` installed beside this Python

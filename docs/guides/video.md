@@ -176,8 +176,9 @@ xblick
 xblick recorder pause         # and: resume
 ```
 
-Without a router, give every program the same options `--connect tcp/<host>:<port> --listen tcp/127.0.0.1:0`, and
-connect the terminal interface with `c`.
+Without a router, start the playback with `--listen tcp/127.0.0.1:<port>`. Give every other program `--connect
+tcp/127.0.0.1:<port>`. Each of them also listens on a free loopback port, and the programs find each other through the
+playback. Connect the terminal interface with `c` to the same address.
 
 ## Tested
 

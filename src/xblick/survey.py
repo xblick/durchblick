@@ -289,7 +289,7 @@ class Network:
 class Use:
     """A session's subscription that takes a stream's representation (``raw``, ``compressed``, ``shm``, ``cuda``):
     ``transport`` ``shm`` or ``cuda`` (the ring on the publisher's host), else the Zenoh link's protocol (``tcp``,
-    ``udp``, ``unix``... of the session's links to its routers) or ``unknown``; ``detail`` says what is known of the way
+    ``udp``, ``unixsock-stream``... of the session's links to its routers) or ``unknown``; ``detail`` says what is known of the way
     (or why nothing is)."""
 
     consumer: str

@@ -51,7 +51,7 @@ xblick view cam/video0/color --connect tcp/192.0.2.10:7447 --zenoh-mode client  
 ```
 
 Put the streams before `--connect`, because `--connect` accepts several endpoints. To watch the streams of another PC
-from a PC without a router, connect as a client. The router of the other PC then relays the frames. As a peer, the
+from a PC without a router, connect as a client. The router of the other PC then routes the frames. As a peer, the
 command would listen on loopback only, and the programs there could not reach it. It says so at the start.
 
 **VLC** is the program `vlc` on `PATH`. Install it yourself, for example with `sudo apt install vlc`. It starts with

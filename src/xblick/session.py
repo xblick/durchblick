@@ -69,8 +69,8 @@ def make_config(connect: Sequence[str] = (), listen: Sequence[str] = (), mode: s
         connect, listen = [ROUTER], [LOCAL_LISTEN] if mode == "peer" else []
     elif mode == "peer" and connect and not listen:
         # A peer always listens: behind a Zenoh 1.10 router (zenohd or xblick router) peers reach each other only by
-        # connecting directly (gossip), the router does not relay between them; a peer that only connected found
-        # nothing (before 0.5.3).
+        # connecting directly (gossip scouting; the peers of a router form a clique), the router does not route
+        # between them; a peer that only connected found nothing (before 0.5.3).
         listen = [LOCAL_LISTEN]
     if mode == "client" and not connect:
         raise ValueError("client mode needs an endpoint to connect to (a router or a peer)")
@@ -190,15 +190,16 @@ def add_arguments(parser, prefix: str = ""):
     argparse parser."""
     p = f"--{prefix}"
     parser.add_argument(f"{p}connect", nargs="*", default=[], metavar="ENDPOINT",
-                        help="Zenoh endpoints to connect to: host, host:port or a locator like tcp/192.0.2.10:7447 "
-                             "(default, without --listen: this PC's router, 127.0.0.1:7447)")
+                        help="Zenoh endpoints to connect to, like tcp/192.0.2.10:7447; a host alone means "
+                             "tcp/<host>:7447, host:port tcp/<host>:<port> (default, without --listen: this PC's "
+                             "router, 127.0.0.1:7447)")
     parser.add_argument(f"{p}listen", nargs="*", default=[], metavar="ENDPOINT",
                         help="Zenoh endpoints to listen on, e.g. 0.0.0.0:7448 (default for a peer: a free loopback "
                              "port, so that the PC's other sessions connect to it directly)")
     parser.add_argument(f"{p}zenoh-mode", choices=("peer", "client"), default="peer",
                         help="peer (default): listens, and the PC's sessions connect to it directly; client: everything "
                              "through the router --connect names, which a session needs that connects to another PC's "
-                             "router (a router does not relay between peers)")
+                             "router (a router does not route between peers)")
     parser.add_argument(f"{p}config", default=None, metavar="FILE",
                         help="a Zenoh JSON5 configuration file instead of the endpoints")
 

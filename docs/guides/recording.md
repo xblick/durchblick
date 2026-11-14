@@ -150,7 +150,7 @@ recorder drops them, and the blocking key in the same recording is complete.
 - `raw` subscribers receive the pixels.
 
 `play` sends the recorded `camera_info`, answers `<stream>/info` for streams and detections, and answers
-`tf_static` queries. `--rate` changes the pace, and `--key PATTERN` selects topics.
+`tf_static` queries. `--rate` changes the pace, and `--key KEY_EXPR` selects topics by a key expression.
 
 **Loops.** With `--loop`, each pass moves every stamp forward by the length of the recording plus one period of
 its slowest channel. This covers headers, transforms and `stamp_ns` of JSON samples, and it leaves `tf_static`

@@ -47,7 +47,7 @@ CASES = [
     (["other-pc"], [], "peer", None, ["tcp/other-pc:7447"]),                     # a name of another host
     (["[2001:db8::1]"], [], "peer", None, ["tcp/[2001:db8::1]:7447"]),          # IPv6
     (["192.0.2.10", "192.0.2.11:7448"], [], "peer", None, [OTHER, "tcp/192.0.2.11:7448"]),  # several, all other PCs
-    (["192.0.2.10"], [], "client", None, []),                                    # client: the router relays for it
+    (["192.0.2.10"], [], "client", None, []),                                    # client: the router routes for it
     (["127.0.0.1"], [], "peer", None, []),                                       # loopback
     (["localhost:7447"], [], "peer", None, []),
     (["[::1]:7447"], [], "peer", None, []),                                      # IPv6 loopback
