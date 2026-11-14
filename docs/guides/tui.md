@@ -150,9 +150,9 @@ tcp/127.0.0.1:7447`. It then receives compressed images.
 
 ## How the interface knows what it shows
 
-**Sessions and the graph** come from the admin space of the routers, which `zenohd` serves read-only by default.
-When the interface is connected only to peers, it says that no router answered, and it shows only streams and
-traffic.
+**Sessions and the graph** come from the [admin space](https://zenoh.io/docs/manual/abstractions/#admin-space) of the
+routers, which `zenohd` serves read-only by default. When the interface is connected only to peers, it says that no
+router answered, and it shows only streams and traffic.
 
 **Names.** The admin space knows declarations and no names. The interface therefore names a session after the
 common prefix of its keys, for example `test/camera/sam3`.

@@ -75,11 +75,12 @@ It listens on `tcp/0.0.0.0:7447`, where every program looks for the router of it
 connect. It has no plugins (REST, storage) and reads no Zenoh configuration file. A robot's setup that needs those,
 or that already starts `zenohd`, uses `zenohd` instead.
 
-`zenohd` is not part of the pip packages. It is the router program of
-[Eclipse Zenoh](https://github.com/eclipse-zenoh/zenoh), and its
-[releases](https://github.com/eclipse-zenoh/zenoh/releases) have a standalone archive for each platform. For Linux on
-x86-64 and version 1.10.1, the archive is `zenoh-1.10.1-x86_64-unknown-linux-gnu-standalone.zip`. It contains the
-program `zenohd` and two plugins. Unpack it and put `zenohd` on your `PATH`.
+`zenohd` is not part of the pip packages. It is the [router
+program](https://zenoh.io/docs/getting-started/installation/#installing-the-zenoh-router) of [Eclipse
+Zenoh](https://github.com/eclipse-zenoh/zenoh), and its [releases](https://github.com/eclipse-zenoh/zenoh/releases) have
+a standalone archive for each platform. For Linux on x86-64 and version 1.10.1, the archive is
+`zenoh-1.10.1-x86_64-unknown-linux-gnu-standalone.zip`. It contains the program `zenohd` and two plugins. Unpack it and
+put `zenohd` on your `PATH`.
 
 Start `zenohd` once per PC and leave it running:
 

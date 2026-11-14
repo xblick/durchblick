@@ -9,6 +9,8 @@ Durchblick: camera streams and perception results between programs, over Zenoh, 
 without ROS. C++20 core in `cpp/` (Python bindings `xblick._core`), Python package `xblick` in `src/xblick/`
 (command `xblick`). Each perception method is a node in its own repository (`xblick-<name>`) that depends on this
 package. Robot integrations live in repositories of their own. The core never depends on a robot framework.
+Zenoh 1.10 docs: zenoh.io/docs (concepts, deployment), API docs.rs/zenoh/1.10.1, config keys DEFAULT_CONFIG.json5 at
+tag 1.10.1 (github.com/eclipse-zenoh/zenoh).
 
 Names: every name in code, on the wire and on disk is `xblick` (since 0.5.0): Python package, distribution and
 command, C++ namespace, include directory, CMake package and targets, C++ programs, `XBLICK_*` variables, Zenoh keys,

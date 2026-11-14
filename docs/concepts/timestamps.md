@@ -46,6 +46,9 @@ We checked all nodes against this table on 2026-11-05.
 
 The attachment is the small JSON object that travels beside the payload. [Protocol](protocol.md) shows it.
 
+Zenoh has its own [timestamp](https://zenoh.io/docs/manual/abstractions/#timestamp), which a router adds to routed
+samples. Durchblick reads only the fields above.
+
 `publish_ns` includes the work for the transport. For a `compressed` sample it includes the JPEG encoding, and for
 a ring it includes the copy into the ring. The difference `publish_ns - publish_called_ns` is therefore the time
 that the publisher needed for this transport.

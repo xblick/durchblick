@@ -18,8 +18,9 @@ the C++ messages with the Python bytes.
 
 ## The attachment
 
-A ROS 2 header has a stamp and a frame id. Durchblick needs three more fields per sample: a sequence number, the
-publish time and the source. These fields travel beside the payload in Zenoh's *attachment*, as a small JSON object:
+A ROS 2 header has a stamp and a frame id. Durchblick needs three more fields per sample: a sequence number, the publish
+time and the source. These fields travel beside the payload in Zenoh's
+[*attachment*](https://docs.rs/zenoh/1.10.1/zenoh/sample/struct.Sample.html), as a small JSON object:
 
 ```json
 {"v": 1, "seq": 4711, "publish_ns": 1794300000000000000, "source": "robot", "publish_called_ns": 1794299999990000000}
@@ -32,7 +33,7 @@ A reader takes the fields that it knows and ignores the others. [Timestamps](tim
 `cpp/include/xblick/protocol.hpp` defines the whole protocol: the topic names, the message types and their
 versions. The Python package reads these values from the C++ core, so both languages always agree.
 
-Every sample names its schema in its Zenoh encoding:
+Every sample names its schema in its Zenoh [encoding](https://docs.rs/zenoh/1.10.1/zenoh/bytes/struct.Encoding.html):
 
 ```
 application/cdr;sensor_msgs/msg/Image                 a ROS 2 type

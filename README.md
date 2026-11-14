@@ -35,9 +35,10 @@ pip install "xblick[rerun,record]"                      # wheels for Linux x86-6
 xblick router                                           # the router, once per PC (or zenohd, below)
 ```
 
-`xblick router` runs the Zenoh router from the package. A robot's setup may use `zenohd` instead
-(`zenohd --no-multicast-scouting -l tcp/0.0.0.0:7447`), which is not part of the pip packages. It comes from
-[Eclipse Zenoh](https://github.com/eclipse-zenoh/zenoh/releases).
+`xblick router` runs the Zenoh router from the package. A robot's setup may use `zenohd` instead (`zenohd
+--no-multicast-scouting -l tcp/0.0.0.0:7447`), which is not part of the pip packages. It comes from [Eclipse
+Zenoh](https://github.com/eclipse-zenoh/zenoh/releases). Zenoh's [installation
+page](https://zenoh.io/docs/getting-started/installation/#installing-the-zenoh-router) describes it.
 
 To build from a checkout of this repository, run `pip install "./xblick[rerun,record]"`. The build needs CMake
 and a C++20 compiler.

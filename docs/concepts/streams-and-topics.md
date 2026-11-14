@@ -1,9 +1,9 @@
 # Streams and topics
 
-A stream is the sequence of frames from one source, for example the colour images of one camera. A topic is a
-Zenoh key on which samples travel. One stream uses several topics, because each [transport](transports.md) has its
-own. This page explains how Durchblick names streams and where a node puts its results. The
-[topic reference](../reference/topics.md) lists every topic with its message type.
+A stream is the sequence of frames from one source, for example the colour images of one camera. A topic is a Zenoh
+[key](https://zenoh.io/docs/manual/abstractions/#key) on which samples travel. One stream uses several
+topics, because each [transport](transports.md) has its own. This page explains how Durchblick names streams and where a
+node puts its results. The [topic reference](../reference/topics.md) lists every topic with its message type.
 
 ## The name of a stream
 

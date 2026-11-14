@@ -101,10 +101,11 @@ if score >= params["threshold"]:                          # a live parameter, re
 [Parameters](../reference/parameters.md#a-nodes-options-as-parameters) has the rules, and its C++ section shows
 `xblick::Options`.
 
-A node that serves a queryable of its own, for example a command, replies and then ends the query's callback at once. It
-does long work outside the callback and keeps no query object. A node that keeps the query after its reply keeps the
-query open until the caller's timeout. The caller's session then adds an error reply `Timeout`. A caller takes that
-reply for a second node and sends nothing. `node.Parameters` does this right.
+A node that serves a [queryable](https://zenoh.io/docs/manual/abstractions/#queryable) of its own, for example a
+command, replies and then ends the query's callback at once. It does long work outside the callback and keeps no query
+object. A node that keeps the query after its reply keeps the query open until the caller's timeout. The caller's
+session then adds an error reply `Timeout`. A caller takes that reply for a second node and sends nothing.
+`node.Parameters` does this right.
 
 ## Restarts and changing cameras
 

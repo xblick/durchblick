@@ -6,15 +6,16 @@ option.
 
 ## Connection options
 
-Every command accepts the same options for its Zenoh session.
+Every command accepts the same options for its Zenoh session. [Zenoh's deployment
+page](https://zenoh.io/docs/getting-started/deployment/) explains the modes.
 
 | Option | Meaning |
 | --- | --- |
 | none | Connect to the router of this PC at `127.0.0.1:7447`. |
-| `--connect <endpoint>` | Connect to another router or program. The option takes a Zenoh endpoint, such as `tcp/10.0.0.5:7447`. A host alone means `tcp/<host>:7447`, and `host:port` means `tcp/<host>:<port>`. |
+| `--connect <endpoint>` | Connect to another router or program. The option takes a Zenoh [endpoint](https://docs.rs/zenoh/1.10.1/zenoh/config/struct.EndPoint.html), such as `tcp/10.0.0.5:7447`. A host alone means `tcp/<host>:7447`, and `host:port` means `tcp/<host>:<port>`. |
 | `--listen <endpoint>` | Listen on this endpoint. A peer without it listens on a free loopback port. |
 | `--zenoh-mode peer\|client` | `peer` is the default. Use `client` for a program on another PC that only connects to a router. |
-| `--config FILE` | A Zenoh JSON5 configuration. It replaces the other options. |
+| `--config FILE` | A [Zenoh JSON5 configuration](https://zenoh.io/docs/manual/configuration/). It replaces the other options. |
 
 A router does not route data between peers. Peers reach each other directly, so a Durchblick peer always listens.
 Without `--listen` it listens on a free loopback port. A program on another PC that only connects to a router

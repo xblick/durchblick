@@ -75,8 +75,8 @@ states the reason in its status. `--paused` starts the node idle, so that it wai
 
 ## Record exactly these keys
 
-By default the recorder records what it finds. With `--key` (or `keys` in a command) it subscribes to the given key
-expressions and nothing else.
+By default the recorder records what it finds. With `--key` (or `keys` in a command) it subscribes to the given [key
+expressions](https://zenoh.io/docs/manual/abstractions/#key-expression) and nothing else.
 
 ```bash
 xblick recorder record --key 'sim/*' --key robot/joint_states --blocking --log-time header --file ep.mcap

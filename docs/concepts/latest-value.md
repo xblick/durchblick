@@ -42,9 +42,9 @@ in its own thread and keeps the last ones by stamp. See the [pairing guide](../g
 
 ## Blocking publishers
 
-A publisher created with `blocking=True` blocks when a subscriber is slow. It uses Zenoh's congestion control
-`BLOCK`, so a slow subscriber holds the publisher up. Use it only where the producer can wait, for example in a
-simulation that produces data for a recording.
+A publisher created with `blocking=True` blocks when a subscriber is slow. It uses Zenoh's [congestion
+control](https://docs.rs/zenoh/1.10.1/zenoh/qos/enum.CongestionControl.html) `BLOCK`, so a slow subscriber holds the
+publisher up. Use it only where the producer can wait, for example in a simulation that produces data for a recording.
 
 `CameraPublisher`, `RobotStatePublisher`, `TransformPublisher`, `SimPublisher` and `camera.CountedPublisher` accept
 `blocking=True`.

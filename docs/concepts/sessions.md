@@ -1,22 +1,25 @@
 # Sessions and routers
 
-A session is the connection of one program to Zenoh, the network layer below Durchblick. This page explains how
-programs find each other without addresses, what the router does, and which four properties of Zenoh you must know
-when you write a program.
+A session is the connection of one program to [Zenoh](https://zenoh.io/docs/getting-started/deployment/), the network
+layer below Durchblick. This page explains how programs find each other without addresses, what the router does, and
+which four properties of Zenoh you must know when you write a program.
 
 ## One router per PC
 
 Every PC that runs Durchblick programs runs one Zenoh router on port 7447: `xblick router` or `zenohd`. A program that
 opens a session without options connects to the router at `127.0.0.1:7447` and listens on a free loopback port.
 
-The router works like a switchboard. It tells the programs of the PC about each other, and the programs then
-connect directly. Zenoh calls this gossip scouting. The frames themselves do not pass through the router: on one PC
-they travel through a [ring](rings.md), and only the descriptors travel from program to program.
+The router works like a switchboard. It tells the programs of the PC about each other, and the programs then connect
+directly. Zenoh calls this [gossip scouting](https://zenoh.io/docs/getting-started/deployment/#scouting). The frames
+themselves do not pass through the router: on one PC they travel through a [ring](rings.md), and only the descriptors
+travel from program to program.
 
-In Zenoh's terms, the programs of one PC form a peer-to-peer region below their router. In such a region every peer
-connects to every other peer. Zenoh calls this a clique. The router is the region's gateway to the routers of the other
-PCs. It routes data between the PCs. It does not route data from one of its peers to another. Zenoh 1.9 removed that
-function, which was called failover brokering.
+In Zenoh's terms, the programs of one PC form a peer-to-peer
+[region](https://zenoh.io/docs/getting-started/deployment/#zenoh-regions) below their router. In such a region every
+peer connects to every other peer. Zenoh calls this a clique. The router is the region's
+[gateway](https://zenoh.io/docs/getting-started/deployment/#the-zenoh-gateway) to the routers of the other PCs. It
+routes data between the PCs. It does not route data from one of its peers to another. Zenoh 1.9 removed that function,
+which was called failover brokering ([migration notes](https://zenoh.io/docs/migration_1.9/regions/)).
 
 ```mermaid
 flowchart LR
@@ -79,7 +82,7 @@ refuses a peer that only connects.
 | the router of this PC | no option |
 | the router of another PC | `--connect <host> --zenoh-mode client` |
 | two programs without a router, for example in a test | explicit endpoints: `--connect` on one side and `--listen` on the other |
-| full control | a Zenoh JSON5 file with `--config` (Python: `config_file`). It replaces all other options. |
+| full control | a [Zenoh JSON5 file](https://zenoh.io/docs/manual/configuration/) with `--config` (Python: `config_file`). [DEFAULT_CONFIG.json5](https://github.com/eclipse-zenoh/zenoh/blob/1.10.1/DEFAULT_CONFIG.json5) lists every key. It replaces all other options. |
 
 **Through an SSH tunnel.** Forward the router of the server and connect as a client:
 
@@ -117,15 +120,15 @@ such an address a locator, for example `tcp/127.0.0.1:41464`. A Durchblick peer 
   the whole network.
 - A Durchblick session in client mode does not listen. Its router routes all its data.
 
-**A query can stay open after its timeout.** A queryable ends its part of a query when it drops the query object. At the
-query's timeout, the caller's own session ends a query that is still open. It then adds an error reply with the text
-`Timeout`, and nothing comes over the network for it. Zenoh ends a query in this way in almost all cases. In one CI job,
-a query with a timeout of 1 s was still open after 5 minutes. This is our observation, which Zenoh's documentation does
-not describe. Code that iterates over the replies waits that long. Use `session.replies(session, selector, timeout,
-...)` in Python or `xblick::replies` in C++. These functions return at a deadline with the replies that arrived. The
-deadline is twice the timeout, and at least 0.5 s after the timeout. They count such queries (`session.not_finalized`,
-C++ `queries_not_finalized()`) and log each selector once. The cost is small: 0.15 ms per query against 0.10 ms for the
-direct iteration, measured on 2026-11-05 between two sessions over TCP.
+**A query can stay open after its timeout.** A [queryable](https://docs.rs/zenoh/1.10.1/zenoh/query/index.html) ends its
+part of a query when it drops the query object. At the query's timeout, the caller's own session ends a query that is
+still open. It then adds an error reply with the text `Timeout`, and nothing comes over the network for it. Zenoh ends a
+query in this way in almost all cases. In one CI job, a query with a timeout of 1 s was still open after 5 minutes. This
+is our observation, which Zenoh's documentation does not describe. Code that iterates over the replies waits that long.
+Use `session.replies(session, selector, timeout, ...)` in Python or `xblick::replies` in C++. These functions return at
+a deadline with the replies that arrived. The deadline is twice the timeout, and at least 0.5 s after the timeout. They
+count such queries (`session.not_finalized`, C++ `queries_not_finalized()`) and log each selector once. The cost is
+small: 0.15 ms per query against 0.10 ms for the direct iteration, measured on 2026-11-05 between two sessions over TCP.
 
 **A new session needs time to learn about the others.** A query directly after `open_session()` may find nothing.
 Durchblick's own queries repeat periodically. Do not query once and conclude that nothing is there.

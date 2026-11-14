@@ -150,9 +150,9 @@ shm (publisher offers no CUDA ring)
 
 ## The order of starting does not matter
 
-A subscriber with `auto` keeps its choice up to date while it runs. Each publisher holds a Zenoh liveliness token
-for its stream, and Zenoh tells the subscribers when a token appears or disappears. This also covers a publisher
-that crashes.
+A subscriber with `auto` keeps its choice up to date while it runs. Each publisher holds a Zenoh [liveliness
+token](https://docs.rs/zenoh/1.10.1/zenoh/liveliness/index.html) for its stream, and Zenoh tells the subscribers when a
+token appears or disappears. This also covers a publisher that crashes.
 
 Two examples:
 
@@ -175,8 +175,8 @@ A node can therefore receive a NumPy array from one frame and a device array fro
 
 ## A publisher works only on request
 
-Zenoh tells a publisher whether a subscriber exists for a topic. A Durchblick publisher uses this for every
-transport separately.
+Zenoh's [matching status](https://docs.rs/zenoh/1.10.1/zenoh/matching/index.html) tells a publisher whether a subscriber
+exists for a topic. A Durchblick publisher uses this for every transport separately.
 
 - It encodes a JPEG only while a subscriber asks for `compressed`.
 - It writes a ring only while a reader has the ring open.

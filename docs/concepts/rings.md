@@ -61,6 +61,9 @@ ring and its readers.
 | Host ring | POSIX shared memory, `/dev/shm/xblick-…` | a NumPy array | `shm` |
 | CUDA ring | GPU memory that several processes map | a device array on the GPU | `cuda` |
 
+Both rings are Durchblick's own. They do not use [Zenoh's shared
+memory](https://docs.rs/zenoh/1.10.1/zenoh/shm/index.html).
+
 Both kinds use the same slots, counters and descriptors. [Frames on the GPU](gpu-frames.md) explains what is
 different for the CUDA ring.
 
