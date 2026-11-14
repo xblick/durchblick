@@ -1283,26 +1283,53 @@ namespace xblick
             // a set is a command (a node may act on it): not sent unless exactly one node answers a read first (two
             // would both apply it); then sent once (ask_once). NotReached: nothing sent; NoAnswer: sent once, no
             // answer, it may still be applied, not sent again (Python's ParameterClient._call).
-            try
+            // a best-effort check of a second node: the read must have exactly one answer and no node's "Timeout"
+            // reply (a node that did not answer in time is a second node, not none; Python's session.count)
+            const std::string list_key = key_ + "/" + std::string(p::kListParameters);
+            std::size_t answered = 0;
+            bool late = false;
+            for (const auto& reply : ask(session_, list_key, timeout, ListParametersRequest{}.serialize()))
             {
-                call(std::string(p::kListParameters), ListParametersRequest{}.serialize());
+                if (reply.is_ok())
+                {
+                    ++answered;
+                }
+                else if (timed_out(reply))
+                {
+                    late = true;
+                }
             }
-            catch (const ParameterError& e)
+            if (late)
             {
-                throw ParameterError("not sent: " + key + ": " + e.what());
+                throw ParameterError("not sent: a node did not answer " + list_key + " in time (" +
+                                     std::to_string(answered) + " answered): it may be a second node of the key (the "
+                                     "set to " + key + ")");
+            }
+            if (answered != 1)
+            {
+                throw ParameterError("not sent: " + std::to_string(answered) + " nodes answer " + list_key +
+                                     " (the set to " + key + ")");
             }
             std::vector<std::vector<std::uint8_t>> ok;
+            bool unanswered = false;
             for (const auto& reply : ask_once(session_, key, timeout, request))
             {
                 if (not reply.is_ok())
                 {
                     if (timed_out(reply))
                     {
+                        unanswered = true;
                         continue;
                     }
                     throw ParameterError(reply.get_err().get_payload().as_string());
                 }
                 ok.push_back(reply.get_ok().get_payload().as_vector());
+            }
+            if (not ok.empty() and unanswered)
+            {
+                throw PartlyAnswered(key + ": answered by " + std::to_string(ok.size()) + " node(s), and at least one "
+                                     "more node got it and did not answer within " + std::to_string(timeout_ms_) +
+                                     " ms: that node may still execute it; not sent again");
             }
             if (ok.empty())
             {

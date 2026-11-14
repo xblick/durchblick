@@ -46,6 +46,7 @@ from .msg import (DescribeParametersRequest, DescribeParametersResponse, Floatin
                   SetParametersRequest, SetParametersResponse, SetParametersResult, Time)
 from .paths import expand_path
 from .session import ASK_PERIOD, ask, command, replies, timed_out
+from .session import count as session_count
 
 P = _core.protocol
 SERVICES = {P.LIST_PARAMETERS: (ListParametersRequest, ListParametersResponse),
@@ -557,17 +558,20 @@ class ParameterClient:
     def _call(self, service: str, request):
         """One service call: a read (list, describe, get, types) asked again while nothing answers (session.ask);
         a set (a command: a node may act on it) sent once (session.command), and only after a read (list_parameters)
-        had exactly one answer: two nodes on the key would both apply it, so nothing is sent then. NotReached,
-        NoAnswer: as session.command."""
+        had exactly one answer and no node's "Timeout" reply (session.count: a best-effort check of two nodes on the
+        key, which would both apply it). NotReached, NoAnswer, PartlyAnswered: as session.command. Ordinary reads
+        keep the one answer that came and ignore a "Timeout" reply of another node: a read changes nothing."""
         _, response_type = SERVICES[service]
         key = f"{self.key}/{service}"
         if service in (P.SET_PARAMETERS, P.SET_PARAMETERS_ATOMICALLY):
+            list_key = f"{self.key}/{P.LIST_PARAMETERS}"
             try:
-                self.list()
+                session_count(ask(self._session, list_key, self.timeout,
+                                  payload=bytes(ListParametersRequest([], 0).serialize())), list_key)
             except RuntimeError as error:
-                raise RuntimeError(f"not sent: {key}: {error}") from None
+                raise RuntimeError(f"{error} (the set to {key})") from None
             except TimeoutError as error:
-                raise TimeoutError(f"not sent: {key}: {error}") from None
+                raise TimeoutError(f"{error} (the set to {key})") from None
             ok = command(self._session, key, self.timeout, payload=bytes(request.serialize()))
             if len(ok) > 1:
                 raise RuntimeError(f"{len(ok)} nodes answered {key}: each of them got it; one name, one node")

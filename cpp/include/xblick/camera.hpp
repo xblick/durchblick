@@ -96,6 +96,14 @@ namespace xblick
         using std::runtime_error::runtime_error;
     };
 
+    // A command answered by some node(s), while at least one more node got it and gave no answer in time (Zenoh's
+    // "Timeout" reply): that node may still execute it. Not sent again (Python's session.PartlyAnswered).
+    class PartlyAnswered : public NoAnswer
+    {
+    public:
+        using NoAnswer::NoAnswer;
+    };
+
     // The error reply by which Zenoh ends a query whose timeout passed before a queryable answered (its text is
     // "Timeout"; Python's session.timed_out). The queryable may still be working on it.
     bool timed_out(const zenoh::Reply& reply);

@@ -85,8 +85,8 @@ from .codecs import parse_format
 from .msg import CameraInfo, Clock, CompressedImage, Message, Time
 from .msgdefs import MSGDEFS
 from .parameters import Parameters
+from .session import ask, count, replies
 from .session import command as send_once
-from .session import replies
 from .stamps import header_stamp  # recording.header_stamp: its old home
 
 STATUS_VERSION = 3
@@ -971,40 +971,31 @@ STATES = {"record": "recording", "stop": "idle", "play": "playing", "pause": "pa
 
 def send_command(session: zenoh.Session, name: str, command: str, **options) -> dict:
     """Send a command (COMMANDS; ``play``'s options PLAY_OPTIONS) to a record and play node and return its status once
-    it took effect; a refusal is a RuntimeError with its reason, no effect within 10 s a TimeoutError. ``request``
-    returns the command's own result instead (and its errors)."""
-    payload = json.dumps({"command": command, **options})
-    parse_command(payload.encode())  # bad ones fail here, not in the node
-    before = query_status(session, name)
-    session.put(control_key(name), payload)
-    end = time.monotonic() + 10.0
-    while time.monotonic() < end:
-        status = query_status(session, name)
-        if status["state"] == STATES[command] and (command != "play" or status["play"] != before["play"]):
-            return status
-        if status["refused"] is not None and status["refused"] != before["refused"]:
-            raise RuntimeError(f"{name}: {command} refused: {status['refused']}")
-        time.sleep(0.2)
-    raise TimeoutError(f"{name!r} did not {command} within 10 s (its status: {status})")
+    it took effect: ``request`` (the command as a query, checked and sent once), then the node's status. A refusal is
+    a RuntimeError with its reason; NotReached, NoAnswer and the rest as ``request``. (Before 0.5.2 it put the
+    command on the control key, which a session just opened can lose and two nodes of the name both take; the node
+    still takes such a put.)"""
+    request(session, name, command, **options)
+    return query_status(session, name)
 
 
 def request(session: zenoh.Session, name: str, command: str, timeout: float = 30.0, **options) -> dict:
     """Send a command to a record and play node as a query and return its result once it took effect: ``record``'s
     ready, ``stop``'s numbers, ``play``'s and ``step``'s playback status. A refusal is a RuntimeError, a recording
     that failed its check a RecordingError (with the numbers in ``result``). Not sent unless exactly one node of
-    that name answers its status first (RuntimeError for several, TimeoutError for none); then sent once
-    (session.command): NotReached (a TimeoutError, nothing sent), NoAnswer (no TimeoutError: sent once, no answer
-    within ``timeout`` s; it may still be executed; not sent again), RuntimeError for an error reply."""
+    that name answers its status first and none gives Zenoh's "Timeout" reply (session.count, best effort:
+    RuntimeError, TimeoutError for none); then sent once (session.command): NotReached (a TimeoutError, nothing
+    sent), NoAnswer (no TimeoutError: sent once, no answer within ``timeout`` s; it may still be executed; not sent
+    again), PartlyAnswered, RuntimeError for an error reply."""
     payload = json.dumps({"command": command, **options})
     parse_command(payload.encode())  # bad ones fail here, not in the node
-    # one node of that name, else nothing is sent (two would both execute it); then exactly once (session.command)
+    # one node of that name as far as its status shows (best effort; session.count), then once (session.command)
     try:
-        nodes = status_replies(session, name, timeout=min(timeout, 10.0))
+        count(ask(session, status_key(name), min(timeout, 10.0)), status_key(name))
+    except RuntimeError as error:
+        raise RuntimeError(f"{error} (the command {command})") from None
     except TimeoutError as error:
-        raise TimeoutError(f"not sent: {error}") from None
-    if len(nodes) > 1:
-        raise RuntimeError(f"not sent: {len(nodes)} record and play nodes answer {status_key(name)}: one name, one "
-                           "node")
+        raise TimeoutError(f"{error} (the command {command})") from None
     answers = send_once(session, control_key(name), timeout, payload=payload)
     reply = json.loads(answers[0].payload.to_bytes())
     if not isinstance(reply, dict) or reply.get("v") != REPLY_VERSION:

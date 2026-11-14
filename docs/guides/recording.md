@@ -64,8 +64,11 @@ The node has the name `recorder` by default (`--name`).
 Optional fields are `rate`, `loop`, `prefix`, `keys` and `cuda_device`.
 
 The control key is also a queryable. A command sent as a query receives its answer once it took effect: `record`
-answers "ready", and `stop` answers with the counts and the check. A refused command answers with the reason.
-`xblick recorder <command>` and `recording.request(...)` in Python use this.
+answers "ready", and `stop` answers with the counts and the check. A refused command answers with the reason. `xblick
+recorder <command>` and `recording.request(...)` in Python use this. A command sent from Python (`recording.request`,
+`send_command`) or with `xblick recorder` goes out once, and only after the node's status had exactly one answer and
+no late answer: a best-effort check of two nodes of one name. A put on the control key, as before 0.5.2, is still
+taken, but nothing checks it, and a put from a session just opened can be lost.
 
 The node does not record while it plays, because it would record its own playback. It refuses such a command and
 states the reason in its status. `--paused` starts the node idle, so that it waits for a command.

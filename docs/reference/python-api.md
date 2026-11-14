@@ -206,19 +206,32 @@ manager.unload("teleop_arms")
 ```
 
 A read (`list`, `states`, `config`, `config_file`) raises `TimeoutError` when nobody answers and `RuntimeError` when
-several managers answer. A command (`create`, `switch`, `unload`, and `torque_step` of a controller) goes out once,
-and only after a read of the same manager or controller had exactly one answer. Two managers on one key would both
-execute it, so the command is refused before anything is sent. A command raises:
+several managers answer. A command (`create`, `switch`, `unload`, and `torque_step` of a controller) goes out once
+to each queryable of its key. Before it, a read of the same manager or controller must have exactly one answer and
+no late answer, else the command is not sent.
+
+This check is best effort. It catches two managers that both answer the read, and one that answers it late. A
+second manager that drops the read, that starts between the read and the command, or that serves a broad key
+expression still gets the command. For `torque_step` the read counts the controller's parameter servers, not its
+torque-step servers. The check can also stop a command that worked before 0.5.2: a manager whose read takes longer
+than the timeout gets nothing ("not sent"). This fails safe.
+
+A command raises:
 
 | Exception | Meaning |
 | --- | --- |
 | `xblick.NotReached` (a `TimeoutError`) | not sent: no manager or controller became known within the timeout. You may try again. |
 | `RuntimeError` | not sent (several managers answer the read), or the manager refused it with its reason |
 | `xblick.NoAnswer` (a `RuntimeError`, no `TimeoutError`) | sent once, no answer within the timeout. The robot may still execute it. It was not sent again. |
+| `xblick.PartlyAnswered` (a `NoAnswer`) | one node answered, and another node got it and did not answer in time. That node may still execute it. |
 
 **A command has no expiry.** A robot that is busy or briefly unreachable executes a command when it gets it, also
 after the caller got `NoAnswer`. Check the robot's state before you act on a `NoAnswer`, and before you go near the
 robot. The `timeout` of `torque_step` is how long the caller waits. It is no deadline for the step.
+
+A command takes a few ms when the manager answers at once. At the worst, when Zenoh does not end a query by its
+timeout, `switch()` with the defaults takes up to 27 s: up to 5 s for the read (the manager's timeout of 2 s), then
+up to 7 s until the manager is known and up to 15 s for its answer (the switch's timeout of 2 + 5 s).
 
 The controller side, for a simulation that takes the controller's place, is `CommandSubscriber` and
 `ControllerPublisher` in the same module.

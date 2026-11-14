@@ -34,11 +34,16 @@ In a program, use a client:
 | Python | `parameters.ParameterClient(session, "<namespace>/<name>")` with `list`, `describe`, `get`, `types`, `set`, `set_atomically`, `all` and `on_event`. `parameters.find_nodes(session)` finds the nodes. |
 | C++ | `xblick::ParameterClient` |
 
-A set is a command: the node may act on it. The client sends it once, and only after a read of the node
-(`list_parameters`) had exactly one answer, because two nodes of one name would both apply it. A set raises
-`NotReached` (a `TimeoutError`) when it was not sent, and `NoAnswer` when it was sent once and no answer came. The
-node may still apply the set then, and it was not sent again. C++ throws `xblick::NotReached` and
-`xblick::NoAnswer`. Reads are asked again until a node answers.
+A set is a command: the node may act on it. The client sends it once to each node of the name. Before it, a read of
+the node (`list_parameters`) must have exactly one answer and no late answer, else the set is not sent. This check
+is best effort: it catches two nodes of one name that both answer the read, and a busy one that answers it late. A
+second node that drops the read or that starts between the read and the set still gets the set. A node whose read
+takes longer than the timeout gets no set ("not sent"); this fails safe.
+
+A set raises `NotReached` (a `TimeoutError`) when it was not sent, `NoAnswer` when it was sent once and no answer
+came, and `PartlyAnswered` (a `NoAnswer`) when one node answered and another did not. A node may still apply the
+set then, and it was not sent again. C++ throws `xblick::NotReached`, `xblick::NoAnswer` and
+`xblick::PartlyAnswered`. Reads are asked again until a node answers.
 
 The client raises an error when no node answers, or when more than one node answers.
 

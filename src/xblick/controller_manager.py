@@ -16,10 +16,21 @@ robot's software, or a bridge to it, serves it.
     manager.unload("teleop_arms")
 
 A read (list, config, config_file) raises TimeoutError when nobody answers and RuntimeError when several managers
-answer. A command (create, switch, unload, torque step) is first refused, before anything is sent, unless exactly one
-manager (one controller) answers a read of it; then it is sent once (session.command): NotReached (a TimeoutError)
-when no manager became known, nothing sent; RuntimeError with the manager's reason when it refuses; NoAnswer (no
-TimeoutError) when it went out and no answer came: the robot may still execute it later, and it was not sent again.
+answer. Before a command (create, switch, unload, torque step), a read of the same node must have exactly one answer
+and no node's "Timeout" reply, else the command is not sent (RuntimeError, or TimeoutError when none answered). This
+is a best-effort check that catches two nodes that both answer the read. A second node that does not answer the read
+(hung, dropping queries), that appears between the read and the command, or that serves a broad key expression still
+gets the command. For a torque step the read counts the controller's parameter servers, not its torque_step servers.
+Then the command is sent once (session.command): NotReached (a TimeoutError) when no manager became known, nothing
+sent; RuntimeError with the manager's reason when it refuses; NoAnswer (no TimeoutError) when it went out and no
+answer came: the robot may still execute it later, and it was not sent again; PartlyAnswered (a NoAnswer) when one
+answered and another got it and did not answer in time.
+
+Time of a command, at the worst (Zenoh not ending a query by its timeout; session.collect's deadline): the read with
+the manager's ``timeout`` T (up to T + max(0.5, T) + 1 s), then ask_once with the command's timeout C (up to C for the
+manager to become known, then up to C + max(0.5, C) + 1 s for the reply). ``switch()`` with the defaults (T = 2 s,
+C = 2 + 5 s): up to 5 s + 7 s + 15 s = 27 s; a few ms when the manager answers at once. A manager whose read takes
+longer than T gets nothing ("not sent"); before 0.5.2 the command went out. This fails safe.
 
 A command has no expiry: a busy or briefly unreachable robot executes it when it gets it, also after the caller
 gave up (NoAnswer). Check the robot's state before acting on a NoAnswer.
@@ -49,7 +60,7 @@ from .msg import (
     UnloadControllerRequest,
     UnloadControllerResponse,
 )
-from .session import ask, command, timed_out
+from .session import ask, command, count, timed_out
 
 P = _core.protocol
 
@@ -78,15 +89,15 @@ def _command(session: zenoh.Session, key: str, request, response_type, timeout: 
     return response_type.deserialize(ok[0].payload.to_bytes())
 
 
-def _one_server(check, key: str):
-    """``check()``, a read of the node that serves ``key``: a RuntimeError (several answer) or TimeoutError (none
-    does) of it means the command is not sent."""
+def _count(session: zenoh.Session, read_key: str, request, timeout: float, key: str):
+    """The best-effort check before a command on ``key``: the read ``read_key`` of the same node must have exactly
+    one answer and no node's "Timeout" reply (session.count), else nothing is sent."""
     try:
-        check()
+        count(ask(session, read_key, timeout, payload=bytes(request.serialize())), read_key)
     except RuntimeError as error:
-        raise RuntimeError(f"not sent: {key}: {error}") from None
+        raise RuntimeError(f"{error} (the command {key})") from None
     except TimeoutError as error:
-        raise TimeoutError(f"not sent: {key}: {error}") from None
+        raise TimeoutError(f"{error} (the command {key})") from None
 
 
 class ControllerManager:
@@ -102,8 +113,8 @@ class ControllerManager:
         timeout = self.timeout if timeout is None else timeout
         if read:
             return _read(self._session, key, request, response_type, timeout)
-        # one manager, else nothing is sent (two would both execute it): its list_controllers has one answer
-        _one_server(self.list, key)
+        # one manager, as far as a read shows (two would both execute it): its list_controllers has one answer
+        _count(self._session, f"{self.key}/{P.LIST_CONTROLLERS}", ListControllersRequest(), self.timeout, key)
         return _command(self._session, key, request, response_type, timeout)
 
     def list(self) -> list:
@@ -160,13 +171,16 @@ def torque_step(session: zenoh.Session, key: str, joint: str, torque: float, dur
     ``torque`` [Nm] on ``joint`` for ``duration`` [s]. RuntimeError with the reason when it refuses.
 
     Not sent unless exactly one controller answers a read of its parameters (``<key>/list_parameters``; every
-    controller offers parameters). ``timeout`` [s]: how long to wait for the controller to become known and then for
-    its answer; it is no deadline for the step. NoAnswer: sent once, no answer within ``timeout``; the controller may
-    still execute the step later (a command has no expiry), and it was not sent again."""
-    from .parameters import ParameterClient
+    controller offers parameters) and none answers it late. Best effort: the read counts the controller's parameter
+    servers, not its torque_step servers, so a second torque_step server without parameters (an older bridge), one
+    that drops the read, or one that starts after it still gets the step. ``timeout`` [s]: how long to wait for the
+    controller to become known and then for its answer; it is no deadline for the step. NoAnswer: sent once, no
+    answer within ``timeout``; the controller may still execute the step later (a command has no expiry), and it was
+    not sent again."""
+    from .msg import ListParametersRequest
 
     key = topics.check_name(key.strip('/'))
-    _one_server(lambda: ParameterClient(session, key, timeout).list(), f"{key}/{P.TORQUE_STEP}")
+    _count(session, f"{key}/{P.LIST_PARAMETERS}", ListParametersRequest([], 0), timeout, f"{key}/{P.TORQUE_STEP}")
     response = _command(session, f"{key}/{P.TORQUE_STEP}", TorqueStepRequest(joint, float(torque), float(duration)),
                         TorqueStepResponse, timeout)
     if not response.ok:
