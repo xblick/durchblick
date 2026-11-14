@@ -7,6 +7,20 @@ Within 0.3.x, 0.3.59 changed the rings' keys and the info record's version (3): 
 or newer. 0.4.0 to 0.4.3 speak the protocol of 0.3.59 to 0.3.68: their programs and those of 0.3.68 work together.
 0.5.0 renamed every name on the wire and on disk: programs of 0.5 do not work with programs of 0.3 or 0.4.
 
+* **0.5.2** The protocol is 0.5.0's: programs of 0.5.0, 0.5.1 and 0.5.2 work together. `xblick cam`: `--reconnect
+  [SECONDS]` opens a camera that stopped or cannot be opened (also at the start) again every SECONDS (default 2) until
+  it delivers; each loss and return is a log line, a WARN diagnostics status while it is away; it must come back in
+  its first mode. `--option KEY=VALUE` passes FFmpeg input options and refuses one FFmpeg does not have for the source
+  (FFmpeg and PyAV would ignore it). `--mjpeg passthrough` (opt-in, not tested on a real camera) sends an MJPEG
+  camera's JPEG unchanged on the compressed transport, with the standard Huffman tables inserted where a frame has
+  none. `CameraPublisher.publish_compressed` takes the decoded frame (`image=`). Queries of a session just opened:
+  reads (`session.ask`, C++ `xblick::ask`) are asked again until the first reply: `xblick hz`'s check for point
+  clouds, the rays of compressed clouds, the controller manager's reads. **Commands are sent exactly once**
+  (`session.ask_once`, C++ `xblick::ask_once`): parameter sets, the controller manager's create, switch and unload, a
+  torque step and the record and play node's commands wait until the session knows the queryable and are never sent
+  again. 0.5.1 sent parameter sets again while no reply came, which a node that dropped a set without replying got
+  several times. Examples in the documentation and help texts use the test camera's `test/camera` and the device
+  nodes' `cam/rc_visard` and `cam/azurekinect` in place of `robot/camera`.
 * **0.5.1** **Changed default:** `xblick test-camera` publishes `test/camera/color`, no longer
   `robot/test_camera/color`. `xblick-cpp-camera` and `xblick-cpp-probe` default to `test/camera/color` and
   `test/camera/points`. A script that subscribes to the old name needs the new one, or the test camera started with
