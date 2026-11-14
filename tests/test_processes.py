@@ -131,12 +131,10 @@ def test_view_serves_frames_through_the_router(camera):
 
 
 def port_free(port: int) -> bool:
+    """Nothing listens on the port (a connection attempt is refused); a bind test would also fail on connections
+    of earlier tests that are still in TIME_WAIT."""
     with socket.socket() as s:
-        try:
-            s.bind(("0.0.0.0", port))
-            return True
-        except OSError:
-            return False
+        return s.connect_ex(("127.0.0.1", port)) != 0
 
 
 @pytest.mark.skipif(not port_free(7447), reason="port 7447 is taken (a router runs on this PC)")
