@@ -109,6 +109,7 @@ def test_cpp_to_python_exact(cpp_camera, transport):
         time.sleep(0.05)
     info = sub.camera_info
     assert isinstance(info, CameraInfo) and info.width == W and info.k[0] == 500.0
+    sub.close()  # with auto: its chooser thread ends with it
     session.close()
 
 
@@ -364,6 +365,7 @@ def test_cpp_to_python_points(cpp_camera, transport):
     assert got.points.tobytes() == cloud_pattern(got.seq).tobytes()
     assert [f.name for f in got.fields] == ["x", "y", "z", "rgb"] and got.header.frame_id == "TestCamera"
     assert sub.transport == ("shm" if transport == "auto" else transport)
+    sub.close()  # with auto: its chooser thread ends with it
     session.close()
 
 
@@ -377,6 +379,7 @@ def test_cpp_to_python_points_cuda(cpp_camera, device_frames):
     if device_frames:  # the host representations come from the publisher's download
         got = first_frame(PointCloudSubscriber(session, "t/cpp/color", "shm"))
         assert got.points.tobytes() == cloud_pattern(got.seq).tobytes()
+    sub.close()  # auto: its chooser thread ends with it
     session.close()
 
 

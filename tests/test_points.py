@@ -244,9 +244,11 @@ def test_cuda_transport(device):
     child.start()
     assert ready.wait(60)
     session = open_session(connect=[f"127.0.0.1:{port}"])
+    subs = []
     try:
         cuda_sub = PointCloudSubscriber(session, "t/pc/points", local="cuda")  # auto, preferring the CUDA ring
         shm_sub = PointCloudSubscriber(session, "t/pc/points", "shm")  # from the publisher's download (device)
+        subs = [cuda_sub, shm_sub]
         end = time.monotonic() + 60
         got = got_shm = None
         while (got is None or got_shm is None) and time.monotonic() < end:
@@ -260,6 +262,8 @@ def test_cuda_transport(device):
         same(host, cloud(seed))
         same(got_shm.points, cloud(int(unpack_rgb(got_shm.points["rgb"])[0, 0, 2])))
     finally:
+        for sub in subs:  # the auto one's chooser thread ends with it
+            sub.close()
         stop.set()
         session.close()
         child.join(20)
