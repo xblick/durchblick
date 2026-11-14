@@ -43,6 +43,12 @@ or newer. 0.4.0 to 0.4.3 speak the protocol of 0.3.59 to 0.3.68: their programs 
   query target does so while no queryable is declared complete, and a test pins that none is.
   **Tests:** the tests of the notice for a peer across PCs no longer wait for a session to an address that does not
   answer. Where such packets are dropped, as on CI, the close of that session took more than 5 s.
+  **Fixed:** a node that closed its session before its `Parameters` printed a traceback of the parameters' server
+  thread (`zenoh.ZError: channel is empty and closed`). The thread now ends quietly when its channels close.
+  **Tests:** a test whose threads still run 6 s after it fails, with their stacks, and an exception in a thread is
+  an error of its test. A watchdog that needs no GIL ends a hung run 30 s after the test's timeout. Tests that
+  raced with a session just opened (a second node, the tracks over an image) wait for a condition instead of a
+  fixed time.
   **Docs:** the check before a command has a limit that the pages did not name. A session that was just opened
   links to the serving sessions one after the other. For a short time its read can miss a second node, which may then
   get the command too, or reach only a busy one and refuse with "no node answered in time". The command path is
