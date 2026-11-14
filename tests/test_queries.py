@@ -507,6 +507,17 @@ def busy(params, name="x"):
     time.sleep(0.2)
 
 
+def knows_all(session, key: str, nodes: int, timeout: float = 5.0, read: float = 1.0):
+    """Waits until a read of ``key`` (each with timeout ``read``) from ``session`` is answered by all ``nodes``
+    serving sessions. A session just opened behind a router links to the serving sessions one after the other and
+    learns each one's queryables over its link: until then a query reaches only some of them (seen in CI: the busy one
+    alone, so that the check before a set saw only its late reply)."""
+    end = time.monotonic() + timeout
+    while len(got := [r for r in replies(session, key, read) if r.ok is not None]) < nodes:
+        assert time.monotonic() < end, f"{key}: {len(got)} of {nodes} nodes reached within {timeout:g} s"
+        time.sleep(0.05)
+
+
 def test_a_busy_second_node_gets_no_set(network):
     """Two nodes of one name, the second busy: the read is still open at its timeout ("Timeout"), so the set is not
     sent; the first node's writer ran 0 times, the second's only for its own local set."""
@@ -519,9 +530,9 @@ def test_a_busy_second_node_gets_no_set(network):
     b = Parameters(second, "node", "t/busy")
     b.declare("x", 0.0, write=lambda v: (writes["b"].append(v), time.sleep(3.0)))
     try:
-        time.sleep(0.5)
-        busy(b)
         with network.new_session() as s:
+            knows_all(s, "t/busy/node/list_parameters", 2)
+            busy(b)
             with pytest.raises(RuntimeError, match="not sent: 1 node\\(s\\) answered t/busy/node/list_parameters, and "
                                                    "the query was still open at its timeout \\(a second node, or the "
                                                    "answering node"):
@@ -542,7 +553,8 @@ def test_a_command_answered_by_one_node_while_another_is_late(network):
     network.serve("t/both", lambda q: b"done", name="fast")
     network.serve("t/both", lambda q: b"late", delay=1.5, server=second, name="slow")
     with network.new_session() as s:
-        time.sleep(0.5)
+        knows_all(s, "t/both", 2, read=2.0)
+        network.calls.update(fast=0, slow=0)
         with pytest.raises(PartlyAnswered, match="t/both: answered by 1 node\\(s\\), and the query was still open "
                                                  "after 0.5 s "
                                                  ".*a second node may still execute it"):
