@@ -33,6 +33,7 @@ T = ParameterType
 
 HELP = Text("Enter sets an edited field, Esc takes it back; ↑/↓ step a number and set it; a checkbox or a "
             "choice sets at once", style="dim")
+EDITED = "edited: Enter sets it, Esc takes it back"  # the note of a field typed in, not set yet
 TAKEN_S = 2.0  # how long "set" stays under a field
 
 
@@ -271,8 +272,11 @@ class ParametersPane(Vertical):
         edited = event.value != node
         event.input.set_class(edited, "-edited")
         if edited:
-            self._note(i, "edited: Enter sets it, Esc takes it back", "yellow")
-        elif not event.input.has_class("-sending"):
+            self._note(i, EDITED, "yellow")
+        elif (not event.input.has_class("-sending")
+              and str(self.query_one(f"#param-error-{i}", Static).content) == EDITED):
+            # back to the node's value by hand: the "edited" note goes. Only that one: the Changed message of a
+            # refused value put back (_result) may come after _updating ended, and must not clear the reason
             self._note(i, "")
 
     def step(self, widget: Input, direction: int):
