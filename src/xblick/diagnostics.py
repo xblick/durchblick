@@ -3,7 +3,7 @@ second: one status named after the node, its level, a message and numeric values
 them, ``xblick rerun`` plots them.
 Every sample's attachment names the publishing session (``zid``, ``sender``): several nodes report on one camera's key.
 
-    diagnostics = DiagnosticsPublisher(session, "robot/camera", "nemo")
+    diagnostics = DiagnosticsPublisher(session, "test/camera", "nemo")
     diagnostics.publish(DiagnosticsPublisher.OK, "9.9 frames/s", {"frames/s": 9.9, "objects": 3})
 """
 

@@ -35,7 +35,7 @@ unfolds it.
 The columns "published by" and "subscribed by" name the sessions. A name stands on the highest row below which
 every key has the same sessions, and the keys below that row leave the cell empty. In the screenshot, `azurekinect`
 stands once on `color/`, and `diagnostics` lists every session that reports on it. The names are short: a session
-is named without the name of the session whose name is a prefix of its own, so `robot/camera/sam3` becomes
+is named without the name of the session whose name is a prefix of its own, so `test/camera/sam3` becomes
 `sam3`. The Nodes tab and the detail panes show the whole names.
 
 The column "Hz" stays empty until something subscribes: `m` for all topics, or Enter for one. A node's own rate
@@ -152,7 +152,7 @@ When the interface is connected only to peers, it says that no router answered, 
 traffic.
 
 **Names.** The admin space knows declarations and no names. The interface therefore names a session after the
-common prefix of its keys, for example `robot/camera/sam3`.
+common prefix of its keys, for example `test/camera/sam3`.
 
 **Diagnostics.** The reports of several nodes on one camera share `<camera>/diagnostics`. Each sample names its
 session in the attachment field `zid`, so each report appears under its session. A sample without this field

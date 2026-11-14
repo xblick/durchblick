@@ -16,9 +16,9 @@ def test_camera_spec_defaults_and_options():
     assert head.keys == {"color": "robot/camera/color", "depth": "robot/camera/depth",
                          "instances": "robot/camera/sam3/instances",
                          "detections": "robot/camera/sam3/detections_2d"}
-    rc = CameraSpec.parse("robot/rc_visard:color=left:depth=ffs/depth")
-    assert rc.keys == {"color": "robot/rc_visard/left", "depth": "robot/rc_visard/ffs/depth"}
-    assert str(rc) == "robot/rc_visard:color=left:depth=ffs/depth"
+    rc = CameraSpec.parse("cam/rc_visard:color=left:depth=ffs/depth")
+    assert rc.keys == {"color": "cam/rc_visard/left", "depth": "cam/rc_visard/ffs/depth"}
+    assert str(rc) == "cam/rc_visard:color=left:depth=ffs/depth"
     assert CameraSpec.parse(str(head)) == head  # the segmenter is written out, so a default does not get lost
     assert CameraSpec.parse("c:segmenter=sam3_rc", segmenter="sam3").segmenter == "sam3_rc"
     for bad in ("", "robot/camera:colour=x", "robot/camera:depth", "robot/camera:depth=a:depth=b"):

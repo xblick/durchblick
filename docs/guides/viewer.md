@@ -16,10 +16,10 @@ every 5 s, so a node that starts later appears too. It starts a viewer on this m
 
 ```bash
 xblick rerun --connect sim-host                        # everything from another host
-xblick rerun --prefix robot/camera               # the streams and results of one camera
+xblick rerun --prefix test/camera               # the streams and results of one camera
 xblick rerun --serve --connect sim-host                # a viewer connects with: rerun --connect <printed URL>
 xblick rerun --connect-viewer rerun+http://laptop:9876/proxy --connect sim-host  # to a running viewer
-xblick rerun robot/camera/color --save head.rrd --connect sim-host         # write a recording file
+xblick rerun test/camera/color --save head.rrd --connect sim-host         # write a recording file
 ```
 
 Put the streams before `--connect`, because `--connect` accepts several endpoints. The
@@ -72,7 +72,7 @@ For every topic, the viewer plots three time series on the capture timeline.
 
 | topic | rate Hz | age at send ms | age at receive ms | dropped/s |
 | --- | --: | --: | --: | --: |
-| robot/camera/color | 30.0 | 0.6 | 1.9 | 0 |
+| test/camera/color | 30.0 | 0.6 | 1.9 | 0 |
 
 "dropped/s" counts the samples that the publisher sent and that did not arrive. The viewer finds them as gaps in
 the sequence numbers. For a stream that the viewer limits itself, such as point clouds, the rate is the limited

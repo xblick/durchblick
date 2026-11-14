@@ -6,7 +6,7 @@ image's stamp falls between two of them. :class:`PoseBuffer` gives the pose of t
 pose interpolated between the two around it (translation linearly, rotation along the shorter arc), if they are at
 most ``max_gap`` apart; it never extrapolates.
 
-    camera = CameraPoses(session, "robot/camera")      # <camera>/tf, frames in the world
+    camera = CameraPoses(session, "test/camera")      # <camera>/tf, frames in the world
     world_from_camera = camera.wait(image.header.stamp.to_ns(), seconds=0.2)   # 4x4 or None
 """
 

@@ -3,11 +3,11 @@
 // work together; tests/test_cpp_interop.py checks every transport.
 //
 //   zenoh::Session session = xblick::open_session({});      // the PC's Zenoh router
-//   xblick::CameraPublisher camera(session, "robot/camera/color",
+//   xblick::CameraPublisher camera(session, "cam/azurekinect/color",
 //                                      {.encoding = "rgb8", .frame_id = "AzureKinectCamera", .source = "robot"});
 //   if (camera.subscribed()) camera.publish(xblick::HostImage{pixels, 720, 1280}, capture_ns);
 //
-//   xblick::ImageSubscriber images(session, "robot/camera/color",
+//   xblick::ImageSubscriber images(session, "test/camera/color",
 //                                      {.transport = xblick::Transport::Auto});
 //   if (auto frame = images.latest(true, std::chrono::milliseconds(100))) { use(frame->data(), frame->height, ...); }
 //

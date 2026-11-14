@@ -1,13 +1,13 @@
 """``xblick`` command line: look at what is published, measure a stream, save a frame, publish a test pattern.
 
     xblick list --connect 192.0.2.10              # topics seen within 2 s, with rate, size and type
-    xblick hz robot/camera/color --connect …  # frame rate, latency from capture, dropped frames (or clouds)
-    xblick snapshot robot/camera/color out.png --connect …
+    xblick hz test/camera/color --connect …  # frame rate, latency from capture, dropped frames (or clouds)
+    xblick snapshot test/camera/color out.png --connect …
     xblick test-camera                            # a moving test pattern as test/camera/color
     xblick cam /dev/video0                        # a live camera FFmpeg opens as cam/video0/color (needs xblick[cam])
     xblick cam                                    # ... chosen from this PC's cameras with the arrow keys
     xblick rerun --connect …                      # every stream and node result in the Rerun viewer
-    xblick diagnostics robot --connect …         # how the cameras' publishers are doing (<camera>/diagnostics)
+    xblick diagnostics test --connect …          # how the cameras' publishers are doing (<camera>/diagnostics)
     xblick mps --pipe-dir /tmp/xblick-mps         # NVIDIA MPS for the nodes on this PC's GPU (mps.py)
     xblick record --dir ~/recordings --connect …  # everything into MCAP files until stopped (recording.py)
     xblick recorder stop                          # tell the record and play node: record, stop, status, ...
@@ -16,8 +16,8 @@
     xblick recorder record --key 'sim/*' --key robot/joint_states --blocking --log-time header --file ep.mcap
     xblick play episode.mcap --pace step          # in lockstep: xblick recorder step [--frames N]
     xblick param --nodes                          # the nodes with parameters (parameters.py)
-    xblick param --node robot/camera --get  # their values; --describe, --set NAME:=VALUE [--atomically]
-    xblick relay --stream robot/camera/color      # xblick-relay with these arguments (needs xblick[relay])
+    xblick param --node test/camera --get  # their values; --describe, --set NAME:=VALUE [--atomically]
+    xblick relay --stream test/camera/color      # xblick-relay with these arguments (needs xblick[relay])
     xblick                                             # without a command: the terminal interface (tui.py)
 """
 
@@ -418,7 +418,7 @@ def _add_video_arguments(p):
     v = p.add_argument_group("videos", "files that are not MCAP (a video FFmpeg reads, an image directory or glob; "
                                        "needs xblick[video]): played at once, one stream each, on one clock")
     v.add_argument("--stream", action="append", metavar="BASE",
-                   help="the stream base of a video, e.g. robot/rc_visard/left (repeat: one per video, in their "
+                   help="the stream base of a video, e.g. cam/rc_visard/left (repeat: one per video, in their "
                         "order)")
     v.add_argument("--camera", default=None, help="one video: its stream is <camera>/color (instead of --stream)")
     v.add_argument("--offset-ms", action="append", type=float, metavar="MS",
@@ -560,7 +560,7 @@ def build_parser(prog: str = "xblick") -> argparse.ArgumentParser:
     commands = parser.add_subparsers(dest="command", required=True)
 
     p = commands.add_parser("list", help="the camera streams (their info records), or with --traffic every topic")
-    p.add_argument("prefix", nargs="?", default="", help="only keys below this prefix, e.g. robot")
+    p.add_argument("prefix", nargs="?", default="", help="only keys below this prefix, e.g. test")
     p.add_argument("--seconds", type=float, default=2.0)
     p.add_argument("--traffic", action="store_true",
                    help="subscribe to every topic and show rates and sizes (makes publishers produce everything)")
@@ -570,7 +570,7 @@ def build_parser(prog: str = "xblick") -> argparse.ArgumentParser:
     for name, run, help_text in (("hz", _hz, "rate and latency of a camera stream"),
                                  ("snapshot", _snapshot, "save the next frame of a camera stream")):
         p = commands.add_parser(name, help=help_text)
-        p.add_argument("stream", help="stream base, e.g. robot/camera/color")
+        p.add_argument("stream", help="stream base, e.g. test/camera/color")
         if name == "snapshot":
             p.add_argument("output", help="image file (PNG keeps 16-bit depth)")
             p.add_argument("--timeout", type=float, default=5.0)
@@ -603,7 +603,7 @@ def build_parser(prog: str = "xblick") -> argparse.ArgumentParser:
     p.set_defaults(run=lambda a, parser=p: _cam(a, parser))
 
     p = commands.add_parser("diagnostics", help="how the cameras' publishers are doing (<camera>/diagnostics)")
-    p.add_argument("prefix", nargs="?", default="", help="only cameras below this prefix, e.g. robot")
+    p.add_argument("prefix", nargs="?", default="", help="only cameras below this prefix, e.g. test")
     p.add_argument("--values", action="store_true", help="every value, not only level and message")
     p.add_argument("--seconds", type=float, default=0.0, help="stop after this time (default: never)")
     zsession.add_arguments(p)
@@ -616,24 +616,24 @@ def build_parser(prog: str = "xblick") -> argparse.ArgumentParser:
                    help="stream bases (default: every stream, label image and detections that answer, below --prefix, "
                         "looked for again every --report seconds)")
     p.add_argument("--points", action="append", metavar="BASE",
-                   help="a point cloud stream to show as well, e.g. robot/camera/points (repeat for more)")
+                   help="a point cloud stream to show as well, e.g. test/camera/points (repeat for more)")
     p.add_argument("--cloud-rate", type=float, default=5.0, help="point clouds per second sent to the viewer")
     p.add_argument("--stale-after", type=float, default=2.0,
                    help="clear bodies, boxes and masks whose topic sent nothing for this many seconds (a node that "
                         "stopped sends no empty result); raise it for a node slower than this, 0: keep them")
     p.add_argument("--detections", action="append", metavar="KEY",
                    help="a vision node's boxes (vision_msgs Detection2DArray or Detection3DArray) to show, "
-                        "<camera>/<node>/<name>, e.g. robot/camera/boxer/boxes_3d (repeat for more)")
+                        "<camera>/<node>/<name>, e.g. test/camera/boxer/boxes_3d (repeat for more)")
     p.add_argument("--segmentation", action="append", metavar="KEY",
                    help="a label image stream (mono8 or mono16 ids, 0 none) to draw over its camera's image, "
-                        "<camera>/<node>/<name>, e.g. robot/camera/sam3/instances (repeat for more)")
+                        "<camera>/<node>/<name>, e.g. test/camera/sam3/instances (repeat for more)")
     p.add_argument("--trajectory", action="append", metavar="KEY",
                    help="poses in the world (tf2_msgs/TFMessage) to draw as a path with axes at the newest, e.g. "
-                        "robot/camera/vslam/tf, and robot/camera/tf to compare (repeat for more)")
+                        "test/camera/vslam/tf, and test/camera/tf to compare (repeat for more)")
     p.add_argument("--no-ages", action="store_true",
                    help="leave out the rates and ages (rates/<topic> Hz, ages/<topic> and ages_received/<topic> ms, "
                         "the table ages_now)")
-    p.add_argument("--prefix", default="", help="without streams: only streams below this prefix, e.g. robot")
+    p.add_argument("--prefix", default="", help="without streams: only streams below this prefix, e.g. test")
     p.add_argument("--seconds", type=float, default=2.0, help="without streams: how long to look for them")
     p.add_argument("--report", type=float, default=5.0, help="seconds between the frame-rate lines")
     viewer = p.add_mutually_exclusive_group()
@@ -649,7 +649,7 @@ def build_parser(prog: str = "xblick") -> argparse.ArgumentParser:
     p.set_defaults(run=_rerun)
 
     p = commands.add_parser("param", help="a node's parameters (ROS 2's services): list, describe, get, set, dump")
-    p.add_argument("--node", default=None, metavar="NAMESPACE/NAME", help="the node, e.g. robot/camera")
+    p.add_argument("--node", default=None, metavar="NAMESPACE/NAME", help="the node, e.g. test/camera")
     p.add_argument("--nodes", action="store_true", help="the nodes that offer parameters")
     p.add_argument("names", nargs="*", help="only these parameters (default: all)")
     what = p.add_mutually_exclusive_group()
@@ -748,7 +748,7 @@ def build_parser(prog: str = "xblick") -> argparse.ArgumentParser:
     p.add_argument("--rate", type=float, default=1.0, help="times the recorded pace")
     p.add_argument("--loop", action="store_true")
     p.add_argument("--key", action="append", metavar="PATTERN",
-                   help="only topics matching this pattern, e.g. 'robot/camera/*' (repeat for more)")
+                   help="only topics matching this pattern, e.g. 'test/camera/*' (repeat for more)")
     p.add_argument("--cuda-device", type=int, default=None, metavar="ORDINAL",
                    help="image streams also in a CUDA ring on this device, as a camera with a GPU offers them "
                         "(default: shared memory only)")

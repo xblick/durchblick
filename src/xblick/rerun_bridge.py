@@ -1,7 +1,7 @@
 """Camera streams in the Rerun viewer (rerun.io, open source): ``xblick rerun``.
 
 Each stream's ``image_raw/compressed`` goes to the viewer on the timeline ``capture`` (the frame's header stamp), at
-the entity of the stream's base, e.g. ``robot/camera/color``: a JPEG or 8-bit PNG as it is (not decoded and
+the entity of the stream's base, e.g. ``test/camera/color``: a JPEG or 8-bit PNG as it is (not decoded and
 encoded again); 16-bit images decoded, ``16UC1`` as a depth image in millimetres (REP 118: in 3D views a point cloud),
 ``mono16`` (infrared) as a grey image. Its ``camera_info`` becomes a pinhole camera at the same entity (logged when it
 changes), so the image also shows in 3D views.
@@ -19,19 +19,19 @@ x y z each), its ``<camera>/diagnostics`` to a text log (each publisher's level 
 numeric values), at ``<camera>/imu`` and ``<camera>/diagnostics/<publisher>``; the layout gets their views once they
 arrive.
 
-Point cloud streams (``clouds``, e.g. ``robot/camera/points`` of xblick-points) go to the viewer as
+Point cloud streams (``clouds``, e.g. ``test/camera/points`` of xblick-points) go to the viewer as
 coloured 3D points at the stream's entity, placed by the cloud's frame like a camera stream, at most ``cloud_rate``
 clouds per second (a viewer keeps everything it was sent; 30 clouds of 6 MB a second fill its memory fast). On the
 publisher's host they come from shared memory (the bridge needs the points themselves, so a compressed cloud would
 only cost an encoding and a decoding); elsewhere compressed (``cloud/compressed``, points.py) where the publisher has
 rays, and as sensor_msgs/PointCloud2, the whole cloud each time, where it has none, which a network link may not carry.
-A node's cloud (``<camera>/<node>/<name>``, e.g. xblick-tapnext's ``robot/camera/tapnext/tracks``) belongs
+A node's cloud (``<camera>/<node>/<name>``, e.g. xblick-tapnext's ``test/camera/tapnext/tracks``) belongs
 to that camera; with an ``object_id`` field its points are coloured by it, and with ``u, v`` (pixels of the image of
 the cloud's frame) its points are also drawn in the 2D view of the bridged stream of that frame, at
 ``<stream>/<node>/<name>``, as 2D detections are (only those with ``visible`` 1, where the cloud has that field).
 
 Results of vision nodes (``detections``, keys ``<camera>/<node>/<name>`` of vision_msgs, e.g.
-``robot/camera/boxer/boxes_3d``): a Detection3DArray as 3D boxes at that key's entity, placed by its header's
+``test/camera/boxer/boxes_3d``): a Detection3DArray as 3D boxes at that key's entity, placed by its header's
 frame like a stream (3D views; and projected into the 2D views of that camera's streams, as bodies are: the object
 poses of xblick-foundationpose and xblick-nemo over the images); a Detection2DArray as rectangles (rotated by
 their theta) in the image of the bridged stream of that camera whose frame is the header's (its 2D view), at
@@ -41,7 +41,7 @@ A Classification (classes without a place, e.g. xblick-vjepa2's actions of a cli
 key's entity, its hypotheses best first (``class_id score``), the layout getting a view of it once it arrives.
 
 Label images (``segmentations``, image streams ``<camera>/<node>/<name>`` of mono8 or mono16 whose pixels are ids,
-0 for none, e.g. xblick-sam3's ``robot/camera/sam3/instances``): a segmentation image (a colour per id,
+0 for none, e.g. xblick-sam3's ``test/camera/sam3/instances``): a segmentation image (a colour per id,
 drawn over the image) in the 2D view of the bridged stream of that camera whose frame is the label image's
 (its header's), at ``<stream>/<node>/<name>``, like 2D detections; the ids of an instance image are those of the
 node's detections of the same stamp.
@@ -66,7 +66,7 @@ simulation): then that camera's entity moves through the world with it, the root
 where the pose of the named frame puts it, on the capture timeline, and the scene's up is the world's z.
 
 A node's poses of a camera in the world (``trajectories``, any key of tf2_msgs/TFMessage with parent frame ``world``,
-e.g. xblick-vslam's ``robot/camera/vslam/tf``, or ``<camera>/tf`` to compare with) go to the entity
+e.g. xblick-vslam's ``test/camera/vslam/tf``, or ``<camera>/tf`` to compare with) go to the entity
 ``trajectories/<key>``, outside the moving camera: its path so far as a line, and ``pose`` with axes at the newest pose.
 
 The viewer has no way to tell the bridge which streams it shows: the bridge subscribes to every stream it bridges for
@@ -195,14 +195,14 @@ def detection_label(detection) -> tuple[str, str]:
 
 
 def cloud_camera(key: str) -> str:
-    """The camera a point cloud stream belongs to: a camera's own (``robot/camera/points``) or a node's
-    (``robot/camera/tapnext/tracks``); cameras are ``<namespace>/<camera>`` (topics.py)."""
+    """The camera a point cloud stream belongs to: a camera's own (``test/camera/points``) or a node's
+    (``test/camera/tapnext/tracks``); cameras are ``<namespace>/<camera>`` (topics.py)."""
     return camera_of(key) if key.count("/") <= 2 else camera_of(camera_of(key))
 
 
 def camera_of(base: str) -> str:
-    """The camera a stream belongs to: its base without the last part (``robot/camera/depth`` ->
-    ``robot/camera``)."""
+    """The camera a stream belongs to: its base without the last part (``test/camera/depth`` ->
+    ``test/camera``)."""
     camera, _, _ = base.rpartition("/")
     if not camera:
         raise ValueError(f"stream {base!r} has no camera part")

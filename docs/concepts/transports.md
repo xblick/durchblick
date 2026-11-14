@@ -69,9 +69,9 @@ The publisher gets the table from its program and knows nothing else about the o
 | a laser scanner | the unit vector of its beam | the distance along the beam |
 
 ```python
-publisher = PointCloudPublisher(session, "robot/camera/points", fields=XYZRGB[0], point_step=16,
+publisher = PointCloudPublisher(session, "test/camera/points", fields=XYZRGB[0], point_step=16,
                                 frame_id="depth_camera", rays=rays)       # rays: height x width x 3, float32
-subscriber = PointCloudSubscriber(session, "robot/camera/points")   # auto: compressed on another PC
+subscriber = PointCloudSubscriber(session, "test/camera/points")   # auto: compressed on another PC
 ```
 
 A subscriber with `auto` on another PC takes `compressed` where every publisher of the stream offers it, and `raw`

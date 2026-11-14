@@ -15,10 +15,10 @@ in C++. Both have the same model, keys, checks and messages.
 
 ```bash
 xblick param --nodes                                  # the nodes that offer parameters
-xblick param --node robot/camera                # names and values
-xblick param --node robot/camera --describe     # with type, range, step, unit, choices, read-only
-xblick param --node robot/camera --set color.exposure_time_us:=10000 --set color.gain:=20
-xblick param --node robot/camera --dump ~/kinect.yaml    # write a params file
+xblick param --node cam/azurekinect            # names and values
+xblick param --node cam/azurekinect --describe     # with type, range, step, unit, choices, read-only
+xblick param --node cam/azurekinect --set color.exposure_time_us:=10000 --set color.gain:=20
+xblick param --node cam/azurekinect --dump ~/kinect.yaml    # write a params file
 ```
 
 `--set` prints `name: set` or `name: refused: <reason>` for each parameter. The command ends with status 1 when the
@@ -55,7 +55,7 @@ xblick-some-node --param threshold:=0.5 --param mode:=accurate --params-file ~/t
 The format is the params file of ROS 2.
 
 ```yaml
-/robot/camera/tracker:      # the full name of the node. The leading / is optional.
+/test/camera/tracker:      # the full name of the node. The leading / is optional.
   ros__parameters:
     threshold: 0.5
     color:
@@ -67,7 +67,7 @@ The format is the params file of ROS 2.
 
 | Node key | Matches |
 | --- | --- |
-| `/robot/camera/tracker` | this node |
+| `/test/camera/tracker` | this node |
 | `tracker` | a node with this name in any namespace |
 | `*` | one level |
 | `**` | any number of levels. `/**` matches every node. |
@@ -99,7 +99,7 @@ parser = argparse.ArgumentParser()
 node.Parameters.add_arguments(parser)          # --param, --params-file, --dump-params, --params-read-only
 args = parser.parse_args()
 
-params = node.Parameters(session, "tracker", "robot/camera")   # name, namespace
+params = node.Parameters(session, "tracker", "test/camera")   # name, namespace
 params.configure(args)
 params.declare("threshold", 0.3, description="a box's score at least", range=(0.0, 1.0, 0.05))
 params.declare("max_boxes", 10, range=(1, 100, 1), unit="boxes")
@@ -116,7 +116,7 @@ C++:
 ```cpp
 #include "xblick/parameters.hpp"
 
-xblick::Parameters params(session, "camera", "robot/camera");
+xblick::Parameters params(session, "camera", "test/camera");
 params.configure(xblick::parameter_args(argc, argv));
 params.declare("color.exposure_time_us", std::int64_t{8000},
                {.description = "exposure time", .unit = "us",
@@ -182,7 +182,7 @@ options.add_parameter_options();   // --param, --params-file, --dump-params, --p
 options.parse(argc, argv);         // --help prints the help; a wrong command line ends the program (2)
 
 zenoh::Session session = xblick::open_session(options.session_options());
-xblick::Parameters params(session, "relay", "robot");
+xblick::Parameters params(session, "relay", "xblick");
 params.configure(options.parameter_startup());
 options.declare(params, {{"max_rate", [&](const ParameterValue& v) { return tracker.set_rate(v.double_value); }}});
 params.check_overrides();
@@ -267,7 +267,7 @@ and in C++ `ParameterStartup::read_only_access`.
 
 ## Keys
 
-A node with parameters is `<namespace>/<name>`, for example `robot/camera`. Its full name in the notation of
+A node with parameters is `<namespace>/<name>`, for example `test/camera`. Its full name in the notation of
 ROS is `/<namespace>/<name>`.
 
 | Key | Content |

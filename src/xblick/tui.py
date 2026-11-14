@@ -71,7 +71,7 @@ def _short(zid: str) -> str:
 
 def short_names(labels: dict[str, str]) -> dict[str, str]:
     """Sessions' names without what another session's name says already: below the longest other name that is a
-    prefix of it (``sam3`` below ``robot/camera``, ``tapnext/tracks``), else whole (``robot``,
+    prefix of it (``sam3`` below ``test/camera``, ``tapnext/tracks``), else whole (``robot``,
     ``xblick/recorder/status``); ``subscribes <prefix>`` likewise after its word. Two names that would be the same
     stay whole."""
     def split(label: str) -> tuple[str, list[str]]:
@@ -393,7 +393,7 @@ class TopicRow:
 
 def topic_tree(keys, collapsed: set[str] = frozenset(), cells: dict | None = None) -> list[TopicRow]:
     """The keys as a directory tree, depth first: a prefix with one child and no key of its own joins it
-    (``robot/camera/``), guides (``├─``, ``└─``) show the depth, a prefix in ``collapsed`` hides what is below it
+    (``test/camera/``), guides (``├─``, ``└─``) show the depth, a prefix in ``collapsed`` hides what is below it
     (``▸``, with the number of keys). A key that is also a prefix (``.../image_raw`` and ``.../image_raw/shm``) is one
     row. A ring's key ends with its place, the host's id and the GPU's UUID (topics.py): the tree shows the first 8
     characters of each. With ``cells`` (key -> publishers, subscribers), a key's or prefix's sessions stand only on the highest row
@@ -597,7 +597,7 @@ class XblickApp(App):
                         with VerticalScroll(id="rerun-form"):
                             yield Static(id="rerun-found")
                             yield Label("prefix (without streams: only those below it)")
-                            yield Input(id="rerun-prefix", placeholder="e.g. robot", compact=True)
+                            yield Input(id="rerun-prefix", placeholder="e.g. test", compact=True)
                             yield Label("--stale-after (s)")
                             yield Input(id="rerun-stale-after", placeholder="default", type="number", compact=True)
                             yield Label("--cloud-rate (clouds/s)")

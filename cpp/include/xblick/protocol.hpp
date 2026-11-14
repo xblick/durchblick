@@ -3,7 +3,7 @@
 // languages always speak the same version. The layouts of the rings and their handshake are versioned in ring.hpp and
 // cuda_ring.hpp.
 //
-// A stream "<namespace>/<camera>/<stream>" (e.g. robot/camera/color) has these keys below it (Zenoh key =
+// A stream "<namespace>/<camera>/<stream>" (e.g. test/camera/color) has these keys below it (Zenoh key =
 // topic without the leading slash):
 //
 //   image_raw             sensor_msgs/msg/Image
@@ -24,7 +24,7 @@
 // and relays) offer rings of one stream side by side. A reader subscribes to image_raw/cuda/<host>/* for the rings on
 // every GPU of its host.
 //
-// A point cloud stream "<namespace>/<camera>/<stream>" (e.g. robot/camera/points) has below it, in the same
+// A point cloud stream "<namespace>/<camera>/<stream>" (e.g. test/camera/points) has below it, in the same
 // manner as an image stream (the points of a frame are written once into a ring; same host: only a descriptor travels):
 //
 //   cloud                 sensor_msgs/msg/PointCloud2           (the whole cloud over the network: large, see README)
@@ -34,7 +34,7 @@
 //   cloud/rays               queryable, xblick_msgs/msg/Rays  (the rays of cloud/compressed)
 //   info                  queryable, as for images
 //
-// A camera "<namespace>/<camera>" (e.g. robot/camera) with several streams has below it:
+// A camera "<namespace>/<camera>" (e.g. test/camera) with several streams has below it:
 //
 //   tf_static             tf2_msgs/msg/TFMessage: the fixed transforms between its streams' frames (header.frame_id
 //                         of their camera_info), as ROS's /tf_static; published once and answered on request (a
@@ -108,7 +108,7 @@
 //   get_config_file       xblick_msgs/srv/GetConfigFile: a config file of the robot, <type>/<name> (JSON)
 //
 // Results of vision nodes about a camera's images go below the camera and the node, "<camera>/<node>/<name>" (e.g.
-// robot/camera/boxer/boxes_3d), each sample one message, stamped as the image it is about:
+// test/camera/boxer/boxes_3d), each sample one message, stamped as the image it is about:
 //
 //   vision_msgs/msg/Detection2DArray  objects in an image (boxes in pixels; header.frame_id the image's camera frame)
 //   vision_msgs/msg/Detection3DArray  objects in 3D (box poses in header.frame_id, a frame of the camera's tf_static)

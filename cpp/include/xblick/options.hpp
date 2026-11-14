@@ -12,7 +12,7 @@
 //   options.add_parameter_options();   // --param, --params-file, --dump-params, --params-read-only
 //   options.parse(argc, argv);         // --help: the help, exit 0; a wrong option: why and the usage, exit 2
 //   zenoh::Session session = open_session(options.session_options());
-//   Parameters params(session, "relay", "robot");
+//   Parameters params(session, "relay", "xblick");
 //   params.configure(options.parameter_startup());
 //   options.declare(params);           // every option a parameter: read-only, but the live ones
 //   params.check_overrides();

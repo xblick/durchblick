@@ -1,8 +1,8 @@
 """Measure Durchblick topics for a fixed time: rate, age at send and age at receive per topic, and optionally the
 load and memory of GPUs. Prints one JSON object per topic and one per GPU on stdout; progress goes to stderr.
 
-    uv run python scripts/measure_topics.py robot/camera/color/image_raw/compressed \
-        robot/camera/sam3/instances/image_raw/compressed --seconds 60 --gpus 0 1 --warmup 10
+    uv run python scripts/measure_topics.py test/camera/color/image_raw/compressed \
+        test/camera/sam3/instances/image_raw/compressed --seconds 60 --gpus 0 1 --warmup 10
 
 A topic is a Zenoh key or key expression (a stream's transport topic, a node's result topic, `<camera>/**`). The age at
 send is the publisher's own measure (attachment publish_ns minus the sample's stamp): for a node's result it is the

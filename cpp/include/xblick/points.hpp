@@ -9,7 +9,7 @@
 // them as CloudPublisherOptions::rays and knows nothing else about the cloud's origin (Python's points.py and
 // docs/concepts/transports.md describe the transport).
 //
-//   xblick::PointCloudPublisher points(session, "robot/camera/points",
+//   xblick::PointCloudPublisher points(session, "test/camera/points",
 //                                          {.layout = xblick::xyzrgb_layout(),
 //                                           .frame_id = "AzureKinectDepthCamera", .cuda_device = 0});
 //   if (points.subscribed()) {
@@ -17,7 +17,7 @@
 //       points.commit(stream, false, capture_ns);
 //   }
 //
-//   xblick::PointCloudSubscriber cloud(session, "robot/camera/points",
+//   xblick::PointCloudSubscriber cloud(session, "test/camera/points",
 //                                          {.local = xblick::Transport::Cuda});
 //   if (auto c = cloud.latest(true, std::chrono::milliseconds(100))) { use(c->device_ptr, c->height, c->width, ...); }
 #pragma once

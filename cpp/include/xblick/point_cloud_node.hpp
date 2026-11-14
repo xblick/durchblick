@@ -4,8 +4,8 @@
 // whose colour camera is placed by <camera>/tf_static (or is in the depth camera's frame); the program
 // xblick-points and other C++ programs run it.
 //
-//   xblick::PointCloudNode node(session, {.depth = "robot/camera/depth",
-//                                             .color = "robot/camera/color"});
+//   xblick::PointCloudNode node(session, {.depth = "test/camera/depth",
+//                                             .color = "test/camera/color"});
 //   while (running) { node.step(std::chrono::milliseconds(100)); if (second_passed) node.report(); }
 //
 // The inputs are taken only while somebody takes the points: from the CUDA rings on the camera's host (no copy through

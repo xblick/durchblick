@@ -5,7 +5,7 @@ other streams refer to by stamp (the depth of a colour frame, the image a segmen
 ``FrameHistory`` takes every frame as it comes, in a thread of its own, and keeps the last ones by stamp.
 
     wake = threading.Event()
-    color = FrameHistory(ImageSubscriber(session, "robot/camera/color", transport="auto"), 10, on_put=wake.set)
+    color = FrameHistory(ImageSubscriber(session, "test/camera/color", transport="auto"), 10, on_put=wake.set)
     wake.wait(0.1)
     frame = color.at(stamp)          # or color.newest()
 

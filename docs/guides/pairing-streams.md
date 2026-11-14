@@ -42,7 +42,7 @@ Durchblick does not install. Your node brings them.
 import threading
 from xblick.rgbd import CameraSpec, FramePreparer, RGBDInputs
 
-spec = CameraSpec.parse("robot/rc_visard:color=left:depth=ffs/depth", segmenter="sam3")
+spec = CameraSpec.parse("cam/rc_visard:color=left:depth=ffs/depth", segmenter="sam3")
 wake = threading.Event()
 inputs = RGBDInputs(session, spec, history=10, local="shm", wake=wake)
 prepare = FramePreparer("cuda")

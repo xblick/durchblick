@@ -2,7 +2,7 @@
 publish, subscribe and answer which keys, and the routers between them. For ``xblick list --traffic`` and the
 terminal interface (tui.py).
 
-    meter = TrafficMeter(session, "robot/**")   # subscribes: publishers produce what it takes (every representation)
+    meter = TrafficMeter(session, "test/**")   # subscribes: publishers produce what it takes (every representation)
     time.sleep(2.0)
     for key, t in meter.snapshot().items():      # cumulative counts, bytes, encoding, last stamp
         ...
@@ -346,7 +346,7 @@ def _short(zid: str) -> str:
 
 
 def common_prefix(keys: Iterable[str]) -> str:
-    """The key tokens all keys start with, e.g. ``robot/camera`` of its streams' keys."""
+    """The key tokens all keys start with, e.g. ``test/camera`` of its streams' keys."""
     split = [k.split("/") for k in keys]
     if not split:
         return ""

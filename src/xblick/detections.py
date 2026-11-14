@@ -5,10 +5,10 @@ actions in a clip), each sample one message, on
 ``<key>/info`` (kind ``detections``, the message type), so that ``xblick list`` and ``xblick rerun`` find it
 as they find streams; ``xblick rerun`` draws them.
 
-    boxes = DetectionPublisher(session, "robot/camera/boxer/boxes_3d", Detection3DArray)
+    boxes = DetectionPublisher(session, "test/camera/boxer/boxes_3d", Detection3DArray)
     boxes.publish(Detection3DArray(header=Header(Time.from_ns(image_stamp_ns), "AzureKinectCamera"), detections=[...]))
 
-    reader = DetectionSubscriber(session, "robot/camera/boxer/boxes_3d", callback)  # callback(message)
+    reader = DetectionSubscriber(session, "test/camera/boxer/boxes_3d", callback)  # callback(message)
 """
 
 from __future__ import annotations

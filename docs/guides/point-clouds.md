@@ -4,7 +4,7 @@ The point cloud node `xblick-points` computes coloured point clouds from a depth
 each cloud once for all readers and publishes it as a point cloud stream at `<camera>/points`.
 
 ```bash
-xblick-points --depth robot/camera/depth --color robot/camera/color
+xblick-points --depth test/camera/depth --color test/camera/color
 ```
 
 The node works with any camera. It needs the `camera_info` of the streams and the camera's `tf_static`, which

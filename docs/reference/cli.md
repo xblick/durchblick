@@ -29,7 +29,7 @@ queries the info records and subscribes to nothing.
 
 | Option | Meaning |
 | --- | --- |
-| `prefix` | only keys below this prefix, for example `robot` |
+| `prefix` | only keys below this prefix, for example `test` |
 | `--seconds S` | how long to look for streams |
 | `--traffic` | subscribe to every topic and show rates and sizes |
 
@@ -181,7 +181,7 @@ Options for videos:
 
 | Option | Meaning |
 | --- | --- |
-| `--stream BASE` | the stream of a video, for example `robot/rc_visard/left`. Repeat it, one per video. |
+| `--stream BASE` | the stream of a video, for example `cam/rc_visard/left`. Repeat it, one per video. |
 | `--camera CAMERA` | for one video: its stream is `<camera>/color` |
 | `--camera-info FILE` | the ROS calibration file of a video, for its size |
 | `--hfov DEG`, `--vfov DEG` | without `--camera-info`: a pinhole camera with this field of view |
@@ -214,7 +214,7 @@ this PC read from other PCs into the rings of this PC. See [relays](../concepts/
 
 ```bash
 pip install "xblick[relay]"
-xblick relay --stream robot/camera/color
+xblick relay --stream test/camera/color
 ```
 
 The command looks for the program in this order and nowhere else.
@@ -234,5 +234,5 @@ its program, the command fails as well. It does not try `PATH` then.
 The point cloud node, a C++ program with CUDA. See the [point cloud guide](../guides/point-clouds.md).
 
 ```bash
-xblick-points --depth robot/camera/depth --color robot/camera/color
+xblick-points --depth test/camera/depth --color test/camera/color
 ```

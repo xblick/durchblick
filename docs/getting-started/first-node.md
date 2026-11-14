@@ -75,7 +75,7 @@ brightness: 14.9 frames/s
 ```
 
 The first line states which publisher the node found and which transport it chose. The second line appears every
-ten seconds. In another terminal, `xblick diagnostics robot` shows the state of the node once per second.
+ten seconds. In another terminal, `xblick diagnostics test` shows the state of the node once per second.
 
 ## What each part does
 

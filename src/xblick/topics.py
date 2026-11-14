@@ -1,6 +1,6 @@
 """Topic names and the Zenoh key expressions they map to.
 
-A camera stream is ``<namespace>/<camera>/<stream>``, e.g. ``robot/camera/color``, and has the topics of ROS
+A camera stream is ``<namespace>/<camera>/<stream>``, e.g. ``test/camera/color``, and has the topics of ROS
 image_transport and camera_info_manager below it:
 
 * ``<base>/image_raw``             sensor_msgs/Image
@@ -16,7 +16,7 @@ message says where (msg.py, cpp/include/xblick/ring.hpp). Their keys name the pl
 ``_core.host_id()``, and the GPU), so that a descriptor reaches only the readers that can open the ring, and
 publishers on several hosts (a source and relays) offer rings of one stream side by side.
 
-A point cloud stream (e.g. ``robot/camera/points``) has the same structure:
+A point cloud stream (e.g. ``test/camera/points``) has the same structure:
 
 * ``<base>/cloud``                 sensor_msgs/PointCloud2 (the whole cloud over the network)
 * ``<base>/cloud/shm/<host>``      xblick_msgs/ShmPointCloud2: the cloud in a shared-memory ring of that host
@@ -223,7 +223,7 @@ def wrench(robot: str, sensor: str) -> str:
 
 def detections(camera: str, node: str, name: str) -> str:
     """A vision node's results about a camera's images, ``<camera>/<node>/<name>`` (protocol.hpp), e.g.
-    ``robot/camera/boxer/boxes_3d``."""
+    ``test/camera/boxer/boxes_3d``."""
     return check_name(f"{camera}/{node}/{name}")
 
 

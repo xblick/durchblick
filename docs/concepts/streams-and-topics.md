@@ -8,7 +8,7 @@ own. This page explains how Durchblick names streams and where a node puts its r
 ## The name of a stream
 
 ```
-<namespace>/<camera>/<stream>        for example   robot/camera/color
+<namespace>/<camera>/<stream>        for example   test/camera/color
 ```
 
 - The **namespace** is the system that the camera belongs to, usually a robot.
@@ -56,7 +56,7 @@ A node reads the streams of a camera and publishes what it computed about them. 
 so they sit below it:
 
 ```
-<camera>/<node>/<name>               for example   robot/camera/sam3/instances
+<camera>/<node>/<name>               for example   test/camera/sam3/instances
 ```
 
 This rule has three useful consequences.

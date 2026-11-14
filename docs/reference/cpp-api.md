@@ -25,7 +25,7 @@ target_link_libraries(my_program PRIVATE xblick::xblick)
 #include <xblick/camera.hpp>
 
 zenoh::Session session = xblick::open_session({});          // the router of this PC
-xblick::CameraPublisher camera(session, "robot/camera/color",
+xblick::CameraPublisher camera(session, "cam/azurekinect/color",
                                    {.encoding = "rgb8", .frame_id = "AzureKinectCamera", .source = "robot"});
 if (camera.subscribed())
     camera.publish(xblick::HostImage{pixels, height, width}, capture_ns);
@@ -47,7 +47,7 @@ else
 ## Subscribe
 
 ```cpp
-xblick::ImageSubscriber images(session, "robot/camera/color", {.transport = xblick::Transport::Auto});
+xblick::ImageSubscriber images(session, "test/camera/color", {.transport = xblick::Transport::Auto});
 if (auto frame = images.latest(true, std::chrono::milliseconds(100)))
     use(frame->data(), frame->height, frame->width, frame->step, frame->encoding);
 ```
@@ -60,7 +60,7 @@ A partner stream pairs its samples with the frames of a primary stream, as Pytho
 ([pairing streams](../guides/pairing-streams.md)). `xblick/pairing.hpp` has the rule, in `xblick::core`.
 
 ```cpp
-xblick::ImageSubscriber depth(session, "robot/camera/depth", {.keep_recent = 8});
+xblick::ImageSubscriber depth(session, "test/camera/depth", {.keep_recent = 8});
 // max_offset_ns: 5 ms; std::nullopt for half the partner's measured period
 if (auto stamp = xblick::partner_of(depth.recent_stamps(), color_frame.stamp_ns(), 5'000'000))
     if (auto frame = depth.at(*stamp, std::chrono::nanoseconds(0)))
@@ -74,14 +74,14 @@ is the measured period.
 ## Transforms, IMU and diagnostics
 
 ```cpp
-// the fixed poses between the camera's frames (p_parent = R p_child + t), on robot/camera/tf_static
-xblick::StaticTransformPublisher tf(session, "robot/camera",
+// the fixed poses between the camera's frames (p_parent = R p_child + t), on test/camera/tf_static
+xblick::StaticTransformPublisher tf(session, "test/camera",
     {{{{now, "DepthCamera"}, "ColorCamera", xblick::Transform::from_matrix(rotation, {0.032, 0.002, 0.004})}}});
 
-xblick::ImuPublisher imu(session, "robot/camera");
+xblick::ImuPublisher imu(session, "test/camera");
 if (imu.subscribed()) imu.publish(sample);              // an xblick::Imu
 
-xblick::DiagnosticsPublisher diagnostics(session, "robot/camera");
+xblick::DiagnosticsPublisher diagnostics(session, "test/camera");
 diagnostics.publish({{now, ""}, {{xblick::DiagnosticStatus::kOk, "my_camera", "30.0 captures/s", serial, {}}}});
 ```
 
@@ -95,7 +95,7 @@ take it from there.
 ```cpp
 #include <xblick/points.hpp>
 
-xblick::PointCloudPublisher points(session, "robot/camera/points",
+xblick::PointCloudPublisher points(session, "test/camera/points",
                                        {.layout = xblick::xyzrgb_layout(), .frame_id = "AzureKinectDepthCamera",
                                         .cuda_device = 0});
 if (points.subscribed()) {
@@ -104,7 +104,7 @@ if (points.subscribed()) {
     points.commit(reinterpret_cast<std::uint64_t>(stream), false, capture_ns);
 }
 
-xblick::PointCloudSubscriber clouds(session, "robot/camera/points", {.local = xblick::Transport::Cuda});
+xblick::PointCloudSubscriber clouds(session, "test/camera/points", {.local = xblick::Transport::Cuda});
 if (auto cloud = clouds.latest(true, std::chrono::milliseconds(100)))
     use(cloud->device_ptr, cloud->height, cloud->width, cloud->point_step);     // data() for a host cloud
 ```

@@ -1,6 +1,6 @@
 // xblick-points: the point cloud node (point_cloud_node.hpp) as a program.
 //
-//   xblick-points --depth robot/camera/depth [--color robot/camera/color] [--camera <camera>]
+//   xblick-points --depth test/camera/depth [--color test/camera/color] [--camera <camera>]
 //                     [--output <camera>/points] [--cuda-device 0] [--max-offset-ms 10] [--remote compressed|raw]
 //                     [--max-depth M] [--max-hz HZ] [--source robot] [--connect host[:port] ...]
 //                     [--range-step 0.001] [--jpeg-quality 95]   (cloud/compressed, for readers on other hosts)

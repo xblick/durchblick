@@ -3,7 +3,7 @@
 // name:=value and ROS params files. The same model, keys and checks as Python's xblick.parameters (its module
 // docstring and docs/reference/parameters.md are the reference):
 //
-//   xblick::Parameters params(session, "camera", "robot/camera");       // the node <namespace>/<name>
+//   xblick::Parameters params(session, "camera", "test/camera");       // the node <namespace>/<name>
 //   params.configure(xblick::parameter_args(argc, argv));                    // --param, --params-file, ...
 //   params.declare("color.exposure_time_us", std::int64_t{8000},
 //       {.description = "exposure time", .unit = "us", .integer_range = xblick::IntegerRange{500, 33000, 1}},

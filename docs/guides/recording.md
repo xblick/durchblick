@@ -217,7 +217,7 @@ from xblick.sim import SimPublisher
 
 session = xblick.open_session(local_router=False)      # private: needs no zenohd
 sim = SimPublisher(session, "robot", blocking=True)        # robot state, world, commands, events
-head = xblick.CameraPublisher(session, "robot/camera/color", encoding="rgb8", frame_id="cam",
+head = xblick.CameraPublisher(session, "test/camera/color", encoding="rgb8", frame_id="cam",
                                   camera_info=info, source="sim", blocking=True)
 keys = sim.keys + [topics.compressed(head.base), topics.camera_info(head.base)]
 for n, spec in enumerate(specs):

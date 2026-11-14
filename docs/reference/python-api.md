@@ -28,7 +28,7 @@ session = db_session.open_from_args(args)
 
 ```python
 info = db.CameraInfo.pinhole(640, 480, fx=554.3, fy=554.3, cx=319.5, cy=239.5, frame_id="AzureKinectCamera")
-camera = db.CameraPublisher(session, "robot/camera/color", encoding="rgb8", frame_id="AzureKinectCamera",
+camera = db.CameraPublisher(session, "cam/azurekinect/color", encoding="rgb8", frame_id="AzureKinectCamera",
                             camera_info=info, source="sim")
 if camera.subscribed:
     camera.publish(rgb_array, stamp_ns=capture_time_ns)
@@ -58,7 +58,7 @@ you create it with `cuda_device=...`.
 ## Subscribe
 
 ```python
-images = db.ImageSubscriber(session, "robot/camera/color", transport="auto")
+images = db.ImageSubscriber(session, "test/camera/color", transport="auto")
 frame = images.latest(timeout=1.0)
 ```
 
@@ -85,7 +85,7 @@ frame = images.latest(timeout=1.0)
 ## Read without a copy
 
 ```python
-views = db.ImageSubscriber(session, "robot/camera/color", transport="shm", copy=False)
+views = db.ImageSubscriber(session, "test/camera/color", transport="shm", copy=False)
 frame = views.latest(timeout=1.0)
 result = process(frame.image)
 if not frame.is_valid():        # the publisher replaced the slot meanwhile
@@ -98,7 +98,7 @@ this is worth it.
 ## Keep frames on the GPU
 
 ```python
-gpu = db.ImageSubscriber(session, "robot/camera/color", transport="cuda")
+gpu = db.ImageSubscriber(session, "test/camera/color", transport="cuda")
 tensor = torch.as_tensor(gpu.latest(timeout=1.0).image, device="cuda")
 ```
 
@@ -108,7 +108,7 @@ any colour encoding, and `tensors.depth_metres(frame, "cuda")` returns depth in 
 ## Point clouds
 
 ```python
-clouds = db.PointCloudSubscriber(session, "robot/camera/points")
+clouds = db.PointCloudSubscriber(session, "test/camera/points")
 cloud = clouds.latest(timeout=1.0)
 xyz = np.stack([cloud.points["x"], cloud.points["y"], cloud.points["z"]], -1)   # NaN where there is no depth
 rgb = db.points.unpack_rgb(cloud.points["rgb"])
@@ -119,7 +119,7 @@ rgb = db.points.unpack_rgb(cloud.points["rgb"])
 it arrives as a whole `PointCloud2`, which is large. See the [point cloud guide](../guides/point-clouds.md).
 
 ```python
-gpu_clouds = db.PointCloudSubscriber(session, "robot/camera/points", local="cuda")
+gpu_clouds = db.PointCloudSubscriber(session, "test/camera/points", local="cuda")
 ```
 
 With `local="cuda"` a cloud is an (h, w, 16) byte array on the GPU.
@@ -130,20 +130,20 @@ A node publishes its results as `vision_msgs` messages, one message per processe
 image.
 
 ```python
-boxes = db.DetectionPublisher(session, "robot/camera/boxer/boxes_3d", db.Detection3DArray)
+boxes = db.DetectionPublisher(session, "test/camera/boxer/boxes_3d", db.Detection3DArray)
 box = db.Detection3D(results=[db.ObjectHypothesisWithPose(db.ObjectHypothesis("mug", 0.82))],
                      bbox=db.BoundingBox3D(db.Pose(db.Point(0.1, -0.2, 1.5), db.Quaternion()),
                                            db.Vector3(0.08, 0.12, 0.10)), id="7")     # metres
 boxes.publish(db.Detection3DArray(db.Header(db.Time.from_ns(frame.stamp_ns), "AzureKinectCamera"), [box]))
 
-reader = db.DetectionSubscriber(session, "robot/camera/boxer/boxes_3d", print)   # calls print(message)
+reader = db.DetectionSubscriber(session, "test/camera/boxer/boxes_3d", print)   # calls print(message)
 ```
 
 Classes without a place use `Classification`, for example the actions in a video clip. The message carries the
 stamp of the newest image of the clip.
 
 ```python
-actions = db.DetectionPublisher(session, "robot/camera/vjepa2/actions", db.Classification)
+actions = db.DetectionPublisher(session, "test/camera/vjepa2/actions", db.Classification)
 actions.publish(db.Classification(db.Header(db.Time.from_ns(frame.stamp_ns), "AzureKinectCamera"),
                                   [db.ObjectHypothesis("Opening something", 0.62)]))
 ```

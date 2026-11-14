@@ -2,7 +2,7 @@
 over Zenoh through ROS 2's parameter services, and set at the start from ``--param name:=value`` and ROS params
 files. docs/reference/parameters.md has the whole of it; C++ ``xblick::Parameters`` (parameters.hpp) is the same.
 
-    params = node.Parameters(session, "boxer", "robot/camera")      # the node <namespace>/<name>
+    params = node.Parameters(session, "boxer", "test/camera")      # the node <namespace>/<name>
     params.configure(args)                                     # --param, --params-file, --dump-params, ...
     params.declare("threshold", 0.3, description="a box's score at least", range=(0.0, 1.0, 0.05),
                    write=lambda value: None)                   # None: taken; a string: refused, the reason

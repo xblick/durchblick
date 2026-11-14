@@ -3,7 +3,7 @@
 Every topic of Durchblick with its message type and its rate. [Streams and topics](../concepts/streams-and-topics.md)
 explains how the names are built.
 
-In the tables, `<base>` is the name of a stream, for example `robot/camera/color`. "On request" means that
+In the tables, `<base>` is the name of a stream, for example `test/camera/color`. "On request" means that
 the publisher sends only while a subscriber exists for this topic.
 
 ## Camera stream
@@ -51,11 +51,11 @@ every GPU of its host.
 | | `vision_msgs/msg/Detection3DArray` | box poses in a frame of the camera's `tf_static` | the same |
 | | `Classification` | classes without a place, for example the actions in a clip | the same. A clip uses the stamp of its newest image. |
 
-Example: `robot/camera/boxer/boxes_3d`. Each node repository lists its topics in its README.
+Example: `test/camera/boxer/boxes_3d`. Each node repository lists its topics in its README.
 
 ## Parameters
 
-A node with parameters has a key `<namespace>/<name>`, for example `robot/camera`. It answers the parameter
+A node with parameters has a key `<namespace>/<name>`, for example `test/camera`. It answers the parameter
 services of ROS 2 below this key. See [parameters](parameters.md).
 
 | Topic | Type | Sent |

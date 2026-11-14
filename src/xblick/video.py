@@ -238,7 +238,7 @@ def camera_of(base: str) -> str:
     """The camera a stream belongs to: its base less the last part (its diagnostics go to <camera>/diagnostics)."""
     camera, sep, _ = base.rpartition("/")
     if not sep:
-        raise VideoError(f"stream {base!r}: <camera>/<stream>, e.g. robot/video/color")
+        raise VideoError(f"stream {base!r}: <camera>/<stream>, e.g. video/clip/color")
     return camera
 
 

@@ -10,21 +10,21 @@ needed.
 ## Quick start
 
 ```bash
-xblick play clip.mp4 --camera robot/video --loop
+xblick play clip.mp4 --camera video/clip --loop
 ```
 
-The video is now the stream `robot/video/color`. Start any node on the camera `robot/video`.
+The video is now the stream `video/clip/color`. Start any node on the camera `video/clip`.
 
 ```bash
 # a stereo pair, with frames paired exactly
-xblick play left.mp4 right.mp4 --stream robot/rc_visard/left --stream robot/rc_visard/right \
+xblick play left.mp4 right.mp4 --stream cam/rc_visard/left --stream cam/rc_visard/right \
     --camera-info left.yaml --camera-info right.yaml --loop
 
 # colour and depth from two files, the depth 3 ms later
 xblick play color.mp4 depth.mkv --stream cam/color --stream cam/depth --offset-ms 0 --offset-ms 3
 
 # an image sequence
-xblick play 'frames/*.png' --camera robot/video --fps 10
+xblick play 'frames/*.png' --camera video/clip --fps 10
 ```
 
 ## What counts as a video
@@ -57,7 +57,7 @@ refuses a count that does not match.
 
 | Option | Meaning |
 | --- | --- |
-| `--stream BASE` | the name of the stream, for example `robot/rc_visard/left`. Required. For a single video, `--camera CAM` means `CAM/color`. |
+| `--stream BASE` | the name of the stream, for example `cam/rc_visard/left`. Required. For a single video, `--camera CAM` means `CAM/color`. |
 | `--offset-ms MS` | moves the stamps and the send times of the stream, forwards or backwards. Use it for videos that are not cut in sync. |
 | `--camera-info FILE` | a ROS calibration file for the size of the stream, as `camera_calibration` writes it |
 | `--frame-id ID` | the frame id. The default is the name of the stream with `_` in place of `/`. |
@@ -164,12 +164,12 @@ Use one terminal for each step.
 # 1. a router on this PC, if none is running
 zenohd --no-multicast-scouting -l tcp/127.0.0.1:7447
 
-# 2. the video as robot/video/color, looped
-xblick play ~/clip.mp4 --camera robot/video --loop
+# 2. the video as video/clip/color, looped
+xblick play ~/clip.mp4 --camera video/clip --loop
 
 # 3. nodes on the video, each from its own checkout and on its own GPU
-cd xblick-sam3 && CUDA_VISIBLE_DEVICES=0 .venv/bin/xblick-sam3 --camera robot/video --words person cup
-cd xblick-insightface && CUDA_VISIBLE_DEVICES=1 .venv/bin/xblick-insightface --camera robot/video
+cd xblick-sam3 && CUDA_VISIBLE_DEVICES=0 .venv/bin/xblick-sam3 --camera video/clip --words person cup
+cd xblick-insightface && CUDA_VISIBLE_DEVICES=1 .venv/bin/xblick-insightface --camera video/clip
 
 # 4. look at the streams, the reports of the nodes and the position of the playback
 xblick

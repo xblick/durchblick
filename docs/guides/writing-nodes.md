@@ -37,7 +37,7 @@ import xblick as db
 from xblick import node, tensors
 from xblick.history import FrameHistory
 
-camera = "robot/camera"                            # an example
+camera = "test/camera"                            # an example
 node.start("xblick-mynode")                              # before you load models: their libraries log while loading
 session = db.open_session()                              # this PC's router
 wake = threading.Event()

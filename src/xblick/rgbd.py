@@ -38,7 +38,7 @@ class CameraSpec:
 
     @classmethod
     def parse(cls, text: str, segmenter: str | None = None) -> CameraSpec:
-        """``CAMERA[:color=NAME][:depth=NAME][:segmenter=NAME]``, e.g. ``robot/rc_visard:color=left:depth=ffs/depth``
+        """``CAMERA[:color=NAME][:depth=NAME][:segmenter=NAME]``, e.g. ``cam/rc_visard:color=left:depth=ffs/depth``
         (colons: some process managers split a program's arguments at commas). ``segmenter``: the node's
         default (None: no segmenter unless the text names one)."""
         camera, *options = text.strip().split(":")
